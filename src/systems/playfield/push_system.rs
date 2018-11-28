@@ -55,6 +55,9 @@ impl<'a> System<'a> for PushSystem {
     }
 }
 
+// offsets the playfield each frame by an amount, the amount can be increased by holding raise
+// swaps all blocks one upwards each time the offset hits the size of the blocks themselves
+// also resets the hold signal for fast raising when any tops are at the top / being cleared
 fn visual_offset(
     push: &mut Push,
     stack: &Stack,
@@ -103,6 +106,8 @@ fn visual_offset(
     }
 }
 
+// swaps all blocks frmo top to bottom, making everything in the grid move one up
+// spawns new data in the lowest row via the stacks generator
 fn push_blocks(
     stack: &Stack,
     blocks: &mut WriteStorage<'_, Block>,
@@ -124,16 +129,20 @@ fn push_blocks(
         b.anim_offset = 0;
     }
 
+    // generate lowest row since its now empty!
     let new_row = generator.create_rows((6, 1));
     for i in 0..COLS {
         blocks.get_mut(stack[i]).unwrap().kind = new_row[i];
     }
 
+    // move up the y position, since blocks move 1 up the cursor would stick to the same place
     if cursor.y < ROWS as f32 {
         cursor.y += 1.0;
     }
 }
 
+// sets y offsets on each stack's cursor and blocks
+// rounds them to make it appear pixel perfect - not true when scaling everything up tho
 fn set_visual_offsets(
     value: f32,
     stack: &Stack,
