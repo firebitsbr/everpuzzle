@@ -3,7 +3,7 @@ use amethyst::ecs::*;
 use components::{
     block::Block,
     cursor::Cursor,
-    playfield::{playfield_clear::PlayfieldClear, stack::Stack},
+    playfield::{clear::Clear, stack::Stack},
 };
 
 use block_states::block_state::change_state;
@@ -14,30 +14,30 @@ pub struct ClearSystem;
 
 impl<'a> System<'a> for ClearSystem {
     type SystemData = (
-        WriteStorage<'a, PlayfieldClear>,
+        WriteStorage<'a, Clear>,
         WriteStorage<'a, Block>,
         ReadStorage<'a, Stack>,
     );
 
-    fn run(&mut self, (mut playfield_clears, mut blocks, stacks): Self::SystemData) {
+    fn run(&mut self, (mut clears, mut blocks, stacks): Self::SystemData) {
         // block clear detection
         // counts the amount of clears each frame, passes them uniquely to an array holding their ids
         // sets a lot of playfield_clear values and then sets the blocks to animate with given times
-        for (p_clear, stack) in (&mut playfield_clears, &stacks).join() {
+        for (clear, stack) in (&mut clears, &stacks).join() {
             for x in 0..COLS {
                 for y in 0..ROWS {
                     for clear_block_id in check_clear(x, y, &stack, &blocks) {
-                        if !p_clear.clear_queue.contains(&clear_block_id) {
-                            p_clear.clear_queue.push(clear_block_id);
+                        if !clear.clear_queue.contains(&clear_block_id) {
+                            clear.clear_queue.push(clear_block_id);
                         }
                     }
                 }
             }
 
             // if no clears were found, dont go through all
-            let clear_size = p_clear.clear_queue.len() as u32;
+            let clear_size = clear.clear_queue.len() as u32;
             if clear_size != 0 {
-                p_clear.combo_counter = 0;
+                clear.combo_counter = 0;
 
                 // animation times, TODO: get playfield level dependant times
                 let flash: u32 = 44;
@@ -47,25 +47,25 @@ impl<'a> System<'a> for ClearSystem {
                 let all_time: u32 = flash + face + pop * clear_size;
 
                 let had_chainable: bool =
-                    any_chainable_exists(&p_clear.clear_queue, stack, &blocks);
+                    any_chainable_exists(&clear.clear_queue, stack, &blocks);
 
                 // max the chain and save data in a last chain
                 if had_chainable {
-                    p_clear.chain += 1;
-                    p_clear.last_chain = max(p_clear.chain, p_clear.last_chain);
+                    clear.chain += 1;
+                    clear.last_chain = max(clear.chain, clear.last_chain);
                 }
                 // otherwhise reset the chain
                 else {
-                    p_clear.chain = 1;
+                    clear.chain = 1;
                 }
 
                 // set all animation times and general time it will take all blocks that are
                 // comboing to finish their animation
-                for id in &p_clear.clear_queue {
+                for id in &clear.clear_queue {
                     let b = blocks.get_mut(stack[*id as usize]).unwrap();
-                    let set_time = flash + face + pop * p_clear.combo_counter;
+                    let set_time = flash + face + pop * clear.combo_counter;
                     b.clear_time = set_time as i32;
-                    p_clear.combo_counter += 1;
+                    clear.combo_counter += 1;
 
                     b.counter = all_time;
                     b.clear_start_counter = all_time as i32;
@@ -73,11 +73,11 @@ impl<'a> System<'a> for ClearSystem {
                 }
 
                 // clear the clear_queue if its not empty
-                p_clear.blocks_cleared += p_clear.combo_counter;
-                p_clear.clear_queue.clear();
+                clear.blocks_cleared += clear.combo_counter;
+                clear.clear_queue.clear();
                 println!(
                     "chain: {}, combo: {}, blocks_cleared: {}",
-                    p_clear.chain, p_clear.combo_counter, p_clear.blocks_cleared
+                    clear.chain, clear.combo_counter, clear.blocks_cleared
                 );
             }
         }

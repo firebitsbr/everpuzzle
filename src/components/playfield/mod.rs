@@ -1,3 +1,4 @@
-pub mod playfield_clear;
-pub mod playfield_push;
+pub mod clear;
+pub mod push;
 pub mod stack;
+pub mod lose;

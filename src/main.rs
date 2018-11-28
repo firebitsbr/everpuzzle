@@ -19,7 +19,7 @@ use game_modes::game_mode::GameMode;
 use systems::{
     block_system::BlockSystem,
     cursor_system::CursorSystem,
-    playfield::{clear_system::ClearSystem, push_system::PushSystem},
+    playfield::{clear_system::ClearSystem, push_system::PushSystem, lose_system::LoseSystem},
 };
 
 // static seed for rand crate that can be used to have the same rand seed - good for debugging
@@ -80,7 +80,8 @@ fn main() -> amethyst::Result<()> {
         .with(BlockSystem {}, "block_system", &[])
         .with(CursorSystem::new(), "cursor_system", &["input_system"])
         .with(PushSystem {}, "playfield_push_system", &[])
-        .with(ClearSystem {}, "playfield_clear_system", &[]);
+        .with(ClearSystem {}, "playfield_clear_system", &[])
+        .with(LoseSystem {}, "playfield_lose_system", &[]);
 
     // set the assets dir where all sprites will be loaded from
     let assets_dir = format!("{}/src/sprites/", app_root);

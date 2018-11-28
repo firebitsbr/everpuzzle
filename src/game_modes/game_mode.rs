@@ -11,8 +11,7 @@ use components::{
     block::Block,
     cursor::Cursor,
     kind_generator::KindGenerator,
-    playfield::stack::Stack,
-    playfield::{playfield_clear::PlayfieldClear, playfield_push::PlayfieldPush},
+    playfield::{clear::Clear, push::Push, lose::Lose, stack::Stack},
     spritesheet_loader::{load_sprite_sheet, SpriteSheetLoader},
 };
 
@@ -125,12 +124,14 @@ impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
         // Create a Playfield with a stack, clear, push component,
         // STACK gives anccess to blocks and cursor dependant on the general storages
         world.register::<Stack>();
-        world.register::<PlayfieldClear>();
-        world.register::<PlayfieldPush>();
+        world.register::<Clear>();
+        world.register::<Push>();
+        world.register::<Lose>();
         world
             .create_entity()
-            .with(PlayfieldClear::default())
-            .with(PlayfieldPush::default())
+            .with(Clear::default())
+            .with(Push::default())
+            .with(Lose::default())
             .with(Stack::new(block_entities, cursor_entity))
             .build();
 

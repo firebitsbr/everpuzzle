@@ -1,6 +1,6 @@
 use amethyst::ecs::{Component, DenseVecStorage};
 
-pub struct PlayfieldPush {
+pub struct Push {
     pub any_clears: bool,
     pub any_top_blocks: bool,
     pub smooth_raise: bool,
@@ -9,9 +9,9 @@ pub struct PlayfieldPush {
     pub signal_raise: bool,
 }
 
-impl Default for PlayfieldPush {
-    fn default() -> PlayfieldPush {
-        PlayfieldPush {
+impl Default for Push {
+    fn default() -> Push {
+        Push {
             any_clears: false,
             any_top_blocks: false,
             smooth_raise: false,
@@ -22,6 +22,6 @@ impl Default for PlayfieldPush {
     }
 }
 
-impl Component for PlayfieldPush {
+impl Component for Push {
     type Storage = DenseVecStorage<Self>;
 }

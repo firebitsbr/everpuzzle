@@ -93,7 +93,7 @@ fn update_sprites(
                 hiddens.remove(stack[i]);
             }
 
-            if b.y == 0 {
+            if b.y == 0 && b.state == "IDLE" {
                 b.anim_offset = 1;
             }
 

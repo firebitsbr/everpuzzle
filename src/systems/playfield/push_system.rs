@@ -4,7 +4,7 @@ use components::{
     block::Block,
     cursor::Cursor,
     kind_generator::KindGenerator,
-    playfield::{playfield_push::PlayfieldPush, stack::Stack},
+    playfield::{push::Push, stack::Stack},
 };
 use data::block_data::*;
 
@@ -17,7 +17,7 @@ pub struct PushSystem;
 
 impl<'a> System<'a> for PushSystem {
     type SystemData = (
-        WriteStorage<'a, PlayfieldPush>,
+        WriteStorage<'a, Push>,
         ReadStorage<'a, Stack>,
         WriteStorage<'a, Block>,
         WriteStorage<'a, Cursor>,
@@ -26,7 +26,7 @@ impl<'a> System<'a> for PushSystem {
     );
 
     fn run(&mut self, (
-		mut playfield_pushes,
+		mut pushes,
 		stacks,
 		mut blocks,
 		mut cursors,
@@ -36,16 +36,16 @@ impl<'a> System<'a> for PushSystem {
         // playfield push info / push animation WIP
         for (entity, stack) in (&entities, &stacks).join() {
             {
-                // store info in p_push
-                let mut p_push = playfield_pushes.get_mut(entity).unwrap();
-                p_push.any_clears = check_blocks_clearing(&stack, &blocks);
-                p_push.any_top_blocks = check_blocks_at_top(&stack, &blocks);
+                // store info in push
+                let mut push = pushes.get_mut(entity).unwrap();
+                push.any_clears = check_blocks_clearing(&stack, &blocks);
+                push.any_top_blocks = check_blocks_at_top(&stack, &blocks);
             }
 
             {
                 // actually offset things based on time
                 visual_offset(
-                    playfield_pushes.get_mut(entity).unwrap(),
+                    pushes.get_mut(entity).unwrap(),
                     &stack,
                     &mut blocks,
                     cursors.get_mut(stack.cursor_entity).unwrap(),
@@ -57,50 +57,50 @@ impl<'a> System<'a> for PushSystem {
 }
 
 fn visual_offset(
-    p_push: &mut PlayfieldPush,
+    push: &mut Push,
     stack: &Stack,
     blocks: &mut WriteStorage<'_, Block>,
     cursor: &mut Cursor,
     generator: &mut Write<'_, KindGenerator>,
 ) {
     // if any cursor signal comes through do smooth increase thats faster and stops
-    if p_push.signal_raise {
-        p_push.smooth_raise = true;
+    if push.signal_raise {
+        push.smooth_raise = true;
     }
 
     // stop any raise, even smooth call
-    if p_push.any_clears || p_push.any_top_blocks {
-        p_push.smooth_raise = false; // deletes all smooth_raise signals
+    if push.any_clears || push.any_top_blocks {
+        push.smooth_raise = false; // deletes all smooth_raise signals
         return;
     }
 
     // if anything blocks raise by setting its time all raise stops until it counts down
     // used to block the amount of time it takes until another raise triggers
-    if p_push.raised_blocked_counter > 0 {
-        p_push.raised_blocked_counter -= 1;
-        p_push.smooth_raise = false; // deletes all smooth_raise signals
+    if push.raised_blocked_counter > 0 {
+        push.raised_blocked_counter -= 1;
+        push.smooth_raise = false; // deletes all smooth_raise signals
         return;
     }
 
     // until counter is at 16 (the block sprite size)
-    if p_push.offset_counter > 16.0 {
+    if push.offset_counter > 16.0 {
         // reset all offsets and reset smoothing
-        p_push.offset_counter = 0.0;
+        push.offset_counter = 0.0;
         set_visual_offsets(0.0, &stack, blocks, cursor);
-        p_push.smooth_raise = false;
-        p_push.raised_blocked_counter = 5; // TODO: GET TIME FROM FILE
+        push.smooth_raise = false;
+        push.raised_blocked_counter = 5; // TODO: GET TIME FROM FILE
         push_blocks(&stack, blocks, cursor, generator);
     } else {
         // if smooth - increase faster
-        if p_push.smooth_raise {
-            p_push.offset_counter += 4.0;
+        if push.smooth_raise {
+            push.offset_counter += 4.0;
         }
         // else slowly increase
         else {
-            p_push.offset_counter += RAISE_TIME; // TODO: TIMES LEVEL DEPENDANT
+            push.offset_counter += RAISE_TIME; // TODO: TIMES LEVEL DEPENDANT
         }
 
-        set_visual_offsets(p_push.offset_counter, stack, blocks, cursor);
+        set_visual_offsets(push.offset_counter, stack, blocks, cursor);
     }
 }
 
@@ -119,10 +119,10 @@ fn push_blocks(
 
         let down: Block = *blocks.get(stack[reverse - COLS]).unwrap();
 
-        blocks
-            .get_mut(stack[reverse])
-            .unwrap()
-            .set_properties(down);
+        let b = blocks.get_mut(stack[reverse]).unwrap();
+
+        b.set_properties(down);
+        b.anim_offset = 0;
     }
 
     let new_row = generator.create_rows((6, 1));
@@ -145,7 +145,7 @@ fn set_visual_offsets(
         blocks.get_mut(stack[i]).unwrap().offset.1 = value;
     }
 
-    cursor.offset.1 = value;
+    cursor.offset.1 = value * 2.0;
 }
 
 // returns true when any block was found that is currently in clear state

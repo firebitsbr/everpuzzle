@@ -4,7 +4,11 @@ use block_states::block_state::change_state;
 use block_states::swap::SWAP_TIME;
 use components::{
     block::Block, cursor::Cursor, kind_generator::KindGenerator,
-    playfield::playfield_push::PlayfieldPush, playfield::stack::Stack,
+    playfield::{
+        stack::Stack,
+        clear::Clear,
+        push::Push,
+    },
 };
 use data::block_data::*;
 
@@ -73,7 +77,8 @@ impl<'a> System<'a> for CursorSystem {
         Write<'a, KindGenerator>,
         WriteStorage<'a, Block>,
         ReadStorage<'a, Stack>,
-        WriteStorage<'a, PlayfieldPush>,
+        WriteStorage<'a, Push>,
+        WriteStorage<'a, Clear>,
     );
 
     fn run(
@@ -86,7 +91,8 @@ impl<'a> System<'a> for CursorSystem {
             mut kind_gen,
             mut blocks,
             stacks,
-            mut playfield_pushes,
+            mut pushes,
+            mut clears,
         ): Self::SystemData,
     ) {
         if self.hold(&mut input, "up") {
@@ -125,10 +131,18 @@ impl<'a> System<'a> for CursorSystem {
         if self.press(&mut input, "space") {
             let kinds = kind_gen.create_stack(5, 8);
 
-            for stack in (&stacks).join() {
+            for (stack, push, clear) in
+                (&stacks, &mut pushes, &mut clears).join()
+            {
                 for i in 0..BLOCKS {
-                    blocks.get_mut(stack[i]).unwrap().kind = kinds[i];
+                    let b = blocks.get_mut(stack[i]).unwrap();
+                    b.reset();
+                    b.kind = kinds[i];
                 }
+
+                *push = Default::default();
+                *clear = Default::default();
+                *cursors.get_mut(stack.cursor_entity).unwrap() = Default::default();
             }
         }
 
@@ -144,7 +158,7 @@ impl<'a> System<'a> for CursorSystem {
 
         // TODO: DONT SET THIS FOR EVERY PLAYFIELD, look for cursor specific input, then decide
         // which playfield.signal_raise should be set true / false
-        for playfield_push in (&mut playfield_pushes).join() {
+        for playfield_push in (&mut pushes).join() {
             playfield_push.signal_raise = input.action_is_down("raise").unwrap();
         }
 

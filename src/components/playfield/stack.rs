@@ -1,7 +1,7 @@
 #![allow(dead_code)]
-use std::ops::Index;
 use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity};
 use data::block_data::COLS;
+use std::ops::Index;
 
 pub struct Stack {
     block_entities: Vec<Entity>,

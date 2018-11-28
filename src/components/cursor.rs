@@ -13,8 +13,8 @@ pub struct Cursor {
 impl Default for Cursor {
     fn default() -> Cursor {
         Cursor {
-            x: 0.0,
-            y: 0.0,
+            x: 2.0,
+            y: 6.0,
             anim_offset: 0.0,
             offset: (0.0, 0.0),
         }
