@@ -1,23 +1,11 @@
-use amethyst::{
-    ecs::*,
-    renderer::*,
-    core::Transform,
-};
+use amethyst::{core::Transform, ecs::*, renderer::*};
 
-use components::{
-    block::Block,
-    playfield::stack::Stack,
-};
-use data::block_data::{COLS, BLOCKS};
 use block_states::{
-    block_state::BlockState,
-    idle::Idle,
-    hang::Hang,
-    fall::Fall,
-    land::Land,
-    clear::Clear,
+    block_state::BlockState, clear::Clear, fall::Fall, hang::Hang, idle::Idle, land::Land,
     swap::Swap,
 };
+use components::{block::Block, playfield::stack::Stack};
+use data::block_data::{BLOCKS, COLS};
 
 // handles everything a block should do itself or based on others
 pub struct BlockSystem;
@@ -30,47 +18,43 @@ impl<'a> System<'a> for BlockSystem {
         WriteStorage<'a, Hidden>,
     );
 
-    fn run(&mut self, (
-            stacks,
-            mut sprites, 
-            mut transforms, 
-            mut blocks,
-            mut hiddens,
-            ): Self::SystemData)
-    {
+    fn run(
+        &mut self,
+        (stacks, mut sprites, mut transforms, mut blocks, mut hiddens): Self::SystemData,
+    ) {
         // run through all existing block stacks
         for stack in (&stacks).join() {
             // run through all states from a block
             for i in 0..BLOCKS {
                 // decrease the counter if its over 0
                 {
-                    let mut b = blocks.get_mut(stack.from_i(i)).unwrap();
-                    
+                    let mut b = blocks.get_mut(stack[i]).unwrap();
+
                     if b.counter > 0 {
                         b.counter -= 1;
                     }
                 }
 
                 // match all on the blocks state - run all execute functions
-                match blocks.get(stack.from_i(i)).unwrap().state {
+                match blocks.get(stack[i]).unwrap().state {
                     "IDLE" => Idle::execute(i, &stack, &mut blocks),
                     "FALL" => Fall::execute(i, &stack, &mut blocks),
                     "LAND" => Land::execute(i, &stack, &mut blocks),
                     "CLEAR" => Clear::execute(i, &stack, &mut blocks),
                     "SWAP" => Swap::execute(i, &stack, &mut blocks),
-                    _ => ()
+                    _ => (),
                 }
 
                 // if the counter is at 0, call current states counter end function
-                if blocks.get(stack.from_i(i)).unwrap().counter <= 0 {
-                    match blocks.get(stack.from_i(i)).unwrap().state {
+                if blocks.get(stack[i]).unwrap().counter <= 0 {
+                    match blocks.get(stack[i]).unwrap().state {
                         "HANG" => Hang::counter_end(i, &stack, &mut blocks),
                         "FALL" => Fall::counter_end(i, &stack, &mut blocks),
                         "LAND" => Land::counter_end(i, &stack, &mut blocks),
                         "CLEAR" => Clear::counter_end(i, &stack, &mut blocks),
                         "SWAP" => Swap::counter_end(i, &stack, &mut blocks),
-                        _ => ()
-                    }    
+                        _ => (),
+                    }
                 }
             }
 
@@ -81,26 +65,22 @@ impl<'a> System<'a> for BlockSystem {
             }
 
             // rendering
-            update_sprites(
-                &stack, 
-                &mut blocks,
-                &mut sprites,
-                &mut hiddens,
-            );
+            update_sprites(&stack, &mut blocks, &mut sprites, &mut hiddens);
         }
     }
 }
 
 // visibility is on when the blocks kind isnt -1
-// also sets the frame of the sprite by its kind * 9 and an additional 
+// also sets the frame of the sprite by its kind * 9 and an additional
 // animation offset used to stay at specific horizontal sprites
 fn update_sprites(
-    stack: &Stack, 
+    stack: &Stack,
     blocks: &mut WriteStorage<'_, Block>,
     sprites: &mut WriteStorage<'_, SpriteRender>,
-    hiddens: &mut WriteStorage<'_, Hidden>) {
+    hiddens: &mut WriteStorage<'_, Hidden>,
+) {
     for i in 0..BLOCKS {
-        let b = blocks.get_mut(stack.from_i(i)).unwrap();
+        let b = blocks.get_mut(stack[i]).unwrap();
 
         // decrease all the time
         if b.anim_counter > 0 {
@@ -109,19 +89,21 @@ fn update_sprites(
 
         // render sprite with kind when its not -1
         if b.kind != -1 && !b.clearing {
-            if hiddens.contains(stack.from_i(i)) {
-                hiddens.remove(stack.from_i(i));
+            if hiddens.contains(stack[i]) {
+                hiddens.remove(stack[i]);
             }
 
             if b.y == 0 {
                 b.anim_offset = 1;
             }
 
-            sprites.get_mut(stack.from_i(i)).unwrap().sprite_number = b.kind as usize * 8 + b.anim_offset as usize;
-        }
-        else {
-            if !hiddens.contains(stack.from_i(i)) {
-                hiddens.insert(stack.from_i(i), Hidden::default()).expect("add hide component");
+            sprites.get_mut(stack[i]).unwrap().sprite_number =
+                b.kind as usize * 8 + b.anim_offset as usize;
+        } else {
+            if !hiddens.contains(stack[i]) {
+                hiddens
+                    .insert(stack[i], Hidden::default())
+                    .expect("add hide component");
             }
         }
     }
@@ -134,9 +116,9 @@ pub fn check_for_hang(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Blo
 
     // check if is in vec boundary
     if i > COLS {
-        let down = blocks.get_mut(stack.from_i(i - COLS)).unwrap();
+        let down = blocks.get_mut(stack[i - COLS]).unwrap();
         down_condition = down.is_empty() || down.state == "HANG";
     }
 
-    !blocks.get_mut(stack.from_i(i)).unwrap().is_empty() && down_condition
+    !blocks.get_mut(stack[i]).unwrap().is_empty() && down_condition
 }

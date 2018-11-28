@@ -1,16 +1,16 @@
 #![allow(unused_variables)]
 use amethyst::ecs::prelude::WriteStorage;
+use block_states::block_state::{change_state, BlockState};
 use components::block::Block;
 use components::playfield::stack::Stack;
-use block_states::block_state::{BlockState, change_state};
-use data::block_data::{COLS, BLOCKS};
+use data::block_data::{BLOCKS, COLS};
 
 const LAND_ANIM: [u32; 10] = [2, 2, 2, 3, 3, 3, 4, 4, 4, 0];
 pub const LAND_TIME: u32 = 10;
 
 // STOPS THE BLOCK FROM BEING CHAINABLE after animating that is
 //
-// used for animating the land state 
+// used for animating the land state
 // just sets sprite offset to the current animation frames
 pub struct Land;
 impl BlockState for Land {
@@ -29,7 +29,7 @@ impl BlockState for Land {
 
     // simply animate
     fn execute(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
-        let b = blocks.get_mut(stack.from_i(i)).unwrap();
+        let b = blocks.get_mut(stack[i]).unwrap();
         b.anim_offset = LAND_ANIM[(LAND_TIME - b.anim_counter - 1) as usize];
     }
 
@@ -40,18 +40,17 @@ impl BlockState for Land {
         let mut above_counter: u32 = 0;
 
         if i < BLOCKS - COLS {
-            let above = blocks.get(stack.from_i(i + COLS)).unwrap();
+            let above = blocks.get(stack[i + COLS]).unwrap();
             above_hanging = above.state == "HANG";
             above_counter = above.counter;
         }
- 
-        let b = blocks.get_mut(stack.from_i(i)).unwrap();
+
+        let b = blocks.get_mut(stack[i]).unwrap();
         if above_hanging {
-            change_state(b, "HANG"); 
+            change_state(b, "HANG");
             b.counter = above_counter;
-        }
-        else {
-            change_state(b, "IDLE"); 
+        } else {
+            change_state(b, "IDLE");
         }
     }
 }
