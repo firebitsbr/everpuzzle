@@ -8,11 +8,11 @@ const STOP_TIME: u32 = 121;
 impl<'a> System<'a> for LoseSystem {
     type SystemData = (
 		WriteStorage<'a, Lose>,
-		WriteStorage<'a, Push>,
+		ReadStorage<'a, Push>,
 	);
 
-    fn run(&mut self, (mut loses, mut pushes): Self::SystemData) {
-		for (lose, push) in (&mut loses, &mut pushes).join() {
+    fn run(&mut self, (mut loses, pushes): Self::SystemData) {
+		for (lose, push) in (&mut loses, &pushes).join() {
 			if push.any_top_blocks && !push.any_clears {
 				if lose.counter > STOP_TIME {
 					lose.lost = true;
@@ -23,14 +23,14 @@ impl<'a> System<'a> for LoseSystem {
 		}
 
 		// reset lose time frame counting each time a clear happens
-		for (lose, push) in (&mut loses, &mut pushes).join() {
+		for (lose, push) in (&mut loses, &pushes).join() {
 			if !push.any_top_blocks && push.any_clears {
 				lose.counter = 0;
 			}
 		}
 
 		// maybe reset the game for now
-		for (lose, push) in (&mut loses, &mut pushes).join() {
+		for lose in (&loses).join() {
 			if lose.lost {
 				println!("You lost the game");
 			}

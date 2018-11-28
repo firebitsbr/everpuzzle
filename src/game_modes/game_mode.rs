@@ -10,8 +10,7 @@ use rand::prelude::*;
 use components::{
     block::Block,
     cursor::Cursor,
-    kind_generator::KindGenerator,
-    playfield::{clear::Clear, push::Push, lose::Lose, stack::Stack},
+    playfield::{clear::Clear, push::Push, lose::Lose, stack::Stack, kind_generator::KindGenerator},
     spritesheet_loader::{load_sprite_sheet, SpriteSheetLoader},
 };
 
@@ -84,14 +83,9 @@ impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
         let world = data.world;
 
         // create random generator for random seeded numbers
-        let mut kind_gen: KindGenerator = KindGenerator {
-            rng: SmallRng::from_seed(self.rng_seed),
-        };
+        let mut kind_gen = KindGenerator { rng: SmallRng::from_seed(self.rng_seed) };
         let kinds = kind_gen.create_stack(5, 8);
-
         let block_entities = GameMode::create_blocks(world, kinds);
-        // add the random number generator as a global resource to be used
-        world.add_resource::<KindGenerator>(kind_gen);
 
         // load the cursor sprite and attach its data component
         let sprite_sheet = SpriteRender {
@@ -121,18 +115,20 @@ impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
 
         world.add_resource::<FPSCounter>(Default::default());
 
-        // Create a Playfield with a stack, clear, push component,
+        // Create a Playfield with a stack, clear, push, lose and kind generator
         // STACK gives anccess to blocks and cursor dependant on the general storages
         world.register::<Stack>();
         world.register::<Clear>();
         world.register::<Push>();
         world.register::<Lose>();
+        world.register::<KindGenerator>();
         world
             .create_entity()
             .with(Clear::default())
             .with(Push::default())
             .with(Lose::default())
             .with(Stack::new(block_entities, cursor_entity))
+            .with(kind_gen)
             .build();
 
         self.initialise_camera(world);

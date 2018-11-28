@@ -1,4 +1,5 @@
 #![allow(unused_variables)]
+use amethyst::ecs::{Component, DenseVecStorage};
 use data::block_data::{BLOCKS, COLS};
 use rand::prelude::*;
 
@@ -161,4 +162,8 @@ impl KindGenerator {
 
         return numbers[self.rng.gen_range(0, numbers.len())];
     }
+}
+
+impl Component for KindGenerator {
+    type Storage = DenseVecStorage<Self>;
 }

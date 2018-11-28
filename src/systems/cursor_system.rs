@@ -3,11 +3,12 @@ use amethyst::{core::Transform, ecs::*, input::*, renderer::*};
 use block_states::block_state::change_state;
 use block_states::swap::SWAP_TIME;
 use components::{
-    block::Block, cursor::Cursor, kind_generator::KindGenerator,
+    block::Block, cursor::Cursor, 
     playfield::{
         stack::Stack,
         clear::Clear,
         push::Push,
+        kind_generator::KindGenerator,
     },
 };
 use data::block_data::*;
@@ -74,7 +75,7 @@ impl<'a> System<'a> for CursorSystem {
         WriteStorage<'a, Transform>,
         WriteStorage<'a, Cursor>,
         Read<'a, InputHandler<String, String>>,
-        Write<'a, KindGenerator>,
+        WriteStorage<'a, KindGenerator>,
         WriteStorage<'a, Block>,
         ReadStorage<'a, Stack>,
         WriteStorage<'a, Push>,
@@ -88,7 +89,7 @@ impl<'a> System<'a> for CursorSystem {
             mut transforms,
             mut cursors,
             mut input,
-            mut kind_gen,
+            mut kind_gens,
             mut blocks,
             stacks,
             mut pushes,
@@ -129,11 +130,11 @@ impl<'a> System<'a> for CursorSystem {
 
         // reset all block colors to a random value
         if self.press(&mut input, "space") {
-            let kinds = kind_gen.create_stack(5, 8);
-
-            for (stack, push, clear) in
-                (&stacks, &mut pushes, &mut clears).join()
+            for (stack, push, clear, kind_gen) in
+                (&stacks, &mut pushes, &mut clears, &mut kind_gens).join()
             {
+                let kinds = kind_gen.create_stack(5, 8);
+
                 for i in 0..BLOCKS {
                     let b = blocks.get_mut(stack[i]).unwrap();
                     b.reset();

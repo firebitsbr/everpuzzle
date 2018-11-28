@@ -3,12 +3,11 @@ use amethyst::ecs::*;
 use components::{
     block::Block,
     cursor::Cursor,
-    kind_generator::KindGenerator,
-    playfield::{push::Push, stack::Stack},
+    playfield::{push::Push, stack::Stack, kind_generator::KindGenerator},
 };
 use data::block_data::*;
 
-const RAISE_TIME: f32 = 0.1;
+const RAISE_TIME: f32 = 0.025;
 
 // handles the entire pushing system which offsets all blocks and cursor
 // each complete grid offset the entire blocks get copied and move up one row
@@ -21,7 +20,7 @@ impl<'a> System<'a> for PushSystem {
         ReadStorage<'a, Stack>,
         WriteStorage<'a, Block>,
         WriteStorage<'a, Cursor>,
-        Write<'a, KindGenerator>,
+        WriteStorage<'a, KindGenerator>,
         Entities<'a>,
     );
 
@@ -30,7 +29,7 @@ impl<'a> System<'a> for PushSystem {
 		stacks,
 		mut blocks,
 		mut cursors,
-		mut generator,
+		mut kind_gens,
 		entities,
 ): Self::SystemData){
         // playfield push info / push animation WIP
@@ -49,7 +48,7 @@ impl<'a> System<'a> for PushSystem {
                     &stack,
                     &mut blocks,
                     cursors.get_mut(stack.cursor_entity).unwrap(),
-                    &mut generator,
+                    kind_gens.get_mut(entity).unwrap(),
                 );
             }
         }
@@ -61,7 +60,7 @@ fn visual_offset(
     stack: &Stack,
     blocks: &mut WriteStorage<'_, Block>,
     cursor: &mut Cursor,
-    generator: &mut Write<'_, KindGenerator>,
+    generator: &mut KindGenerator,
 ) {
     // if any cursor signal comes through do smooth increase thats faster and stops
     if push.signal_raise {
@@ -108,7 +107,7 @@ fn push_blocks(
     stack: &Stack,
     blocks: &mut WriteStorage<'_, Block>,
     cursor: &mut Cursor,
-    generator: &mut Write<'_, KindGenerator>,
+    generator: &mut KindGenerator,
 ) {
     // have a block and store its down neighbors values
     // go down the grid to not copy the same data
@@ -141,11 +140,14 @@ fn set_visual_offsets(
     blocks: &mut WriteStorage<'_, Block>,
     cursor: &mut Cursor,
 ) {
+    // round values to go "pixel perfect"
+    let rounded_value = value.round();
+
     for i in 0..BLOCKS {
-        blocks.get_mut(stack[i]).unwrap().offset.1 = value;
+        blocks.get_mut(stack[i]).unwrap().offset.1 = rounded_value;
     }
 
-    cursor.offset.1 = value * 2.0;
+    cursor.offset.1 = rounded_value * 2.0;
 }
 
 // returns true when any block was found that is currently in clear state
