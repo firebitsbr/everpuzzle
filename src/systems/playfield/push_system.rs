@@ -3,7 +3,7 @@ use amethyst::ecs::*;
 use components::{
     block::Block,
     cursor::Cursor,
-    playfield::{push::Push, stack::Stack, kind_generator::KindGenerator},
+    playfield::{kind_generator::KindGenerator, push::Push, stack::Stack},
 };
 use data::block_data::*;
 
@@ -24,14 +24,10 @@ impl<'a> System<'a> for PushSystem {
         Entities<'a>,
     );
 
-    fn run(&mut self, (
-		mut pushes,
-		stacks,
-		mut blocks,
-		mut cursors,
-		mut kind_gens,
-		entities,
-): Self::SystemData){
+    fn run(
+        &mut self,
+        (mut pushes, stacks, mut blocks, mut cursors, mut kind_gens, entities): Self::SystemData,
+    ) {
         // playfield push info / push animation WIP
         for (entity, stack) in (&entities, &stacks).join() {
             {

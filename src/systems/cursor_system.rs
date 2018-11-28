@@ -3,13 +3,9 @@ use amethyst::{core::Transform, ecs::*, input::*, renderer::*};
 use block_states::block_state::change_state;
 use block_states::swap::SWAP_TIME;
 use components::{
-    block::Block, cursor::Cursor, 
-    playfield::{
-        stack::Stack,
-        clear::Clear,
-        push::Push,
-        kind_generator::KindGenerator,
-    },
+    block::Block,
+    cursor::Cursor,
+    playfield::{clear::Clear, kind_generator::KindGenerator, push::Push, stack::Stack},
 };
 use data::block_data::*;
 

@@ -10,7 +10,9 @@ use rand::prelude::*;
 use components::{
     block::Block,
     cursor::Cursor,
-    playfield::{clear::Clear, push::Push, lose::Lose, stack::Stack, kind_generator::KindGenerator},
+    playfield::{
+        clear::Clear, kind_generator::KindGenerator, lose::Lose, push::Push, stack::Stack,
+    },
     spritesheet_loader::{load_sprite_sheet, SpriteSheetLoader},
 };
 
@@ -83,7 +85,9 @@ impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
         let world = data.world;
 
         // create random generator for random seeded numbers
-        let mut kind_gen = KindGenerator { rng: SmallRng::from_seed(self.rng_seed) };
+        let mut kind_gen = KindGenerator {
+            rng: SmallRng::from_seed(self.rng_seed),
+        };
         let kinds = kind_gen.create_stack(5, 8);
         let block_entities = GameMode::create_blocks(world, kinds);
 

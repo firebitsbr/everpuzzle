@@ -19,7 +19,7 @@ use game_modes::game_mode::GameMode;
 use systems::{
     block_system::BlockSystem,
     cursor_system::CursorSystem,
-    playfield::{clear_system::ClearSystem, push_system::PushSystem, lose_system::LoseSystem},
+    playfield::{clear_system::ClearSystem, lose_system::LoseSystem, push_system::PushSystem},
 };
 
 // static seed for rand crate that can be used to have the same rand seed - good for debugging

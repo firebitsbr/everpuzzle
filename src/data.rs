@@ -27,7 +27,7 @@ pub mod block_sprite {
     // TODO: Access multiple arrays better
     // pub const BLOCK_COLORS: [usize; [usize; ]] = [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4, 5]]
     // the amount of colors that are availabe with each difficulty
-    pub const NUMBER_COLORS_VS: [usize; 10] = [0,  0,  0,  0,  0,  0,  0,  0,  1,  1];
+    pub const NUMBER_COLORS_VS: [usize; 10] = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1];
 }
 
 // block time frames per level 1 to 10

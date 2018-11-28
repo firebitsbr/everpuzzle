@@ -46,8 +46,7 @@ impl<'a> System<'a> for ClearSystem {
 
                 let all_time: u32 = flash + face + pop * clear_size;
 
-                let had_chainable: bool =
-                    any_chainable_exists(&clear.clear_queue, stack, &blocks);
+                let had_chainable: bool = any_chainable_exists(&clear.clear_queue, stack, &blocks);
 
                 // max the chain and save data in a last chain
                 if had_chainable {
