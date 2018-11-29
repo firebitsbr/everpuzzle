@@ -68,13 +68,13 @@ fn set_chainables(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>)
     for i in y..ROWS {
         let above = blocks.get_mut(stack[(x, i)]).unwrap();
 
-        // look for non invisible blocks
+        // look for non-invisible blocks
         if above.kind != -1 {
             if above.state == "IDLE" && !above.chainable {
                 above.chainable = true;
             }
         } else {
-            // otherwhise just stop the for loop completly
+            // otherwise just stop the for loop completely
             return;
         }
     }

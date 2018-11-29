@@ -19,7 +19,7 @@ impl Default for KindGenerator {
     }
 }
 
-// returns a stack of blocks where no nzmbers are the same next to each other
+// returns a stack of blocks where no numbers are the same next to each other
 // also nulls kinds randomly and creates holes throughout the stack
 // also has zones in which all blocks will definitely be nulled
 // and a safe zone where no nulling happens
@@ -116,7 +116,7 @@ impl KindGenerator {
 
     // returns a randomly chosen number out of an array
     // you can erase contents inside by specifying them in the parameters
-    // otherwhise theyll remain available to the chosen randomly
+    // otherwise they'll remain available to be chosen randomly
     fn get_number_in_zone(
         &mut self,
         cond1: i32,
@@ -148,7 +148,7 @@ impl KindGenerator {
 
     // returns a randomly chosen number out of an array
     // you can erase contents inside by specifying them in the parameters
-    // otherwhise theyll remain available to the chosen randomly
+    // otherwise they'll remain available to be chosen randomly
     fn get_number(&mut self, cond1: i32, cond2: i32) -> i32 {
         let mut numbers: Vec<i32> = vec![0, 1, 2, 3, 4];
 

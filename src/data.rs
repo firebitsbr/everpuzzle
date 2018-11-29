@@ -12,7 +12,7 @@ pub mod playfield_data {
     pub const COLS: usize = 6;
     // rows that are off the screen (used for garbage)
     pub const ROWS_INV: usize = 12;
-    // rows that can be seen 12 horizontallyk
+    // rows that can be seen 12 horizontally
     pub const ROWS_VIS: usize = 12;
     // sum of rows
     pub const ROWS: usize = ROWS_INV + ROWS_VIS;
@@ -20,19 +20,19 @@ pub mod playfield_data {
     pub const BLOCKS: usize = COLS * ROWS;
 }
 
-// texture size infos
+// texture size info
 pub mod block_sprite {
     // size of the block in pixels
     pub const BLOCK_SIZE: usize = 16;
     // TODO: Access multiple arrays better
     // pub const BLOCK_COLORS: [usize; [usize; ]] = [[0, 1, 2, 3, 4], [0, 1, 2, 3, 4, 5]]
-    // the amount of colors that are availabe with each difficulty
+    // the amount of colors that are available with each difficulty
     pub const NUMBER_COLORS_VS: [usize; 10] = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1];
 }
 
 // block time frames per level 1 to 10
 pub mod block_animation {
-    // time the block will stay in air before fallign
+    // time the block will stay in air before falling
     pub const HOVER_TIME: [usize; 10] = [12, 12, 11, 10, 9, 6, 5, 4, 3, 6];
     // time that each clearing pop will take
     pub const POP_TIME: [usize; 10] = [9, 9, 8, 8, 8, 8, 8, 7, 7, 7];

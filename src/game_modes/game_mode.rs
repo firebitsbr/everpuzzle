@@ -120,7 +120,7 @@ impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
         world.add_resource::<FPSCounter>(Default::default());
 
         // Create a Playfield with a stack, clear, push, lose and kind generator
-        // STACK gives anccess to blocks and cursor dependant on the general storages
+        // STACK gives access to blocks and cursor dependant on the general storages
         world.register::<Stack>();
         world.register::<Clear>();
         world.register::<Push>();

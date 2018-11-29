@@ -31,7 +31,7 @@ fn main() -> amethyst::Result<()> {
     log.level_filter = amethyst::LogLevelFilter::Warn;
     amethyst::start_logger(log);
 
-    // necessary to get users path on each seperate device
+    // necessary to get users path on each separate device
     let app_root = application_root_dir();
     // path to display settings
     let path = format!("{}/src/configs/display_config.ron", app_root);

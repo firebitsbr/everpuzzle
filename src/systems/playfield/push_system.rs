@@ -61,7 +61,7 @@ fn visual_offset(
     cursor: &mut Cursor,
     generator: &mut KindGenerator,
 ) {
-    // if any cursor signal comes through do smooth increase thats faster and stops
+    // if any cursor signal comes through do smooth increase which is faster and stops
     if push.signal_raise {
         push.smooth_raise = true;
     }
@@ -102,19 +102,19 @@ fn visual_offset(
     }
 }
 
-// swaps all blocks frmo top to bottom, making everything in the grid move one up
-// spawns new data in the lowest row via the stacks generator
+// swaps all blocks from top to bottom, making everything in the grid move one up
+// spawns new data in the lowest row via the stack's generator
 fn push_blocks(
     stack: &Stack,
     blocks: &mut WriteStorage<'_, Block>,
     cursor: &mut Cursor,
     generator: &mut KindGenerator,
 ) {
-    // have a block and store its down neighbors values
+    // have a block and store its down neighbor's values
     // go down the grid to not copy the same data
     for i in 0..BLOCKS - COLS {
         // TODO: Fix ceiling with upcoming data
-        // since for i doesnt work backwards we do this
+        // since for i doesn't work backwards we do this
         let reverse = BLOCKS - i - 1;
 
         let down: Block = *blocks.get(stack[reverse - COLS]).unwrap();
@@ -125,7 +125,7 @@ fn push_blocks(
         b.anim_offset = 0;
     }
 
-    // generate lowest row since its now empty!
+    // generate lowest row since it's now empty!
     let new_row = generator.create_rows((6, 1));
     for i in 0..COLS {
         blocks.get_mut(stack[i]).unwrap().kind = new_row[i];
@@ -138,7 +138,7 @@ fn push_blocks(
 }
 
 // sets y offsets on each stack's cursor and blocks
-// rounds them to make it appear pixel perfect - not true when scaling everything up tho
+// rounds them to make it appear pixel perfect - not true when scaling everything up though
 fn set_visual_offsets(
     value: f32,
     stack: &Stack,

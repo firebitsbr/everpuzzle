@@ -8,7 +8,7 @@ use data::block_data::{BLOCKS, COLS};
 const LAND_ANIM: [u32; 10] = [2, 2, 2, 3, 3, 3, 4, 4, 4, 0];
 pub const LAND_TIME: u32 = 10;
 
-// STOPS THE BLOCK FROM BEING CHAINABLE after animating that is
+// STOPS THE BLOCK FROM BEING CHAINABLE, after animating that is
 //
 // used for animating the land state
 // just sets sprite offset to the current animation frames
@@ -20,7 +20,7 @@ impl BlockState for Land {
         b.anim_counter = LAND_TIME;
     }
 
-    // set anim to 0 for safety, blocks arent chainable once the land is finished
+    // set anim to 0 for safety, blocks aren't chainable once the land is finished
     // being chainable finally stops here!
     fn exit(b: &mut Block) {
         b.anim_offset = 0;
@@ -34,7 +34,7 @@ impl BlockState for Land {
     }
 
     // change to idle on default
-    // if above isnt null and hanging, set the counter to the aboves counter
+    // if above isn't null and hanging, set the counter to the above's counter
     fn counter_end(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
         let mut above_hanging: bool = false;
         let mut above_counter: u32 = 0;

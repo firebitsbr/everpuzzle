@@ -12,23 +12,23 @@ pub trait BlockState {
     fn exit(b: &mut Block);
 
     // happens each frame,
-    // takes an iterator - to know which block youre looking at right now
+    // takes an iterator - to know which block you're looking at right now
     // takes a stack of block entities that you can access
     // takes the whole stack of blocks - get ref or mut out of this
     fn execute(usize, &Stack, &mut WriteStorage<'_, Block>);
 
-    // gets called once the blocks counter runs down to 0
+    // gets called once the block's counter runs down to 0
     // mostly used to switch states
     fn counter_end(usize, &Stack, &mut WriteStorage<'_, Block>);
 }
 
-// changes the current blocks state to a new one
+// changes the current block's state to a new one
 pub fn change_state(b: &mut Block, new_state: &'static str) {
     if b.state == new_state {
         return;
     }
 
-    // call the currents state exit function
+    // call the current block's state's exit function
     match b.state {
         "LAND" => Land::exit(b),
         "CLEAR" => Clear::exit(b),
@@ -37,7 +37,7 @@ pub fn change_state(b: &mut Block, new_state: &'static str) {
 
     b.state = new_state;
 
-    // call the currents state enter function
+    // call the current block's state's enter function
     match b.state {
         "HANG" => Hang::enter(b),
         "LAND" => Land::enter(b),

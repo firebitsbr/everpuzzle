@@ -70,7 +70,7 @@ impl<'a> System<'a> for BlockSystem {
     }
 }
 
-// visibility is on when the blocks kind isnt -1
+// visibility is on when the block's kind isn't -1
 // also sets the frame of the sprite by its kind * 9 and an additional
 // animation offset used to stay at specific horizontal sprites
 fn update_sprites(
@@ -87,7 +87,7 @@ fn update_sprites(
             b.anim_counter -= 1;
         }
 
-        // render sprite with kind when its not -1
+        // render sprite with kind if it's not -1
         if b.kind != -1 && !b.clearing {
             if hiddens.contains(stack[i]) {
                 hiddens.remove(stack[i]);
@@ -109,7 +109,7 @@ fn update_sprites(
     }
 }
 
-// checks wether the block below is empty or falling, also checks wether this block is empty
+// checks whether the block below is empty or falling, also checks whether this block is empty
 pub fn check_for_hang(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) -> bool {
     // condition based on another block in a different lifetime
     let mut down_condition: bool = false;
