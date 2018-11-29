@@ -34,7 +34,7 @@ impl<'a> System<'a> for ClearSystem {
                 }
             }
 
-            // if no clears were found, dont go through all
+            // if no clears were found, don't go through all of them
             let clear_size = clear.clear_queue.len() as u32;
             if clear_size != 0 {
                 clear.combo_counter = 0;
@@ -53,7 +53,7 @@ impl<'a> System<'a> for ClearSystem {
                     clear.chain += 1;
                     clear.last_chain = max(clear.chain, clear.last_chain);
                 }
-                // otherwhise reset the chain
+                // otherwise reset the chain
                 else {
                     clear.chain = 1;
                 }
@@ -83,7 +83,7 @@ impl<'a> System<'a> for ClearSystem {
     }
 }
 
-// checks through eachs block right, right_right and up, up_up to see if they are performing a combo
+// checks through each block's right, right_right and up, up_up to see if they are performing a combo
 // returns an array of block ids to identify them
 fn check_clear(x: usize, y: usize, stack: &Stack, blocks: &WriteStorage<'_, Block>) -> Vec<u32> {
     let mut checks: Vec<u32> = Vec::new();
@@ -138,7 +138,7 @@ fn check_similar_block(
     }
 
     // just return nothing to save up on cpu
-    // we could just return an empty vec but since this happens around 72 * 2 times its expensive to do so
+    // we could just return an empty vec but since this happens around 72 * 2 times it's expensive to do so
     None
 }
 

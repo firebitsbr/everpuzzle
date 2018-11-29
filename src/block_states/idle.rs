@@ -6,7 +6,7 @@ use components::playfield::stack::Stack;
 use systems::block_system::check_for_hang;
 
 // only detects if this block can fall and sets the state to hang
-// resets chainable to false if this block cant fall
+// resets chainable to false if this block can't fall
 pub struct Idle;
 impl BlockState for Idle {
     fn enter(b: &mut Block) {}
@@ -15,7 +15,7 @@ impl BlockState for Idle {
     fn execute(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
         let can_hang: bool = { check_for_hang(i, stack, blocks) };
 
-        // change the block to state if it isnt empty and the block below is empty / or falling
+        // change the block to state if it isn't empty and the block below is empty or falling
         let b = blocks.get_mut(stack[i]).unwrap();
         if can_hang {
             change_state(b, "HANG");

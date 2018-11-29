@@ -30,7 +30,7 @@ impl CursorSystem {
         CursorSystem { key_presses }
     }
 
-    // looks wether an action is held down, good for controller support later
+    // looks whether an action is held down, good for controller support later
     pub fn hold(&mut self, input: &mut Read<InputHandler<String, String>>, name: &str) -> bool {
         if input.action_is_down(name).unwrap() {
             let result = *self.key_presses.get(name).unwrap();
@@ -50,7 +50,7 @@ impl CursorSystem {
         return false;
     }
 
-    // looks wether an action is only pressed once, good for controller support later
+    // looks whether an action is only pressed once, good for controller support later
     pub fn press(&mut self, input: &mut Read<InputHandler<String, String>>, name: &str) -> bool {
         if input.action_is_down(name).unwrap() {
             if *self.key_presses.get(name).unwrap() == 0 {
@@ -154,7 +154,7 @@ impl<'a> System<'a> for CursorSystem {
         }
 
         // TODO: DONT SET THIS FOR EVERY PLAYFIELD, look for cursor specific input, then decide
-        // which playfield.signal_raise should be set true / false
+        // which playfield.signal_raise should be set to true / false
         for playfield_push in (&mut pushes).join() {
             playfield_push.signal_raise = input.action_is_down("raise").unwrap();
         }

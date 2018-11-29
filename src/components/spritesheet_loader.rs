@@ -27,7 +27,7 @@ impl SpriteSheetLoader {
             )
         };
 
-        // `texture_id` is a application defined ID given to the texture to store in the `World`.
+        // `texture_id` is an application-defined ID given to the texture to store in the `World`.
         // This is needed to link the texture to the sprite_sheet.
         let texture_id = 0;
         world

@@ -25,7 +25,7 @@ pub struct Block {
     pub clear_time: i32,
     pub clear_start_counter: i32,
 
-    // animiation
+    // animation
     pub anim_counter: u32,
     pub anim_offset: u32,
 }
@@ -105,10 +105,11 @@ impl Block {
         return false;
     }
 
-    // a block is comboable when its:
-    // y isnt at the bottom of the blocks - darkened column,
-    // kind isnt invisible and its state is idle
-    // currently landing
+    // a block is comboable under these conditions:
+    // - its y is not at the bottom of the blocks - darkened column
+    // - its kind is not invisible (-1)
+    // - its state is Idle
+    // - it's currently landing
     pub fn is_comboable(&self) -> bool {
         if self.y == 0 {
             return false;
@@ -127,7 +128,7 @@ impl Block {
         return false;
     }
 
-    // wether this block is comboable with another kind being given in
+    // whether this block is comboable with another given kind
     pub fn is_comboable_with(&self, other_kind: i32) -> bool {
         self.is_comboable() && other_kind != -1 && other_kind == self.kind
     }
