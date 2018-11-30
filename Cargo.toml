@@ -7,6 +7,8 @@ authors = ["Skytrias <skytrias@protonmail.com>"]
 amethyst = "0.9"
 amethyst_input = "0.4.0"
 rand = "*"
+serde_derive = "*"
+serde = "*"
 
 [features]
 sdl_controller = [

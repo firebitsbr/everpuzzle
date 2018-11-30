@@ -964,6 +964,8 @@ dependencies = [
  "amethyst 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "amethyst_input 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

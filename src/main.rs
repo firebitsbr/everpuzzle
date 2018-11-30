@@ -1,5 +1,7 @@
 extern crate amethyst;
 extern crate rand;
+#[macro_use]
+extern crate serde_derive;
 
 use amethyst::{
     core::{frame_limiter::FrameRateLimitStrategy, TransformBundle},
@@ -14,8 +16,10 @@ mod block_states;
 mod components;
 mod data;
 mod game_modes;
+mod resources;
 mod systems;
 use game_modes::game_mode::GameMode;
+use resources::playfield_resource::PlayfieldResource;
 use systems::{
     block_system::BlockSystem,
     cursor::{cursor_action_system::CursorActionSystem, cursor_move_system::CursorMoveSystem},
@@ -34,8 +38,10 @@ fn main() -> amethyst::Result<()> {
     // necessary to get users path on each separate device
     let app_root = application_root_dir();
     // path to display settings
-    let path = format!("{}/src/configs/display_config.ron", app_root);
-    let display_config = DisplayConfig::load(&path);
+    let display_path = format!("{}/src/configs/display_config.ron", app_root);
+    let display_config = DisplayConfig::load(&display_path);
+    let playfield_path = format!("{}/src/configs/playfield_config.ron", app_root);
+    let playfield_config = PlayfieldResource::load(&playfield_path);
 
     // start pipeline that clears to white background
     // and lets sprites exist with transparency
@@ -48,12 +54,6 @@ fn main() -> amethyst::Result<()> {
                 Some(DepthMode::LessEqualWrite),
             )),
     );
-
-    // create some randomized seed to be shared
-    let mut rand_seed: [u8; 16] = [0; 16];
-    for x in &mut rand_seed {
-        *x = rand::random::<u8>();
-    }
 
     // testing different inputs for keyboard/controller
     let binding_path = {
@@ -72,7 +72,7 @@ fn main() -> amethyst::Result<()> {
     let game_data = GameDataBuilder::default()
         .with_bundle(TransformBundle::new())?
         .with_bundle(
-            RenderBundle::new(pipe, Some(display_config))
+            RenderBundle::new(pipe, Some(display_config.clone()))
                 .with_sprite_sheet_processor()
                 .with_sprite_visibility_sorting(&["transform_system"]),
         )?.with_bundle(input_bundle)?
@@ -89,12 +89,13 @@ fn main() -> amethyst::Result<()> {
 
     // set the assets dir where all sprites will be loaded from
     let assets_dir = format!("{}/src/sprites/", app_root);
-    let display_resource = DisplayConfig::load(&path);
-    Application::build(assets_dir, GameMode::new(SOME_SEED, display_resource))?
+    Application::build(assets_dir, GameMode {})?
         .with_frame_limit(
             FrameRateLimitStrategy::SleepAndYield(Duration::from_millis(1)),
             60,
-        ).build(game_data)?
+        ).with_resource(display_config)
+        .with_resource(playfield_config)
+        .build(game_data)?
         .run();
 
     Ok(())

@@ -25,8 +25,7 @@ impl BlockState for Fall {
             state_hang = down.state == "HANG";
             down_counter = down.counter;
         } else {
-            let b = blocks.get_mut(stack[i]).unwrap();
-            b.state = "IDLE";
+            blocks.get_mut(stack[i]).unwrap().state = "IDLE";
             return;
         }
 

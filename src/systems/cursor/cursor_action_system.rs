@@ -47,7 +47,7 @@ impl<'a> System<'a> for CursorActionSystem {
 
                     *push = Default::default();
                     *clear = Default::default();
-                    //*cursor = Default::default();
+                    cursor.reset();
                 }
             }
 
@@ -97,10 +97,10 @@ fn swap(x: f32, y: f32, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
         let mut right_block = Block::default();
 
         // store data from the left to a temp
-        left_block = blocks.get(stack[i]).unwrap().clone();
+        left_block = *blocks.get(stack[i]).unwrap();
 
         // store data from the right to a temp
-        right_block = blocks.get(stack[i + 1]).unwrap().clone();
+        right_block = *blocks.get(stack[i + 1]).unwrap();
 
         {
             blocks

@@ -15,21 +15,18 @@ use components::{
     },
     spritesheet_loader::{load_sprite_sheet, SpriteSheetLoader},
 };
-
 use data::playfield_data::BLOCKS;
+use resources::playfield_resource::PlayfieldResource;
 
-pub struct GameMode {
-    rng_seed: [u8; 16],
-    config: DisplayConfig,
-}
+pub struct GameMode;
 
 impl GameMode {
-    pub fn new(rng_seed: [u8; 16], config: DisplayConfig) -> GameMode {
-        GameMode { rng_seed, config }
-    }
-
-    // creates all entities with block components attached, spritesheet data with sprite_number
-    pub fn create_blocks(world: &mut World, kinds: Vec<i32>) -> Vec<Entity> {
+    // creates the block entity,
+    // contains the whole spritesheet with different sprites all set manually
+    // transform positions the sprite
+    // takes a vec of i32's that will be used to init all the kinds
+    // returns a vec of all block entities that should be stored in a playfield stack
+    pub fn create_blocks(&mut self, world: &mut World, kinds: Vec<i32>) -> Vec<Entity> {
         world.register::<Block>();
         let mut block_entities: Vec<Entity> = Vec::new();
 
@@ -62,35 +59,12 @@ impl GameMode {
         block_entities
     }
 
-    // create a camera that should have the same dimensions as the
-    // display_config.ron. TODO: use the dimensions
-    fn initialise_camera(&mut self, world: &mut World) {
-        let mut transform = Transform::default();
-        transform.translation.z = 1.0;
-
-        world
-            .create_entity()
-            .with(Camera::from(Projection::orthographic(
-                0.0,
-                self.config.dimensions.unwrap().0 as f32,
-                self.config.dimensions.unwrap().1 as f32,
-                0.0,
-            ))).with(transform)
-            .build();
-    }
-}
-
-impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
-    fn on_start(&mut self, data: StateData<GameData>) {
-        let world = data.world;
-
-        // create random generator for random seeded numbers
-        let mut kind_gen = KindGenerator {
-            rng: SmallRng::from_seed(self.rng_seed),
-        };
-        let kinds = kind_gen.create_stack(5, 8);
-        let block_entities = GameMode::create_blocks(world, kinds);
-
+    // creates a cursor entity contains
+    // a spritesheet set by a .ron file
+    // a transform to position the sprite in the world
+    // its cursor component data
+    // a transparent component since the spritesheet has alpha
+    fn create_cursor(&mut self, world: &mut World) -> Entity {
         // load the cursor sprite and attach its data component
         let sprite_sheet = SpriteRender {
             sprite_sheet: load_sprite_sheet(world, "cursor.png", "cursor_spritesheet.ron"),
@@ -104,7 +78,6 @@ impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
         trans.scale = Vector3::new(2.0, 2.0, 2.0);
 
         let cursor = Cursor::new(2.0, 5.0);
-        cursor.set_position(&mut trans);
 
         // generate a cursor entity
         world.register::<Cursor>();
@@ -117,7 +90,31 @@ impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
             .with(trans)
             .build();
 
-        world.add_resource::<FPSCounter>(Default::default());
+        cursor_entity
+    }
+
+    // creates the playfield with all blocks and its cursor
+    // also links all entities to the stack so that they can be
+    // accessed via the playfield easily
+    //
+    // the goal of this function is to be able to repeat this
+    // while gathering playfield amt etc from a .ron file
+    fn create_playfield(&mut self, world: &mut World) {
+        // create some randomized seed to be shared
+        let mut rand_seed: [u8; 16] = [0; 16];
+        for x in &mut rand_seed {
+            *x = rand::random::<u8>();
+        }
+
+        // create random generator for random seeded numbers
+        let mut kind_gen = KindGenerator {
+            rng: SmallRng::from_seed(rand_seed),
+        };
+        let kinds = kind_gen.create_stack(5, 8);
+
+        // generate other entities
+        let block_entities = self.create_blocks(world, kinds);
+        let cursor_entity = self.create_cursor(world);
 
         // Create a Playfield with a stack, clear, push, lose and kind generator
         // STACK gives access to blocks and cursor dependant on the general storages
@@ -134,7 +131,37 @@ impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
             .with(Stack::new(block_entities, cursor_entity))
             .with(kind_gen)
             .build();
+    }
 
+    // create a camera that should have the same dimensions as the
+    // display_config.ron. TODO: use the dimensions
+    fn initialise_camera(&mut self, world: &mut World) {
+        let mut transform = Transform::default();
+        transform.translation.z = 1.0;
+
+        // get dimensions from main.rs display config
+        let dimensions = {
+            let config = &world.read_resource::<DisplayConfig>();
+            config.dimensions.unwrap()
+        };
+
+        world
+            .create_entity()
+            .with(Camera::from(Projection::orthographic(
+                0.0,
+                dimensions.0 as f32,
+                dimensions.1 as f32,
+                0.0,
+            ))).with(transform)
+            .build();
+    }
+}
+
+impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
+    fn on_start(&mut self, data: StateData<GameData>) {
+        let world = data.world;
+        self.create_playfield(world);
+        //world.add_resource::<FPSCounter>(Default::default());
         self.initialise_camera(world);
     }
 }

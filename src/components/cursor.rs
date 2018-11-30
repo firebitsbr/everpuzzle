@@ -42,9 +42,12 @@ impl Cursor {
         }
     }
 
-    pub fn set_position(&self, transform: &mut Transform) {
-        transform.translation.x = (self.x * 32.0 + self.offset.0) * transform.scale.x;
-        transform.translation.y = (self.y * 32.0 + self.offset.1) * transform.scale.y;
+    // reset everything but the keypresses
+    pub fn reset(&mut self) {
+        *self = Cursor {
+            key_presses: self.key_presses.clone(),
+            ..Default::default()
+        };
     }
 
     // looks whether an action is held down, good for controller support later

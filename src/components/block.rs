@@ -33,7 +33,7 @@ pub struct Block {
 impl Default for Block {
     fn default() -> Block {
         Block {
-            kind: 0,
+            kind: -1,
             id: 0,
             x: 0,
             y: 0,
@@ -152,26 +152,14 @@ impl Block {
         self.anim_offset = other.anim_offset;
     }
 
-    // reset distinct values
+    // reset everything but the set variables in new
     pub fn reset(&mut self) {
-        self.kind = -1;
-        self.offset = (0.0, 0.0);
-
-        // fsm
-        self.state = "IDLE";
-        self.counter = 0;
-
-        // clear
-        self.chainable = false;
-        self.clearing = false;
-        self.clear_counter = 0;
-        self.clear_anim_counter = 0;
-        self.clear_time = 0;
-        self.clear_start_counter = 0;
-
-        // animation
-        self.anim_counter = 0;
-        self.anim_offset = 0;
+        *self = Block {
+            id: self.id,
+            x: self.x,
+            y: self.y,
+            ..Default::default()
+        };
     }
 }
 
