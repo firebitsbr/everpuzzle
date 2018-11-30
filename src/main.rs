@@ -18,7 +18,7 @@ mod systems;
 use game_modes::game_mode::GameMode;
 use systems::{
     block_system::BlockSystem,
-    cursor_system::CursorSystem,
+    cursor::{cursor_action_system::CursorActionSystem, cursor_move_system::CursorMoveSystem},
     playfield::{clear_system::ClearSystem, lose_system::LoseSystem, push_system::PushSystem},
 };
 
@@ -78,8 +78,12 @@ fn main() -> amethyst::Result<()> {
         )?.with_bundle(input_bundle)?
         //.with(FPSSystem, "fps_system", &[])
         .with(BlockSystem {}, "block_system", &[])
-        .with(CursorSystem::new(), "cursor_system", &["input_system"])
-        .with(PushSystem {}, "playfield_push_system", &[])
+        .with(CursorMoveSystem {}, "cursor_move_system", &["input_system"])
+        .with(
+            CursorActionSystem {},
+            "cursor_action_system",
+            &["input_system"],
+        ).with(PushSystem {}, "playfield_push_system", &[])
         .with(ClearSystem {}, "playfield_clear_system", &[])
         .with(LoseSystem {}, "playfield_lose_system", &[]);
 
