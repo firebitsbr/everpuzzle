@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_imports)]
 use amethyst::ecs::prelude::{Component, DenseVecStorage};
-use block_states::land::LAND_TIME;
+use data::block_data::LAND_TIME;
 use std::clone::Clone;
 use std::marker::Copy;
 
@@ -90,7 +90,7 @@ impl Block {
             return true;
         }
 
-        if self.state == "LAND" && self.counter < LAND_TIME {
+        if self.state == "LAND" {
             return true;
         }
 

@@ -3,9 +3,8 @@ use amethyst::ecs::prelude::WriteStorage;
 use block_states::block_state::{change_state, BlockState};
 use components::block::Block;
 use components::playfield::stack::Stack;
+use data::block_data::SWAP_TIME;
 use systems::block_system::check_for_hang;
-
-pub const SWAP_TIME: f32 = 5.0;
 
 // animates movement of the block to a direction - either left or right
 pub struct Swap;

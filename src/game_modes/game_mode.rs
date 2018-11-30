@@ -16,7 +16,7 @@ use components::{
     spritesheet_loader::{load_sprite_sheet, SpriteSheetLoader},
 };
 
-use data::block_data::BLOCKS;
+use data::playfield_data::BLOCKS;
 
 pub struct GameMode {
     rng_seed: [u8; 16],
@@ -38,7 +38,7 @@ impl GameMode {
             trans.scale = Vector3::new(4.0, 4.0, 4.0);
 
             // set position instantly so no weird spawn flash happens
-            let (x, y) = Stack::i2xy(i);
+            let (x, y) = Stack::index_to_coordinates(i);
             let mut b = Block::new(i as u32, kinds[i], x as i32, y as i32);
 
             let sprite_render_block = SpriteRender {

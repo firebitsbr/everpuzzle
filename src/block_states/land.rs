@@ -3,10 +3,11 @@ use amethyst::ecs::prelude::WriteStorage;
 use block_states::block_state::{change_state, BlockState};
 use components::block::Block;
 use components::playfield::stack::Stack;
-use data::block_data::{BLOCKS, COLS};
+use data::block_data::LAND_TIME;
+use data::playfield_data::{BLOCKS, COLUMNS};
 
+// local animation frames
 const LAND_ANIM: [u32; 10] = [2, 2, 2, 3, 3, 3, 4, 4, 4, 0];
-pub const LAND_TIME: u32 = 10;
 
 // STOPS THE BLOCK FROM BEING CHAINABLE, after animating that is
 //
@@ -39,8 +40,8 @@ impl BlockState for Land {
         let mut above_hanging: bool = false;
         let mut above_counter: u32 = 0;
 
-        if i < BLOCKS - COLS {
-            let above = blocks.get(stack[i + COLS]).unwrap();
+        if i < BLOCKS - COLUMNS {
+            let above = blocks.get(stack[i + COLUMNS]).unwrap();
             above_hanging = above.state == "HANG";
             above_counter = above.counter;
         }

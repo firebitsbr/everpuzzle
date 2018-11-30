@@ -1,13 +1,13 @@
 use amethyst::{core::Transform, ecs::*, input::*, renderer::*};
 
 use block_states::block_state::change_state;
-use block_states::swap::SWAP_TIME;
 use components::{
     block::Block,
     cursor::Cursor,
     playfield::{clear::Clear, kind_generator::KindGenerator, push::Push, stack::Stack},
 };
-use data::block_data::*;
+use data::block_data::SWAP_TIME;
+use data::playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE};
 
 use std::collections::HashMap;
 
@@ -94,7 +94,7 @@ impl<'a> System<'a> for CursorSystem {
     ) {
         if self.hold(&mut input, "up") {
             for cursor in (&mut cursors).join() {
-                if cursor.y < (ROWS - 1) as f32 {
+                if cursor.y < (ROWS_VISIBLE - 1) as f32 {
                     cursor.y += 1.0;
                 }
             }
@@ -118,7 +118,7 @@ impl<'a> System<'a> for CursorSystem {
 
         if self.hold(&mut input, "right") {
             for cursor in (&mut cursors).join() {
-                if cursor.x < (COLS - 2) as f32 {
+                if cursor.x < (COLUMNS - 2) as f32 {
                     cursor.x += 1.0;
                 }
             }
@@ -173,7 +173,7 @@ impl<'a> System<'a> for CursorSystem {
 }
 
 fn swap(x: f32, y: f32, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
-    let i = Stack::xy2i(x as usize, y as usize);
+    let i = Stack::coordinates_to_index(x as usize, y as usize);
 
     let mut can_swap: bool = false;
     {
@@ -183,9 +183,9 @@ fn swap(x: f32, y: f32, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
         let mut b1_above_block: Option<&Block> = None;
         let mut b2_above_block: Option<&Block> = None;
 
-        if i < BLOCKS - COLS {
-            b1_above_block = blocks.get(stack[i + COLS]);
-            b2_above_block = blocks.get(stack[i + 1 + COLS]);
+        if i < BLOCKS - COLUMNS {
+            b1_above_block = blocks.get(stack[i + COLUMNS]);
+            b2_above_block = blocks.get(stack[i + 1 + COLUMNS]);
         }
 
         if b1.is_swappable(b2, b1_above_block) && b2.is_swappable(b1, b2_above_block) {

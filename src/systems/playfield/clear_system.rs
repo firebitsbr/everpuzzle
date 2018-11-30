@@ -7,7 +7,7 @@ use components::{
 };
 
 use block_states::block_state::change_state;
-use data::block_data::{BLOCKS, COLS, ROWS};
+use data::playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE};
 use std::cmp::max;
 
 pub struct ClearSystem;
@@ -24,8 +24,8 @@ impl<'a> System<'a> for ClearSystem {
         // counts the amount of clears each frame, passes them uniquely to an array holding their ids
         // sets a lot of playfield_clear values and then sets the blocks to animate with given times
         for (clear, stack) in (&mut clears, &stacks).join() {
-            for x in 0..COLS {
-                for y in 0..ROWS {
+            for x in 0..COLUMNS {
+                for y in 0..ROWS_VISIBLE {
                     for clear_block_id in check_clear(x, y, &stack, &blocks) {
                         if !clear.clear_queue.contains(&clear_block_id) {
                             clear.clear_queue.push(clear_block_id);
@@ -117,7 +117,7 @@ fn check_similar_block(
     let b1 = blocks.get(stack[(x, y)]).unwrap();
 
     let check_boundary = |x: usize, y: usize| -> Option<&Block> {
-        if x < COLS && y < ROWS {
+        if x < COLUMNS && y < ROWS_VISIBLE {
             blocks.get(stack[(x, y)])
         } else {
             None

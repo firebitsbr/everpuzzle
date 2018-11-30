@@ -3,7 +3,7 @@ use amethyst::ecs::prelude::WriteStorage;
 use block_states::block_state::{change_state, BlockState};
 use components::block::Block;
 use components::playfield::stack::Stack;
-use data::block_data::COLS;
+use data::playfield_data::COLUMNS;
 
 // falls to one block below IN 1 FRAME
 // sets the block below to this current one
@@ -19,8 +19,8 @@ impl BlockState for Fall {
         let mut down_counter: u32 = 0;
 
         // if in boundary for down blocks to exist
-        if i > COLS {
-            let down = blocks.get_mut(stack[i - COLS]).unwrap();
+        if i > COLUMNS {
+            let down = blocks.get_mut(stack[i - COLUMNS]).unwrap();
             is_empty = down.is_empty();
             state_hang = down.state == "HANG";
             down_counter = down.counter;
@@ -36,7 +36,7 @@ impl BlockState for Fall {
 
             // store data into the down block
             blocks
-                .get_mut(stack[i - COLS])
+                .get_mut(stack[i - COLUMNS])
                 .unwrap()
                 .set_properties(temp_block);
 

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity};
-use data::block_data::COLS;
+use data::playfield_data::COLUMNS;
 use std::ops::Index;
 
 pub struct Stack {
@@ -22,14 +22,14 @@ impl Stack {
     // example: for x in 0..10 {
     // 		xy2i(x, 0) // searches through 0 until 10 from y at 0
     // }
-    pub fn xy2i(x: usize, y: usize) -> usize {
-        y * COLS + x
+    pub fn coordinates_to_index(x: usize, y: usize) -> usize {
+        y * COLUMNS + x
     }
 
     // use this instead of calling from_xy multiple times
     // converts an iterator i back to x and y
-    pub fn i2xy(i: usize) -> (usize, usize) {
-        (i % COLS, i / COLS)
+    pub fn index_to_coordinates(index: usize) -> (usize, usize) {
+        (index % COLUMNS, index / COLUMNS)
     }
 }
 
@@ -45,7 +45,7 @@ impl Index<(usize, usize)> for Stack {
     type Output = Entity;
 
     fn index(&self, (x, y): (usize, usize)) -> &Entity {
-        &self.block_entities[Stack::xy2i(x, y)]
+        &self.block_entities[Stack::coordinates_to_index(x, y)]
     }
 }
 

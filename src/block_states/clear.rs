@@ -3,7 +3,7 @@ use amethyst::ecs::prelude::WriteStorage;
 use block_states::block_state::{change_state, BlockState};
 use components::block::Block;
 use components::playfield::stack::Stack;
-use data::block_data::{BLOCKS, COLS, ROWS};
+use data::playfield_data::ROWS_VISIBLE;
 
 const FLASH_ANIM: [u32; 4] = [6, 6, 0, 0];
 const FLASH_TIME: i32 = 44;
@@ -65,7 +65,7 @@ fn set_chainables(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>)
     let x = blocks.get(stack[i]).unwrap().x as usize;
     let y = blocks.get(stack[i]).unwrap().y as usize;
 
-    for i in y..ROWS {
+    for i in y..ROWS_VISIBLE {
         let above = blocks.get_mut(stack[(x, i)]).unwrap();
 
         // look for non-invisible blocks

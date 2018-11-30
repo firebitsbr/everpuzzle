@@ -3,11 +3,12 @@ use amethyst::ecs::prelude::WriteStorage;
 use block_states::block_state::{change_state, BlockState};
 use components::block::Block;
 use components::playfield::stack::Stack;
+use data::block_data::HOVER_TIME;
 
 pub struct Hang;
 impl BlockState for Hang {
     fn enter(b: &mut Block) {
-        b.counter = 10;
+        b.counter = HOVER_TIME[0];
     }
 
     fn exit(b: &mut Block) {}

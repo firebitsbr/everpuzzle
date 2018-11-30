@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
 use amethyst::ecs::{Component, DenseVecStorage};
-use data::block_data::{BLOCKS, COLS};
+use data::playfield_data::{BLOCKS, COLUMNS};
 use rand::prelude::*;
 
 // resource that stores the rng generator that will be global
@@ -25,8 +25,8 @@ impl Default for KindGenerator {
 // and a safe zone where no nulling happens
 impl KindGenerator {
     pub fn create_stack(&mut self, safe: usize, nulling: usize) -> Vec<i32> {
-        let safe_zone: usize = safe * COLS;
-        let nulling_zone: usize = nulling * COLS;
+        let safe_zone: usize = safe * COLUMNS;
+        let nulling_zone: usize = nulling * COLUMNS;
 
         // empty array to destined length
         let size: usize = BLOCKS; //TODO: ROWS_VIS data
@@ -42,8 +42,8 @@ impl KindGenerator {
             let mut skip: bool = false;
 
             // set bot_num once it respects the boundaries
-            if i > COLS {
-                bot_num = nums[i - COLS];
+            if i > COLUMNS {
+                bot_num = nums[i - COLUMNS];
 
                 // if bot_num is -1, just set new_num to -1 and skip
                 if bot_num == -1 {
@@ -56,7 +56,7 @@ impl KindGenerator {
                 // when over start to go through
                 if i != 0 {
                     // if the right wall is hit (after i * 6) then be true
-                    if i % COLS + 1 != 0 {
+                    if i % COLUMNS + 1 != 0 {
                         new_num = self.get_number_in_zone(
                             prev_before,
                             bot_num,
@@ -96,12 +96,12 @@ impl KindGenerator {
             let mut bot_num: i32 = -1; // by default -1
 
             // set bot_num once it respects the boundaries
-            if i > COLS {
-                bot_num = nums[i - COLS];
+            if i > COLUMNS {
+                bot_num = nums[i - COLUMNS];
             }
 
             // if the right wall is hit (after i * 6) then be true
-            if i % COLS + 1 != 0 {
+            if i % COLUMNS + 1 != 0 {
                 new_num = self.get_number(prev_before, bot_num);
             } else {
                 new_num = self.get_number(-1, bot_num);

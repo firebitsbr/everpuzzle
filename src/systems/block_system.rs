@@ -5,7 +5,7 @@ use block_states::{
     swap::Swap,
 };
 use components::{block::Block, playfield::stack::Stack};
-use data::block_data::{BLOCKS, COLS};
+use data::playfield_data::{BLOCKS, COLUMNS};
 
 // handles everything a block should do itself or based on others
 pub struct BlockSystem;
@@ -115,8 +115,8 @@ pub fn check_for_hang(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Blo
     let mut down_condition: bool = false;
 
     // check if is in vec boundary
-    if i > COLS {
-        let down = blocks.get_mut(stack[i - COLS]).unwrap();
+    if i > COLUMNS {
+        let down = blocks.get_mut(stack[i - COLUMNS]).unwrap();
         down_condition = down.is_empty() || down.state == "HANG";
     }
 
