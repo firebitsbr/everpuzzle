@@ -11,6 +11,7 @@ use components::{
 };
 use data::block_data::SWAP_TIME;
 use data::playfield_data::{BLOCKS, COLUMNS};
+use resources::playfield_resource::PlayfieldResource;
 
 pub struct CursorActionSystem;
 
@@ -25,6 +26,7 @@ impl<'a> System<'a> for CursorActionSystem {
         WriteStorage<'a, Clear>,
         WriteStorage<'a, Lose>,
         WriteStorage<'a, Stats>,
+        Write<'a, PlayfieldResource>,
     );
 
     fn run(
@@ -39,6 +41,7 @@ impl<'a> System<'a> for CursorActionSystem {
             mut clears,
             mut loses,
             mut stats,
+            mut playfield,
         ): Self::SystemData,
     ) {
         for cursor in (&mut cursors).join() {
@@ -66,6 +69,7 @@ impl<'a> System<'a> for CursorActionSystem {
                     *clear = Default::default();
                     *lose = Default::default();
                     *stat = Default::default();
+                    playfield.level = playfield.start_level;
                     cursor.reset();
                 }
             }

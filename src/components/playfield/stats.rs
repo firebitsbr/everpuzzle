@@ -4,10 +4,17 @@ use components::key_hash_map::KeyHashMap;
 pub struct Stats {
     pub highest_chain: u32,
     pub blocks_cleared: u32,
+
+    // used to get APM
     pub actions_per_minute: f32,
     pub action_counter: f32,
     pub keys: KeyHashMap,
+
+    // used to count frames for apm and end time, always runs
     pub current_time: f32,
+
+    // get beginning level
+    pub start_level: usize,
 }
 
 impl Default for Stats {
@@ -19,6 +26,7 @@ impl Default for Stats {
             action_counter: 0.0,
             keys: KeyHashMap::default(),
             current_time: 0.0,
+            start_level: 0,
         }
     }
 }

@@ -19,7 +19,7 @@ impl<'a> System<'a> for LoseSystem {
     type SystemData = (
         WriteStorage<'a, Lose>,
         WriteStorage<'a, Push>,
-        Read<'a, PlayfieldResource>,
+        Write<'a, PlayfieldResource>,
         WriteStorage<'a, Stats>,
         WriteStorage<'a, Clear>,
         WriteStorage<'a, Cursor>,
@@ -33,7 +33,7 @@ impl<'a> System<'a> for LoseSystem {
         (
             mut loses,
             mut pushes,
-            playfield,
+            mut playfield,
             mut stats,
             mut clears,
             mut cursors,
@@ -75,6 +75,10 @@ impl<'a> System<'a> for LoseSystem {
                     (stat.current_time / 3600.0).floor() as i32 % 60,
                     (stat.current_time / 60.0).floor() as i32 % 60
                 );
+                println!(
+                    "Start Difficulty: {}, End Difficulty: {}",
+                    playfield.start_level, playfield.level
+                );
                 println!("--------------------------------------");
 
                 // reset everything, same used in cursor space
@@ -93,6 +97,7 @@ impl<'a> System<'a> for LoseSystem {
                     *clear = Default::default();
                     *lose = Default::default();
                     *stat = Default::default();
+                    playfield.level = playfield.start_level;
                     cursors.get_mut(stack.cursor_entity).unwrap().reset();
                 }
             }

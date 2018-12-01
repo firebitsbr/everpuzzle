@@ -164,8 +164,13 @@ impl GameMode {
 impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
     fn on_start(&mut self, data: StateData<GameData>) {
         let world = data.world;
+
         self.create_playfield(world);
         //world.add_resource::<FPSCounter>(Default::default());
         self.initialise_camera(world);
+
+        // save the level by the playfield_resource.ron into its struct so it can be reset to it
+        let mut playfield = world.write_resource::<PlayfieldResource>();
+        playfield.start_level = playfield.level;
     }
 }
