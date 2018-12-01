@@ -1,5 +1,4 @@
 use amethyst::{ecs::Read, input::InputHandler};
-use std::clone::Clone;
 use std::collections::HashMap;
 
 // A hashmap for storing ticks on inputs

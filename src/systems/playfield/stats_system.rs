@@ -13,6 +13,8 @@ impl<'a> System<'a> for StatsSystem {
     );
 
     fn run(&mut self, (mut stats, inputs): Self::SystemData) {
+        // increase all stats action counters by looking through all
+        // actions possible and adding them up if theyre pressed once
         for stat in (&mut stats).join() {
             for action in &CURSOR_ACTIONS {
                 if stat.keys.press(&inputs, action) {
@@ -21,6 +23,7 @@ impl<'a> System<'a> for StatsSystem {
             }
         }
 
+        // increase stat times and calculate apm
         for stat in (&mut stats).join() {
             // TODO: this could crash when run too long <01-12-18, Skytrias> //
             stat.current_time += 1.0;

@@ -3,7 +3,6 @@ use amethyst::{
     ecs::prelude::Entity,
     prelude::*,
     renderer::*,
-    utils::fps_counter::FPSCounter,
 };
 use rand::prelude::*;
 

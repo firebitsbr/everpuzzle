@@ -30,7 +30,7 @@ use systems::{
 };
 
 // static seed for rand crate that can be used to have the same rand seed - good for debugging
-const SOME_SEED: [u8; 16] = [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+// const SOME_SEED: [u8; 16] = [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
 fn main() -> amethyst::Result<()> {
     // log only warnings to create less logs

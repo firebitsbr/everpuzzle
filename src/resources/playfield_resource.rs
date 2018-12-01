@@ -1,5 +1,3 @@
-use amethyst::config::Config;
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlayfieldResource {
     pub x: f32,

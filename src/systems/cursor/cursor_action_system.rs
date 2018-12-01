@@ -10,7 +10,7 @@ use components::{
     },
 };
 use data::block_data::SWAP_TIME;
-use data::playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE};
+use data::playfield_data::{BLOCKS, COLUMNS};
 
 pub struct CursorActionSystem;
 
@@ -118,14 +118,8 @@ fn swap(x: f32, y: f32, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
         set_swap_variables(blocks.get_mut(stack[i + 1]).unwrap(), -1.0);
 
         // set default stack blocks
-        let mut left_block = Block::default();
-        let mut right_block = Block::default();
-
-        // store data from the left to a temp
-        left_block = *blocks.get(stack[i]).unwrap();
-
-        // store data from the right to a temp
-        right_block = *blocks.get(stack[i + 1]).unwrap();
+        let left_block = *blocks.get(stack[i]).unwrap();
+        let right_block = *blocks.get(stack[i + 1]).unwrap();
 
         {
             blocks

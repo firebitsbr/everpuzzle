@@ -1,3 +1,4 @@
+#[allow(unused)]
 pub mod playfield_data {
     // columns of the grid 6 vertically
     pub const COLUMNS: usize = 6;
@@ -34,6 +35,7 @@ pub mod playfield_data {
 }
 
 // contains all important block animation times / lengths
+#[allow(unused)]
 pub mod block_data {
     // size of the block in pixels
     pub const BLOCK_SIZE: usize = 16;

@@ -92,7 +92,7 @@ impl KindGenerator {
         let mut prev_before = -1;
 
         for i in 0..size {
-            let mut new_num: i32 = 0;
+            let mut new_num;
             let mut bot_num: i32 = -1; // by default -1
 
             // set bot_num once it respects the boundaries

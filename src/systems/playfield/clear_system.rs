@@ -2,14 +2,13 @@ use amethyst::ecs::*;
 
 use components::{
     block::Block,
-    cursor::Cursor,
     playfield::{clear::Clear, stack::Stack, stats::Stats},
 };
 
 use block_states::block_state::change_state;
 use data::{
     block_data::{FACE_TIME, FLASH_TIME, POP_TIME},
-    playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE},
+    playfield_data::{COLUMNS, ROWS_VISIBLE},
 };
 use resources::playfield_resource::PlayfieldResource;
 use std::cmp::max;

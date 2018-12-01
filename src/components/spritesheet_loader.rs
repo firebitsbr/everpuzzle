@@ -6,6 +6,7 @@ pub struct SpriteSheetLoader {
     pub block_handle: SpriteSheetHandle,
 }
 
+#[allow(dead_code)]
 impl SpriteSheetLoader {
     pub fn new(world: &mut World) -> SpriteSheetLoader {
         SpriteSheetLoader {

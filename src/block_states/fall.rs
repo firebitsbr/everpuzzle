@@ -14,39 +14,38 @@ impl BlockState for Fall {
     fn exit(b: &mut Block) {}
 
     fn execute(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
-        let mut is_empty: bool = false;
-        let mut state_hang: bool = false;
-        let mut down_counter: u32 = 0;
+        // get a block back while boundary checking it
+        // returns an unreferenced block
+        let down_block = {
+            if i > COLUMNS {
+                Some(*blocks.get(stack[i - COLUMNS]).unwrap())
+            } else {
+                None
+            }
+        };
 
-        // if in boundary for down blocks to exist
-        if i > COLUMNS {
-            let down = blocks.get_mut(stack[i - COLUMNS]).unwrap();
-            is_empty = down.is_empty();
-            state_hang = down.state == "HANG";
-            down_counter = down.counter;
+        if let Some(down) = down_block {
+            if down.is_empty() {
+                // store data from the current to a temp
+                let temp_block = *blocks.get(stack[i]).unwrap();
+
+                // store data into the down block
+                blocks
+                    .get_mut(stack[i - COLUMNS])
+                    .unwrap()
+                    .set_properties(temp_block);
+
+                // reset data in the current one to default
+                blocks.get_mut(stack[i]).unwrap().reset();
+            } else if down.state == "HANG" {
+                let b = blocks.get_mut(stack[i]).unwrap();
+                b.state = "HANG";
+                b.counter = down.counter;
+            } else {
+                change_state(blocks.get_mut(stack[i]).unwrap(), "LAND");
+            }
         } else {
             blocks.get_mut(stack[i]).unwrap().state = "IDLE";
-            return;
-        }
-
-        if is_empty {
-            // store data from the current to a temp
-            let temp_block = *blocks.get(stack[i]).unwrap();
-
-            // store data into the down block
-            blocks
-                .get_mut(stack[i - COLUMNS])
-                .unwrap()
-                .set_properties(temp_block);
-
-            // reset data in the current one to default
-            blocks.get_mut(stack[i]).unwrap().reset();
-        } else if state_hang {
-            let b = blocks.get_mut(stack[i]).unwrap();
-            b.state = "HANG";
-            b.counter = down_counter;
-        } else {
-            change_state(blocks.get_mut(stack[i]).unwrap(), "LAND");
         }
     }
 

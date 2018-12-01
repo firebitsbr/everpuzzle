@@ -1,7 +1,4 @@
-use amethyst::{
-    core::Transform,
-    ecs::{Component, DenseVecStorage},
-};
+use amethyst::ecs::{Component, DenseVecStorage};
 use components::key_hash_map::KeyHashMap;
 
 // cursor that saves all key_presses ticks

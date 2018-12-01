@@ -1,8 +1,7 @@
 use amethyst::{core::Transform, ecs::*, input::InputHandler, renderer::SpriteRender};
 
-use block_states::block_state::change_state;
 use components::cursor::Cursor;
-use data::playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE};
+use data::playfield_data::{COLUMNS, ROWS_VISIBLE};
 use resources::playfield_resource::PlayfieldResource;
 
 pub struct CursorMoveSystem;
