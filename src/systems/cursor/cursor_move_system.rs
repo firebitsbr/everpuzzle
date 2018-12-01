@@ -21,25 +21,25 @@ impl<'a> System<'a> for CursorMoveSystem {
         (mut sprites, mut transforms, mut cursors, input, playfield): Self::SystemData,
     ) {
         for cursor in (&mut cursors).join() {
-            if cursor.hold(&input, "up") {
+            if cursor.keys.hold(&input, "up") {
                 if cursor.y < (ROWS_VISIBLE - 1) as f32 {
                     cursor.y += 1.0;
                 }
             }
 
-            if cursor.hold(&input, "down") {
+            if cursor.keys.hold(&input, "down") {
                 if cursor.y > 1.0 {
                     cursor.y -= 1.0;
                 }
             }
 
-            if cursor.hold(&input, "left") {
+            if cursor.keys.hold(&input, "left") {
                 if cursor.x > 0.0 {
                     cursor.x -= 1.0;
                 }
             }
 
-            if cursor.hold(&input, "right") {
+            if cursor.keys.hold(&input, "right") {
                 if cursor.x < (COLUMNS - 2) as f32 {
                     cursor.x += 1.0;
                 }

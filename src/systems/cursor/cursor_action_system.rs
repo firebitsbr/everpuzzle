@@ -4,7 +4,10 @@ use block_states::block_state::change_state;
 use components::{
     block::Block,
     cursor::Cursor,
-    playfield::{clear::Clear, kind_generator::KindGenerator, push::Push, stack::Stack},
+    playfield::{
+        clear::Clear, kind_generator::KindGenerator, lose::Lose, push::Push, stack::Stack,
+        stats::Stats,
+    },
 };
 use data::block_data::SWAP_TIME;
 use data::playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE};
@@ -20,9 +23,13 @@ impl<'a> System<'a> for CursorActionSystem {
         ReadStorage<'a, Stack>,
         WriteStorage<'a, Push>,
         WriteStorage<'a, Clear>,
+        WriteStorage<'a, Lose>,
+        WriteStorage<'a, Stats>,
     );
 
-    fn run(&mut self, (
+    fn run(
+        &mut self,
+        (
             mut cursors,
             input,
             mut kind_gens,
@@ -30,12 +37,22 @@ impl<'a> System<'a> for CursorActionSystem {
             stacks,
             mut pushes,
             mut clears,
-): Self::SystemData){
+            mut loses,
+            mut stats,
+        ): Self::SystemData,
+    ) {
         for cursor in (&mut cursors).join() {
             // reset all block colors to a random value
-            if cursor.press(&input, "space") {
-                for (stack, push, clear, kind_gen) in
-                    (&stacks, &mut pushes, &mut clears, &mut kind_gens).join()
+            if cursor.keys.press(&input, "space") {
+                for (stack, push, clear, kind_gen, lose, stat) in (
+                    &stacks,
+                    &mut pushes,
+                    &mut clears,
+                    &mut kind_gens,
+                    &mut loses,
+                    &mut stats,
+                )
+                    .join()
                 {
                     let kinds = kind_gen.create_stack(5, 8);
 
@@ -47,22 +64,25 @@ impl<'a> System<'a> for CursorActionSystem {
 
                     *push = Default::default();
                     *clear = Default::default();
+                    *lose = Default::default();
+                    *stat = Default::default();
                     cursor.reset();
                 }
             }
 
             // swaps block kinds around, gets all blocks, searches through creation id,
             // id matches cursor pos conversion, swapping from one block to another block
-            if cursor.press(&input, "swap") {
+            if cursor.keys.press(&input, "swap") {
                 for stack in (&stacks).join() {
                     swap(cursor.x, cursor.y, &stack, &mut blocks);
                 }
             }
         }
 
+        // raise will always be true when the raise key is held down
         for (stack, push) in (&stacks, &mut pushes).join() {
             let cursor = cursors.get_mut(stack.cursor_entity).unwrap();
-            push.signal_raise = cursor.down(&input, "raise");
+            push.signal_raise = cursor.keys.down(&input, "raise");
         }
     }
 }

@@ -1,5 +1,4 @@
 use amethyst::config::Config;
-use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlayfieldResource {

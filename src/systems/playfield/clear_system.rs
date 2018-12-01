@@ -58,6 +58,7 @@ impl<'a> System<'a> for ClearSystem {
                 if had_chainable {
                     clear.chain += 1;
                     clear.last_chain = max(clear.chain, clear.last_chain);
+                    stats.highest_chain = max(clear.chain, stats.highest_chain);
                 }
                 // otherwise reset the chain
                 else {

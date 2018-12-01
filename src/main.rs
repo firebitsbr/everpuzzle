@@ -23,7 +23,10 @@ use resources::playfield_resource::PlayfieldResource;
 use systems::{
     block_system::BlockSystem,
     cursor::{cursor_action_system::CursorActionSystem, cursor_move_system::CursorMoveSystem},
-    playfield::{clear_system::ClearSystem, lose_system::LoseSystem, push_system::PushSystem},
+    playfield::{
+        clear_system::ClearSystem, lose_system::LoseSystem, push_system::PushSystem,
+        stats_system::StatsSystem,
+    },
 };
 
 // static seed for rand crate that can be used to have the same rand seed - good for debugging
@@ -85,7 +88,8 @@ fn main() -> amethyst::Result<()> {
             &["input_system"],
         ).with(PushSystem {}, "playfield_push_system", &[])
         .with(ClearSystem {}, "playfield_clear_system", &[])
-        .with(LoseSystem {}, "playfield_lose_system", &[]);
+        .with(LoseSystem {}, "playfield_lose_system", &[])
+        .with(StatsSystem {}, "playfield_stats_system", &["input_system"]);
 
     // set the assets dir where all sprites will be loaded from
     let assets_dir = format!("{}/src/sprites/", app_root);
