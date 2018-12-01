@@ -68,9 +68,12 @@ impl<'a> System<'a> for LoseSystem {
                 println!("--------------------------------------");
                 println!("Highest Chain: {}", stat.highest_chain);
                 println!("Total Blocks Cleared: {}", stat.blocks_cleared);
+                println!("Actions Per Minute: {}", stat.actions_per_minute.floor());
                 println!(
-                    "Actions Per Minute at 60 fps: {}",
-                    stat.actions_per_minute.floor()
+                    "Time played: {} minutes and {} seconds",
+                    // get frame counter through minutes / seconds, then mod them to only go to 60
+                    (stat.current_time / 3600.0).floor() as i32 % 60,
+                    (stat.current_time / 60.0).floor() as i32 % 60
                 );
                 println!("--------------------------------------");
 
