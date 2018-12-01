@@ -5,6 +5,7 @@ use amethyst::{
 };
 use std::collections::HashMap;
 
+// cursor that saves all key_presses ticks
 pub struct Cursor {
     pub x: f32,
     pub y: f32,
@@ -22,6 +23,7 @@ impl Default for Cursor {
         key_presses.insert("left", 0);
         key_presses.insert("swap", 0);
         key_presses.insert("space", 0);
+        key_presses.insert("raise", 0);
 
         Cursor {
             x: 2.0,
@@ -79,6 +81,22 @@ impl Cursor {
             }
 
             return false;
+        }
+
+        *ticks = 0;
+        return false;
+    }
+
+    // looks wether in action is just pressed down and just counts up
+    pub fn down(&mut self, input: &Read<InputHandler<String, String>>, name: &str) -> bool {
+        let ticks: &mut i32 = self.key_presses.get_mut(name).unwrap();
+
+        if input.action_is_down(name).unwrap() {
+            if *ticks == 0 {
+                *ticks = 1;
+            }
+
+            return *ticks == 1;
         }
 
         *ticks = 0;

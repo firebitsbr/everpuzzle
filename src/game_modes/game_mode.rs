@@ -12,6 +12,7 @@ use components::{
     cursor::Cursor,
     playfield::{
         clear::Clear, kind_generator::KindGenerator, lose::Lose, push::Push, stack::Stack,
+        stats::Stats,
     },
     spritesheet_loader::{load_sprite_sheet, SpriteSheetLoader},
 };
@@ -30,13 +31,15 @@ impl GameMode {
         world.register::<Block>();
         let mut block_entities: Vec<Entity> = Vec::new();
 
+        let level = world.read_resource::<PlayfieldResource>().level;
+
         for i in 0..BLOCKS {
             let mut trans = Transform::default();
             trans.scale = Vector3::new(4.0, 4.0, 4.0);
 
             // set position instantly so no weird spawn flash happens
             let (x, y) = Stack::index_to_coordinates(i);
-            let mut b = Block::new(i as u32, kinds[i], x as i32, y as i32);
+            let mut b = Block::new(i as u32, kinds[i], x as i32, y as i32, level);
 
             let sprite_render_block = SpriteRender {
                 sprite_sheet: SpriteSheetLoader::load_blocks_sprite_sheet(world),
@@ -123,6 +126,7 @@ impl GameMode {
         world.register::<Push>();
         world.register::<Lose>();
         world.register::<KindGenerator>();
+        world.register::<Stats>();
         world
             .create_entity()
             .with(Clear::default())
@@ -130,6 +134,7 @@ impl GameMode {
             .with(Lose::default())
             .with(Stack::new(block_entities, cursor_entity))
             .with(kind_gen)
+            .with(Stats::default())
             .build();
     }
 

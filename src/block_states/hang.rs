@@ -8,7 +8,7 @@ use data::block_data::HOVER_TIME;
 pub struct Hang;
 impl BlockState for Hang {
     fn enter(b: &mut Block) {
-        b.counter = HOVER_TIME[0];
+        b.counter = HOVER_TIME[b.level];
     }
 
     fn exit(b: &mut Block) {}

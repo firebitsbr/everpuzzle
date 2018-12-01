@@ -3,11 +3,15 @@ use amethyst::ecs::*;
 use components::{
     block::Block,
     cursor::Cursor,
-    playfield::{clear::Clear, stack::Stack},
+    playfield::{clear::Clear, stack::Stack, stats::Stats},
 };
 
 use block_states::block_state::change_state;
-use data::playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE};
+use data::{
+    block_data::{FACE_TIME, FLASH_TIME, POP_TIME},
+    playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE},
+};
+use resources::playfield_resource::PlayfieldResource;
 use std::cmp::max;
 
 pub struct ClearSystem;
@@ -17,13 +21,15 @@ impl<'a> System<'a> for ClearSystem {
         WriteStorage<'a, Clear>,
         WriteStorage<'a, Block>,
         ReadStorage<'a, Stack>,
+        Read<'a, PlayfieldResource>,
+        WriteStorage<'a, Stats>,
     );
 
-    fn run(&mut self, (mut clears, mut blocks, stacks): Self::SystemData) {
+    fn run(&mut self, (mut clears, mut blocks, stacks, playfield, mut stats): Self::SystemData) {
         // block clear detection
         // counts the amount of clears each frame, passes them uniquely to an array holding their ids
         // sets a lot of playfield_clear values and then sets the blocks to animate with given times
-        for (clear, stack) in (&mut clears, &stacks).join() {
+        for (clear, stack, stats) in (&mut clears, &stacks, &mut stats).join() {
             for x in 0..COLUMNS {
                 for y in 0..ROWS_VISIBLE {
                     for clear_block_id in check_clear(x, y, &stack, &blocks) {
@@ -40,9 +46,9 @@ impl<'a> System<'a> for ClearSystem {
                 clear.combo_counter = 0;
 
                 // animation times, TODO: get playfield level dependant times
-                let flash: u32 = 44;
-                let face: u32 = 10;
-                let pop: u32 = 10;
+                let flash: u32 = FLASH_TIME[playfield.level];
+                let face: u32 = FACE_TIME[playfield.level];
+                let pop: u32 = POP_TIME[playfield.level];
 
                 let all_time: u32 = flash + face + pop * clear_size;
 
@@ -72,12 +78,8 @@ impl<'a> System<'a> for ClearSystem {
                 }
 
                 // clear the clear_queue if its not empty
-                clear.blocks_cleared += clear.combo_counter;
+                stats.blocks_cleared += clear.combo_counter;
                 clear.clear_queue.clear();
-                println!(
-                    "chain: {}, combo: {}, blocks_cleared: {}",
-                    clear.chain, clear.combo_counter, clear.blocks_cleared
-                );
             }
         }
     }

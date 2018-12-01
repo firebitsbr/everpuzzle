@@ -59,6 +59,11 @@ impl<'a> System<'a> for CursorActionSystem {
                 }
             }
         }
+
+        for (stack, push) in (&stacks, &mut pushes).join() {
+            let cursor = cursors.get_mut(stack.cursor_entity).unwrap();
+            push.signal_raise = cursor.down(&input, "raise");
+        }
     }
 }
 

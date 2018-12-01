@@ -28,6 +28,9 @@ pub struct Block {
     // animation
     pub anim_counter: u32,
     pub anim_offset: u32,
+
+    // playfield data
+    pub level: usize,
 }
 
 impl Default for Block {
@@ -53,17 +56,20 @@ impl Default for Block {
             // anim counters
             anim_counter: 0,
             anim_offset: 0,
+
+            level: 0,
         }
     }
 }
 
 impl Block {
-    pub fn new(id: u32, kind: i32, x: i32, y: i32) -> Block {
+    pub fn new(id: u32, kind: i32, x: i32, y: i32, level: usize) -> Block {
         Block {
             id,
             kind,
             x,
             y,
+            level,
             ..Default::default()
         }
     }
@@ -152,12 +158,14 @@ impl Block {
         self.anim_offset = other.anim_offset;
     }
 
-    // reset everything but the set variables in new
+    // reset everything but the set variables that should remain
+    // the same
     pub fn reset(&mut self) {
         *self = Block {
             id: self.id,
             x: self.x,
             y: self.y,
+            level: self.level,
             ..Default::default()
         };
     }

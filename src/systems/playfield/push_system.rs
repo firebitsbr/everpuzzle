@@ -6,6 +6,7 @@ use components::{
     playfield::{kind_generator::KindGenerator, push::Push, stack::Stack},
 };
 use data::playfield_data::{BLOCKS, COLUMNS, RAISE_BLOCKED_TIME, RAISE_TIME, ROWS_VISIBLE};
+use resources::playfield_resource::PlayfieldResource;
 
 // handles the entire pushing system which offsets all blocks and cursor
 // each complete grid offset the entire blocks get copied and move up one row
@@ -20,12 +21,13 @@ impl<'a> System<'a> for PushSystem {
         WriteStorage<'a, Cursor>,
         WriteStorage<'a, KindGenerator>,
         Entities<'a>,
+        Read<'a, PlayfieldResource>,
     );
 
     fn run(
         &mut self,
-        (mut pushes, stacks, mut blocks, mut cursors, mut kind_gens, entities): Self::SystemData,
-    ) {
+        (mut pushes, stacks, mut blocks, mut cursors, mut kind_gens, entities, playfield): Self::SystemData,
+){
         // playfield push info / push animation WIP
         for (entity, stack) in (&entities, &stacks).join() {
             {
@@ -43,6 +45,7 @@ impl<'a> System<'a> for PushSystem {
                     &mut blocks,
                     cursors.get_mut(stack.cursor_entity).unwrap(),
                     kind_gens.get_mut(entity).unwrap(),
+                    playfield.level,
                 );
             }
         }
@@ -58,6 +61,7 @@ fn visual_offset(
     blocks: &mut WriteStorage<'_, Block>,
     cursor: &mut Cursor,
     generator: &mut KindGenerator,
+    level: usize,
 ) {
     // if any cursor signal comes through do smooth increase which is faster and stops
     if push.signal_raise {
@@ -93,7 +97,7 @@ fn visual_offset(
         }
         // else slowly increase
         else {
-            push.offset_counter += RAISE_TIME[0];
+            push.offset_counter += RAISE_TIME[level];
         }
 
         set_visual_offsets(push.offset_counter, stack, blocks, cursor);
