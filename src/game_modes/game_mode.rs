@@ -16,7 +16,7 @@ use components::{
     spritesheet_loader::{load_sprite_sheet, SpriteSheetLoader},
 };
 use data::playfield_data::BLOCKS;
-use resources::playfield_resource::PlayfieldResource;
+use resources::playfield_resource::Playfields;
 
 pub struct GameMode;
 
@@ -30,7 +30,7 @@ impl GameMode {
         world.register::<Block>();
         let mut block_entities: Vec<Entity> = Vec::new();
 
-        let level = world.read_resource::<PlayfieldResource>().level;
+        let level = world.read_resource::<Playfields>().keys[0].level;
 
         for i in 0..BLOCKS {
             let mut trans = Transform::default();
@@ -170,7 +170,9 @@ impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
         self.initialise_camera(world);
 
         // save the level by the playfield_resource.ron into its struct so it can be reset to it
-        let mut playfield = world.write_resource::<PlayfieldResource>();
-        playfield.start_level = playfield.level;
+        {
+            let mut playfields = world.write_resource::<Playfields>();
+            playfields.keys[0].start_level = playfields.keys[0].level;
+        }
     }
 }

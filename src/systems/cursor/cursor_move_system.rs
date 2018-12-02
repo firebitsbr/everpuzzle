@@ -2,7 +2,7 @@ use amethyst::{core::Transform, ecs::*, input::InputHandler, renderer::SpriteRen
 
 use components::cursor::Cursor;
 use data::playfield_data::{COLUMNS, ROWS_VISIBLE};
-use resources::playfield_resource::PlayfieldResource;
+use resources::playfield_resource::Playfields;
 
 pub struct CursorMoveSystem;
 
@@ -12,12 +12,12 @@ impl<'a> System<'a> for CursorMoveSystem {
         WriteStorage<'a, Transform>,
         WriteStorage<'a, Cursor>,
         Read<'a, InputHandler<String, String>>,
-        Read<'a, PlayfieldResource>,
+        Read<'a, Playfields>,
     );
 
     fn run(
         &mut self,
-        (mut sprites, mut transforms, mut cursors, input, playfield): Self::SystemData,
+        (mut sprites, mut transforms, mut cursors, input, playfields): Self::SystemData,
     ) {
         for cursor in (&mut cursors).join() {
             if cursor.keys.hold(&input, "up") {
@@ -46,7 +46,7 @@ impl<'a> System<'a> for CursorMoveSystem {
         }
 
         for (sprite, transform, cursor) in (&mut sprites, &mut transforms, &mut cursors).join() {
-            set_position(cursor, transform, &playfield);
+            set_position(cursor, transform, &playfields);
 
             sprite.sprite_number = cursor.anim_offset as usize;
             if cursor.anim_offset < 7.0 {
@@ -58,11 +58,9 @@ impl<'a> System<'a> for CursorMoveSystem {
     }
 }
 
-fn set_position(
-    cursor: &Cursor,
-    transform: &mut Transform,
-    playfield: &Read<'_, PlayfieldResource>,
-) {
-    transform.translation.x = (cursor.x * 32.0 + cursor.offset.0) * transform.scale.x + playfield.x;
-    transform.translation.y = (cursor.y * 32.0 + cursor.offset.1) * transform.scale.y + playfield.y;
+fn set_position(cursor: &Cursor, transform: &mut Transform, playfields: &Read<'_, Playfields>) {
+    transform.translation.x =
+        (cursor.x * 32.0 + cursor.offset.0) * transform.scale.x + playfields[0].x;
+    transform.translation.y =
+        (cursor.y * 32.0 + cursor.offset.1) * transform.scale.y + playfields[0].y;
 }

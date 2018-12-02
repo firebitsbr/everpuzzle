@@ -19,7 +19,7 @@ mod game_modes;
 mod resources;
 mod systems;
 use game_modes::game_mode::GameMode;
-use resources::playfield_resource::PlayfieldResource;
+use resources::playfield_resource::Playfields;
 use systems::{
     block_system::BlockSystem,
     cursor::{cursor_action_system::CursorActionSystem, cursor_move_system::CursorMoveSystem},
@@ -44,7 +44,7 @@ fn main() -> amethyst::Result<()> {
     let display_path = format!("{}/src/configs/display_config.ron", app_root);
     let display_config = DisplayConfig::load(&display_path);
     let playfield_path = format!("{}/src/configs/playfield_config.ron", app_root);
-    let playfield_config = PlayfieldResource::load(&playfield_path);
+    let playfield_config = Playfields::load(&playfield_path);
 
     // start pipeline that clears to white background
     // and lets sprites exist with transparency

@@ -1,6 +1,6 @@
 use amethyst::{ecs::*, input::InputHandler};
 use components::playfield::stats::Stats;
-use resources::playfield_resource::PlayfieldResource;
+use resources::playfield_resource::Playfields;
 
 // all actions we want to count as actions per minute
 const CURSOR_ACTIONS: [&'static str; 6] = ["up", "down", "left", "right", "swap", "raise"];
@@ -11,10 +11,10 @@ impl<'a> System<'a> for StatsSystem {
     type SystemData = (
         WriteStorage<'a, Stats>,
         Read<'a, InputHandler<String, String>>,
-        Write<'a, PlayfieldResource>,
+        Write<'a, Playfields>,
     );
 
-    fn run(&mut self, (mut stats, inputs, mut playfield): Self::SystemData) {
+    fn run(&mut self, (mut stats, inputs, mut playfields): Self::SystemData) {
         // increase all stats action counters by looking through all
         // actions possible and adding them up if theyre pressed once
         for stat in (&mut stats).join() {
@@ -33,8 +33,8 @@ impl<'a> System<'a> for StatsSystem {
             // each fifteen seconds the game gets harder
             if stat.current_time % (60.0 * 15.0) == 0.0 {
                 // only increase until the max level is reached
-                if playfield.level < 9 {
-                    playfield.level += 1;
+                if playfields[0].level < 9 {
+                    playfields[0].level += 1;
                 }
             }
         }

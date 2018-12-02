@@ -10,7 +10,7 @@ use data::{
     block_data::{FACE_TIME, FLASH_TIME, POP_TIME},
     playfield_data::{COLUMNS, ROWS_VISIBLE},
 };
-use resources::playfield_resource::PlayfieldResource;
+use resources::playfield_resource::Playfields;
 use std::cmp::max;
 
 pub struct ClearSystem;
@@ -20,11 +20,11 @@ impl<'a> System<'a> for ClearSystem {
         WriteStorage<'a, Clear>,
         WriteStorage<'a, Block>,
         ReadStorage<'a, Stack>,
-        Read<'a, PlayfieldResource>,
+        Read<'a, Playfields>,
         WriteStorage<'a, Stats>,
     );
 
-    fn run(&mut self, (mut clears, mut blocks, stacks, playfield, mut stats): Self::SystemData) {
+    fn run(&mut self, (mut clears, mut blocks, stacks, playfields, mut stats): Self::SystemData) {
         // block clear detection
         // counts the amount of clears each frame, passes them uniquely to an array holding their ids
         // sets a lot of playfield_clear values and then sets the blocks to animate with given times
@@ -45,9 +45,9 @@ impl<'a> System<'a> for ClearSystem {
                 clear.combo_counter = 0;
 
                 // animation times, TODO: get playfield level dependant times
-                let flash: u32 = FLASH_TIME[playfield.level];
-                let face: u32 = FACE_TIME[playfield.level];
-                let pop: u32 = POP_TIME[playfield.level];
+                let flash: u32 = FLASH_TIME[playfields[0].level];
+                let face: u32 = FACE_TIME[playfields[0].level];
+                let pop: u32 = POP_TIME[playfields[0].level];
 
                 let all_time: u32 = flash + face + pop * clear_size;
 

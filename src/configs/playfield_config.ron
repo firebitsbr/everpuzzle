@@ -1,6 +1,10 @@
 (
-	x: 0.0,
-	y: 0.0,
-	start_level: 0, 
-    level: 3,
+	keys: [
+		(
+			x: 0.0,
+			y: 0.0,
+			start_level: 0, 
+			level: 3,
+		),
+	],
 )

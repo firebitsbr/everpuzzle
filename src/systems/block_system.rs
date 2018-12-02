@@ -6,7 +6,7 @@ use block_states::{
 };
 use components::{block::Block, playfield::stack::Stack};
 use data::playfield_data::{BLOCKS, COLUMNS};
-use resources::playfield_resource::PlayfieldResource;
+use resources::playfield_resource::Playfields;
 
 // handles everything a block should do itself or based on others
 pub struct BlockSystem;
@@ -17,13 +17,13 @@ impl<'a> System<'a> for BlockSystem {
         WriteStorage<'a, Transform>,
         WriteStorage<'a, Block>,
         WriteStorage<'a, Hidden>,
-        Read<'a, PlayfieldResource>,
+        Read<'a, Playfields>,
     );
 
     fn run(
         &mut self,
-        (stacks, mut sprites, mut transforms, mut blocks, mut hiddens, playfield): Self::SystemData,
-    ) {
+        (stacks, mut sprites, mut transforms, mut blocks, mut hiddens, playfields): Self::SystemData,
+){
         // run through all existing block stacks
         for stack in (&stacks).join() {
             // run through all states from a block
@@ -63,9 +63,9 @@ impl<'a> System<'a> for BlockSystem {
             // translation
             for (b, transform) in (&blocks, &mut transforms).join() {
                 transform.translation.x =
-                    (b.x as f32 * 16.0 + b.offset.0) * transform.scale.x + playfield.x;
+                    (b.x as f32 * 16.0 + b.offset.0) * transform.scale.x + playfields[0].x;
                 transform.translation.y =
-                    (b.y as f32 * 16.0 + b.offset.1) * transform.scale.y + playfield.y;
+                    (b.y as f32 * 16.0 + b.offset.1) * transform.scale.y + playfields[0].y;
             }
 
             // rendering

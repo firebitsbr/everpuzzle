@@ -8,7 +8,7 @@ use components::{
     },
 };
 use data::playfield_data::{BLOCKS, STOP_TIME};
-use resources::playfield_resource::PlayfieldResource;
+use resources::playfield_resource::Playfields;
 
 // handles the losing mechanics of the game
 // counts the time up until you lose when at the top of the game
@@ -19,7 +19,7 @@ impl<'a> System<'a> for LoseSystem {
     type SystemData = (
         WriteStorage<'a, Lose>,
         WriteStorage<'a, Push>,
-        Write<'a, PlayfieldResource>,
+        Write<'a, Playfields>,
         WriteStorage<'a, Stats>,
         WriteStorage<'a, Clear>,
         WriteStorage<'a, Cursor>,
@@ -33,7 +33,7 @@ impl<'a> System<'a> for LoseSystem {
         (
             mut loses,
             mut pushes,
-            mut playfield,
+            mut playfields,
             mut stats,
             mut clears,
             mut cursors,
@@ -44,7 +44,7 @@ impl<'a> System<'a> for LoseSystem {
     ) {
         for (lose, push) in (&mut loses, &pushes).join() {
             if push.any_top_blocks && !push.any_clears {
-                if lose.counter > STOP_TIME[playfield.level] {
+                if lose.counter > STOP_TIME[playfields[0].level] {
                     lose.lost = true;
                 } else {
                     // count up until stoptime is reached
@@ -77,7 +77,7 @@ impl<'a> System<'a> for LoseSystem {
                 );
                 println!(
                     "Start Difficulty: {}, End Difficulty: {}",
-                    playfield.start_level, playfield.level
+                    playfields[0].start_level, playfields[0].level
                 );
                 println!("--------------------------------------");
 
@@ -97,7 +97,7 @@ impl<'a> System<'a> for LoseSystem {
                     *clear = Default::default();
                     *lose = Default::default();
                     *stat = Default::default();
-                    playfield.level = playfield.start_level;
+                    playfields[0].level = playfields[0].start_level;
                     cursors.get_mut(stack.cursor_entity).unwrap().reset();
                 }
             }
