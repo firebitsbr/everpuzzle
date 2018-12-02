@@ -5,7 +5,7 @@ use block_states::{
     swap::Swap,
 };
 use components::{block::Block, playfield::stack::Stack};
-use data::playfield_data::{BLOCKS, COLUMNS};
+use data::playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE};
 use resources::playfield_resource::Playfields;
 
 // handles everything a block should do itself or based on others
@@ -84,6 +84,11 @@ fn update_sprites(
     hiddens: &mut WriteStorage<'_, Hidden>,
 ) {
     for i in 0..BLOCKS {
+        let x = blocks.get(stack[i]).unwrap().x;
+        let top = blocks
+            .get(stack[(x as usize, ROWS_VISIBLE - 1)])
+            .unwrap()
+            .clone();
         let b = blocks.get_mut(stack[i]).unwrap();
 
         // decrease all the time
@@ -97,8 +102,13 @@ fn update_sprites(
                 hiddens.remove(stack[i]);
             }
 
-            if b.y == 0 && b.state == "IDLE" {
-                b.anim_offset = 1;
+            if b.state == "IDLE" {
+                // checks wether the highest block is null
+                if top.kind != -1 && top.state == "IDLE" {
+                    b.anim_offset = 4;
+                } else if b.y == 0 {
+                    b.anim_offset = 1;
+                }
             }
 
             sprites.get_mut(stack[i]).unwrap().sprite_number =
