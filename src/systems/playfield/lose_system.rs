@@ -63,9 +63,11 @@ impl<'a> System<'a> for LoseSystem {
         // maybe reset the game for now
         for (lose, stat) in (&mut loses, &mut stats).join() {
             if lose.lost {
-                println!("--------------------------------------");
                 println!("You lost the game, here are your stats");
-                println!("--------------------------------------");
+                println!("------------------------------------------");
+                println!("You can increase the difficulty by editing");
+                println!("the playfield_config.ron file .level");
+                println!("------------------------------------------");
                 println!("Highest Chain: {}", stat.highest_chain);
                 println!("Total Blocks Cleared: {}", stat.blocks_cleared);
                 println!("Actions Per Minute: {}", stat.actions_per_minute.floor());
@@ -79,7 +81,7 @@ impl<'a> System<'a> for LoseSystem {
                     "Start Difficulty: {}, End Difficulty: {}",
                     playfields[0].start_level, playfields[0].level
                 );
-                println!("--------------------------------------");
+                println!("------------------------------------------");
 
                 // reset everything, same used in cursor space
                 for (stack, push, clear, kind_gen) in
