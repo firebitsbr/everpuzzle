@@ -1,4 +1,4 @@
-![screenshot](https://github.com/Skytrias/everpuzzle/blob/master/everpuzzle-04.gif "preview")
+![screenshot](https://github.com/Skytrias/everpuzzle/blob/master/everpuzzle-05.gif "preview")
 
 # Everpuzzle
 **Tetris Attack/Pokémon Puzzle-esque game written in Rust with Amethyst**
