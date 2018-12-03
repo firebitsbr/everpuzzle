@@ -1,16 +1,18 @@
 #![allow(dead_code)]
 use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity};
-use data::playfield_data::COLUMNS;
+use data::playfield_data::{BLOCKS, COLUMNS};
 use std::ops::Index;
 
 pub struct Stack {
+    p_id: usize,
     block_entities: Vec<Entity>,
     pub cursor_entity: Entity,
 }
 
 impl Stack {
-    pub fn new(block_entities: Vec<Entity>, cursor_entity: Entity) -> Stack {
+    pub fn new(p_id: usize, block_entities: Vec<Entity>, cursor_entity: Entity) -> Stack {
         Stack {
+            p_id,
             block_entities,
             cursor_entity,
         }
@@ -37,7 +39,7 @@ impl Index<usize> for Stack {
     type Output = Entity;
 
     fn index(&self, i: usize) -> &Entity {
-        &self.block_entities[i]
+        &self.block_entities[i] //+ &self.p_id * (BLOCKS - 1)]
     }
 }
 
@@ -45,7 +47,7 @@ impl Index<(usize, usize)> for Stack {
     type Output = Entity;
 
     fn index(&self, (x, y): (usize, usize)) -> &Entity {
-        &self.block_entities[Stack::coordinates_to_index(x, y)]
+        &self.block_entities[Stack::coordinates_to_index(x, y)] // + &self.p_id * (BLOCKS - 1)]
     }
 }
 

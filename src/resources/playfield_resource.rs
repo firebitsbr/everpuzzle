@@ -33,12 +33,11 @@ impl Default for Playfields {
     }
 }
 
-/*
 impl Playfields {
     pub fn len(&self) -> usize {
         self.keys.len()
     }
-}*/
+}
 
 // index easier so you dont need access keys all the time
 impl Index<usize> for Playfields {

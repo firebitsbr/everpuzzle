@@ -4,7 +4,7 @@ use block_states::{
     block_state::BlockState, clear::Clear, fall::Fall, hang::Hang, idle::Idle, land::Land,
     swap::Swap,
 };
-use components::{block::Block, playfield::stack::Stack};
+use components::{block::Block, playfield::stack::Stack, playfield_id::PlayfieldId};
 use data::playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE};
 use resources::playfield_resource::Playfields;
 
@@ -18,11 +18,12 @@ impl<'a> System<'a> for BlockSystem {
         WriteStorage<'a, Block>,
         WriteStorage<'a, Hidden>,
         Read<'a, Playfields>,
+        ReadStorage<'a, PlayfieldId>,
     );
 
     fn run(
         &mut self,
-        (stacks, mut sprites, mut transforms, mut blocks, mut hiddens, playfields): Self::SystemData,
+        (stacks, mut sprites, mut transforms, mut blocks, mut hiddens, playfields, ids): Self::SystemData,
 ){
         // run through all existing block stacks
         for stack in (&stacks).join() {
@@ -61,11 +62,11 @@ impl<'a> System<'a> for BlockSystem {
             }
 
             // translation
-            for (b, transform) in (&blocks, &mut transforms).join() {
+            for (b, transform, id) in (&blocks, &mut transforms, &ids).join() {
                 transform.translation.x =
-                    (b.x as f32 * 16.0 + b.offset.0) * transform.scale.x + playfields[0].x;
+                    (b.x as f32 * 16.0 + b.offset.0) * transform.scale.x + playfields[**id].x;
                 transform.translation.y =
-                    (b.y as f32 * 16.0 + b.offset.1) * transform.scale.y + playfields[0].y;
+                    (b.y as f32 * 16.0 + b.offset.1) * transform.scale.y + playfields[**id].y;
             }
 
             // rendering

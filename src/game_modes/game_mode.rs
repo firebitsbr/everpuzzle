@@ -13,6 +13,7 @@ use components::{
         clear::Clear, kind_generator::KindGenerator, lose::Lose, push::Push, stack::Stack,
         stats::Stats,
     },
+    playfield_id::PlayfieldId,
     spritesheet_loader::{load_sprite_sheet, SpriteSheetLoader},
 };
 use data::playfield_data::BLOCKS;
@@ -26,11 +27,16 @@ impl GameMode {
     // transform positions the sprite
     // takes a vec of i32's that will be used to init all the kinds
     // returns a vec of all block entities that should be stored in a playfield stack
-    pub fn create_blocks(&mut self, world: &mut World, kinds: Vec<i32>) -> Vec<Entity> {
+    pub fn create_blocks(
+        &mut self,
+        p_id: usize,
+        world: &mut World,
+        kinds: Vec<i32>,
+    ) -> Vec<Entity> {
         world.register::<Block>();
         let mut block_entities: Vec<Entity> = Vec::new();
 
-        let level = world.read_resource::<Playfields>().keys[0].level;
+        let level = world.read_resource::<Playfields>()[p_id].level;
 
         for i in 0..BLOCKS {
             let mut trans = Transform::default();
@@ -54,6 +60,7 @@ impl GameMode {
                     .with(b)
                     .with(GlobalTransform::default())
                     .with(trans)
+                    .with(PlayfieldId::new(p_id))
                     .build(),
             );
         }
@@ -66,7 +73,7 @@ impl GameMode {
     // a transform to position the sprite in the world
     // its cursor component data
     // a transparent component since the spritesheet has alpha
-    fn create_cursor(&mut self, world: &mut World) -> Entity {
+    fn create_cursor(&mut self, p_id: usize, world: &mut World) -> Entity {
         // load the cursor sprite and attach its data component
         let sprite_sheet = SpriteRender {
             sprite_sheet: load_sprite_sheet(world, "cursor.png", "cursor_spritesheet.ron"),
@@ -79,7 +86,7 @@ impl GameMode {
         let mut trans = Transform::default();
         trans.scale = Vector3::new(2.0, 2.0, 2.0);
 
-        let cursor = Cursor::new(2.0, 5.0);
+        let cursor = Cursor::new(p_id, 2.0, 5.0);
 
         // generate a cursor entity
         world.register::<Cursor>();
@@ -90,6 +97,7 @@ impl GameMode {
             .with(cursor)
             .with(GlobalTransform::default())
             .with(trans)
+            .with(PlayfieldId::new(p_id))
             .build();
 
         cursor_entity
@@ -101,22 +109,17 @@ impl GameMode {
     //
     // the goal of this function is to be able to repeat this
     // while gathering playfield amt etc from a .ron file
-    fn create_playfield(&mut self, world: &mut World) {
-        // create some randomized seed to be shared
-        let mut rand_seed: [u8; 16] = [0; 16];
-        for x in &mut rand_seed {
-            *x = rand::random::<u8>();
-        }
-
+    fn create_playfield(&mut self, p_id: usize, seed: [u8; 16], world: &mut World) {
         // create random generator for random seeded numbers
         let mut kind_gen = KindGenerator {
-            rng: SmallRng::from_seed(rand_seed),
+            rng: SmallRng::from_seed(seed),
         };
         let kinds = kind_gen.create_stack(5, 8);
 
         // generate other entities
-        let block_entities = self.create_blocks(world, kinds);
-        let cursor_entity = self.create_cursor(world);
+        world.register::<PlayfieldId>();
+        let block_entities = self.create_blocks(p_id, world, kinds);
+        let cursor_entity = self.create_cursor(p_id, world);
 
         // Create a Playfield with a stack, clear, push, lose and kind generator
         // STACK gives access to blocks and cursor dependant on the general storages
@@ -131,9 +134,10 @@ impl GameMode {
             .with(Clear::default())
             .with(Push::default())
             .with(Lose::default())
-            .with(Stack::new(block_entities, cursor_entity))
+            .with(Stack::new(p_id, block_entities, cursor_entity))
             .with(kind_gen)
-            .with(Stats::default())
+            .with(Stats::new(p_id))
+            .with(PlayfieldId::new(p_id))
             .build();
     }
 
@@ -165,14 +169,22 @@ impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
     fn on_start(&mut self, data: StateData<GameData>) {
         let world = data.world;
 
-        self.create_playfield(world);
-        //world.add_resource::<FPSCounter>(Default::default());
-        self.initialise_camera(world);
+        // create some randomized seed to be shared
+        let mut rand_seed: [u8; 16] = [0; 16];
+        for x in &mut rand_seed {
+            *x = rand::random::<u8>();
+        }
 
-        // save the level by the playfield_resource.ron into its struct so it can be reset to it
-        {
-            let mut playfields = world.write_resource::<Playfields>();
-            playfields.keys[0].start_level = playfields.keys[0].level;
+        let amt = world.read_resource::<Playfields>().len();
+        for id in 0..amt {
+            self.create_playfield(id, rand_seed, world);
+            self.initialise_camera(world);
+
+            // save the level by the playfield_resource.ron into its struct so it can be reset to it
+            {
+                let mut playfields = world.write_resource::<Playfields>();
+                playfields[id].start_level = playfields[id].level;
+            }
         }
     }
 }

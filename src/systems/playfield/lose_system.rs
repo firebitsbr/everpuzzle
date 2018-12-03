@@ -6,6 +6,7 @@ use components::{
         clear::Clear, kind_generator::KindGenerator, lose::Lose, push::Push, stack::Stack,
         stats::Stats,
     },
+    playfield_id::PlayfieldId,
 };
 use data::playfield_data::{BLOCKS, STOP_TIME};
 use resources::playfield_resource::Playfields;
@@ -20,6 +21,7 @@ impl<'a> System<'a> for LoseSystem {
         WriteStorage<'a, Lose>,
         WriteStorage<'a, Push>,
         Write<'a, Playfields>,
+        ReadStorage<'a, PlayfieldId>,
         WriteStorage<'a, Stats>,
         WriteStorage<'a, Clear>,
         WriteStorage<'a, Cursor>,
@@ -34,6 +36,7 @@ impl<'a> System<'a> for LoseSystem {
             mut loses,
             mut pushes,
             mut playfields,
+            ids,
             mut stats,
             mut clears,
             mut cursors,
@@ -42,9 +45,9 @@ impl<'a> System<'a> for LoseSystem {
             stacks,
         ): Self::SystemData,
     ) {
-        for (lose, push) in (&mut loses, &pushes).join() {
+        for (lose, push, id) in (&mut loses, &pushes, &ids).join() {
             if push.any_top_blocks && !push.any_clears {
-                if lose.counter > STOP_TIME[playfields[0].level] {
+                if lose.counter > STOP_TIME[playfields[**id].level] {
                     lose.lost = true;
                 } else {
                     // count up until stoptime is reached
@@ -61,7 +64,7 @@ impl<'a> System<'a> for LoseSystem {
         }
 
         // maybe reset the game for now
-        for (lose, stat) in (&mut loses, &mut stats).join() {
+        for (lose, stat, id) in (&mut loses, &mut stats, &ids).join() {
             if lose.lost {
                 println!("You lost the game, here are your stats");
                 println!("------------------------------------------");
@@ -79,16 +82,17 @@ impl<'a> System<'a> for LoseSystem {
                 );
                 println!(
                     "Start Difficulty: {}, End Difficulty: {}",
-                    playfields[0].start_level, playfields[0].level
+                    playfields[**id].start_level, playfields[**id].level
                 );
                 println!("------------------------------------------");
 
-                // reset everything, same used in cursor space
+                // reset everything
                 for (stack, push, clear, kind_gen) in
                     (&stacks, &mut pushes, &mut clears, &mut kind_gens).join()
                 {
                     let kinds = kind_gen.create_stack(5, 8);
 
+                    // reset al blocks and set their kinds completely new
                     for i in 0..BLOCKS {
                         let b = blocks.get_mut(stack[i]).unwrap();
                         b.reset();
@@ -99,7 +103,11 @@ impl<'a> System<'a> for LoseSystem {
                     *clear = Default::default();
                     *lose = Default::default();
                     *stat = Default::default();
-                    playfields[0].level = playfields[0].start_level;
+
+                    for i in 0..playfields.len() {
+                        playfields[i].level = playfields[i].start_level;
+                    }
+
                     cursors.get_mut(stack.cursor_entity).unwrap().reset();
                 }
             }

@@ -3,6 +3,7 @@ use amethyst::ecs::*;
 use components::{
     block::Block,
     playfield::{clear::Clear, stack::Stack, stats::Stats},
+    playfield_id::PlayfieldId,
 };
 
 use block_states::block_state::change_state;
@@ -20,15 +21,19 @@ impl<'a> System<'a> for ClearSystem {
         WriteStorage<'a, Clear>,
         WriteStorage<'a, Block>,
         ReadStorage<'a, Stack>,
-        Read<'a, Playfields>,
         WriteStorage<'a, Stats>,
+        Read<'a, Playfields>,
+        ReadStorage<'a, PlayfieldId>,
     );
 
-    fn run(&mut self, (mut clears, mut blocks, stacks, playfields, mut stats): Self::SystemData) {
+    fn run(
+        &mut self,
+        (mut clears, mut blocks, stacks, mut stats, playfields, ids): Self::SystemData,
+    ) {
         // block clear detection
         // counts the amount of clears each frame, passes them uniquely to an array holding their ids
         // sets a lot of playfield_clear values and then sets the blocks to animate with given times
-        for (clear, stack, stats) in (&mut clears, &stacks, &mut stats).join() {
+        for (clear, stack, stats, id) in (&mut clears, &stacks, &mut stats, &ids).join() {
             for x in 0..COLUMNS {
                 for y in 0..ROWS_VISIBLE {
                     for clear_block_id in check_clear(x, y, &stack, &blocks) {
@@ -45,9 +50,9 @@ impl<'a> System<'a> for ClearSystem {
                 clear.combo_counter = 0;
 
                 // animation times, TODO: get playfield level dependant times
-                let flash: u32 = FLASH_TIME[playfields[0].level];
-                let face: u32 = FACE_TIME[playfields[0].level];
-                let pop: u32 = POP_TIME[playfields[0].level];
+                let flash: u32 = FLASH_TIME[playfields[**id].level];
+                let face: u32 = FACE_TIME[playfields[**id].level];
+                let pop: u32 = POP_TIME[playfields[**id].level];
 
                 let all_time: u32 = flash + face + pop * clear_size;
 

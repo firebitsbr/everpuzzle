@@ -2,12 +2,22 @@
     axes: {},
 
     actions: {
-        "up": [Key(Up), Key(W)],
-        "down": [Key(Down), Key(S)],
-        "left": [Key(Left), Key(A)],
-        "right": [Key(Right), Key(D)],
-        "space": [Key(Space)],
-		"swap": [Key(X), Key(Y)],
-		"raise": [Key(C), Key(V)],
+		// actions for cursor 0
+		// You can modify this or give multiple keys to one action by
+		// [Key(W), Key(Up)]
+        "up0": [Key(W)],
+        "down0": [Key(S)],
+        "left0": [Key(A)],
+        "right0": [Key(D)],
+		"swap0": [Key(Space)],
+		"raise0": [Key(LShift)],
+
+		// actions for cursor 1
+		"up1": [Key(Up)],
+        "down1": [Key(Down)],
+        "left1": [Key(Left)],
+        "right1": [Key(Right)],
+		"swap1": [Key(Return)],
+		"raise1": [Key(Back)],
     }
 )
