@@ -3,7 +3,11 @@ use components::{
     block::Block,
     cursor::Cursor,
     playfield::{
-        clear::Clear, kind_generator::KindGenerator, lose::Lose, push::Push, stack::Stack,
+        clear::Clear,
+        kind_generator::{generate_random_seed, KindGenerator},
+        lose::Lose,
+        push::Push,
+        stack::Stack,
         stats::Stats,
     },
     playfield_id::PlayfieldId,
@@ -87,9 +91,11 @@ impl<'a> System<'a> for LoseSystem {
                 println!("------------------------------------------");
 
                 // reset everything
+                let random_seed = generate_random_seed();
                 for (stack, push, clear, kind_gen) in
                     (&stacks, &mut pushes, &mut clears, &mut kind_gens).join()
                 {
+                    kind_gen.new_rng(random_seed);
                     let kinds = kind_gen.create_stack(5, 8);
 
                     // reset al blocks and set their kinds completely new
@@ -102,7 +108,7 @@ impl<'a> System<'a> for LoseSystem {
                     *push = Default::default();
                     *clear = Default::default();
                     *lose = Default::default();
-                    *stat = Default::default();
+                    stat.reset();
 
                     for i in 0..playfields.len() {
                         playfields[i].level = playfields[i].start_level;

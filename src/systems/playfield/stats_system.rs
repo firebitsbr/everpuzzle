@@ -1,12 +1,7 @@
 use amethyst::{ecs::*, input::InputHandler};
 use components::{playfield::stats::Stats, playfield_id::PlayfieldId};
 use resources::playfield_resource::Playfields;
-
-// all actions we want to count as actions per minute
-const CURSOR_ACTIONS: [[&'static str; 6]; 2] = [
-    ["up0", "down0", "left0", "right0", "swap0", "raise0"],
-    ["up1", "down1", "left1", "right1", "swap1", "raise1"],
-];
+use data::cursor_data::CURSOR_ACTIONS;
 
 pub struct StatsSystem;
 

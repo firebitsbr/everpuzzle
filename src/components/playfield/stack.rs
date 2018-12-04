@@ -39,7 +39,7 @@ impl Index<usize> for Stack {
     type Output = Entity;
 
     fn index(&self, i: usize) -> &Entity {
-        &self.block_entities[i] //+ &self.p_id * (BLOCKS - 1)]
+        &self.block_entities[i + &self.p_id * BLOCKS]
     }
 }
 
@@ -47,7 +47,7 @@ impl Index<(usize, usize)> for Stack {
     type Output = Entity;
 
     fn index(&self, (x, y): (usize, usize)) -> &Entity {
-        &self.block_entities[Stack::coordinates_to_index(x, y)] // + &self.p_id * (BLOCKS - 1)]
+        &self.block_entities[Stack::coordinates_to_index(x, y) + &self.p_id * BLOCKS]
     }
 }
 

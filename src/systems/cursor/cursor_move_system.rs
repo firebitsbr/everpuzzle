@@ -1,13 +1,11 @@
 use amethyst::{core::Transform, ecs::*, input::InputHandler, renderer::SpriteRender};
 
 use components::{cursor::Cursor, playfield_id::PlayfieldId};
-use data::playfield_data::{COLUMNS, ROWS_VISIBLE};
+use data::{
+    playfield_data::{COLUMNS, ROWS_VISIBLE},
+    cursor_data::CURSOR_ACTIONS,
+};
 use resources::playfield_resource::Playfields;
-
-const CURSOR_ACTIONS: [[&'static str; 6]; 2] = [
-    ["up0", "down0", "left0", "right0", "swap0", "raise0"],
-    ["up1", "down1", "left1", "right1", "swap1", "raise1"],
-];
 
 pub struct CursorMoveSystem;
 
@@ -74,7 +72,7 @@ fn set_position(
     id: usize,
 ) {
     transform.translation.x =
-        (cursor.x * 32.0 + cursor.offset.0) * transform.scale.x + playfields[id].x;
+        (cursor.x * 32.0 + cursor.offset.0 + playfields[id].x * 2.0) * transform.scale.x;
     transform.translation.y =
-        (cursor.y * 32.0 + cursor.offset.1) * transform.scale.y + playfields[id].y;
+        (cursor.y * 32.0 + cursor.offset.1 + playfields[id].y * 2.0) * transform.scale.y;
 }

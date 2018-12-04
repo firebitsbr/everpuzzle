@@ -2,6 +2,7 @@ use amethyst::assets::*;
 use amethyst::prelude::*;
 use amethyst::renderer::*;
 
+#[derive(Clone)]
 pub struct SpriteSheetLoader {
     pub block_handle: SpriteSheetHandle,
 }
@@ -78,6 +79,7 @@ impl SpriteSheetLoader {
     }
 }
 
+// loads a spritesheet from a ron file
 pub fn load_sprite_sheet(world: &mut World, name: &str, filename: &str) -> SpriteSheetHandle {
     let loader = world.read_resource::<Loader>();
 

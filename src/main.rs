@@ -23,6 +23,7 @@ use resources::playfield_resource::Playfields;
 use systems::{
     block_system::BlockSystem,
     cursor::{cursor_action_system::CursorActionSystem, cursor_move_system::CursorMoveSystem},
+    fps_system::FPSSystem,
     playfield::{
         clear_system::ClearSystem, lose_system::LoseSystem, push_system::PushSystem,
         stats_system::StatsSystem,
@@ -79,7 +80,7 @@ fn main() -> amethyst::Result<()> {
                 .with_sprite_sheet_processor()
                 .with_sprite_visibility_sorting(&["transform_system"]),
         )?.with_bundle(input_bundle)?
-        //.with(FPSSystem, "fps_system", &[])
+        .with(FPSSystem, "fps_system", &[])
         .with(BlockSystem {}, "block_system", &[])
         .with(CursorMoveSystem {}, "cursor_move_system", &["input_system"])
         .with(
@@ -93,10 +94,10 @@ fn main() -> amethyst::Result<()> {
 
     // set the assets dir where all sprites will be loaded from
     let assets_dir = format!("{}/src/sprites/", app_root);
-    Application::build(assets_dir, GameMode {})?
+    Application::build(assets_dir, GameMode::new())?
         .with_frame_limit(
             FrameRateLimitStrategy::SleepAndYield(Duration::from_millis(1)),
-            60,
+            75,
         ).with_resource(display_config)
         .with_resource(playfield_config)
         .build(game_data)?

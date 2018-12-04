@@ -64,9 +64,9 @@ impl<'a> System<'a> for BlockSystem {
             // translation
             for (b, transform, id) in (&blocks, &mut transforms, &ids).join() {
                 transform.translation.x =
-                    (b.x as f32 * 16.0 + b.offset.0) * transform.scale.x + playfields[**id].x;
+                    (b.x as f32 * 16.0 + b.offset.0 + playfields[**id].x) * transform.scale.x;
                 transform.translation.y =
-                    (b.y as f32 * 16.0 + b.offset.1) * transform.scale.y + playfields[**id].y;
+                    (b.y as f32 * 16.0 + b.offset.1 + playfields[**id].y) * transform.scale.y;
             }
 
             // rendering

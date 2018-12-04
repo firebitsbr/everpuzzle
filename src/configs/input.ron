@@ -2,9 +2,12 @@
     axes: {},
 
     actions: {
-		// actions for cursor 0
-		// You can modify this or give multiple keys to one action by
+		// LIMITED TO 8 PLAYERS
+		//
+		// You can modify these or give multiple keys to one action by
 		// [Key(W), Key(Up)]
+
+		// all inputs for the 1st player
         "up0": [Key(W)],
         "down0": [Key(S)],
         "left0": [Key(A)],
@@ -12,12 +15,60 @@
 		"swap0": [Key(Space)],
 		"raise0": [Key(LShift)],
 
-		// actions for cursor 1
+		// all inputs for the 2nd player
 		"up1": [Key(Up)],
         "down1": [Key(Down)],
         "left1": [Key(Left)],
         "right1": [Key(Right)],
 		"swap1": [Key(Return)],
 		"raise1": [Key(Back)],
+
+		// all inputs for the 3rd player
+		"up2": [],
+        "down2": [],
+        "left2": [],
+        "right2": [],
+		"swap2": [],
+		"raise2": [],
+
+		// all inputs for the 4th player
+		"up3": [],
+        "down3": [],
+        "left3": [],
+        "right3": [],
+		"swap3": [],
+		"raise3": [],
+
+		// all inputs for the 5th player
+		"up4": [],
+        "down4": [],
+        "left4": [],
+        "right4": [],
+		"swap4": [],
+		"raise4": [],
+
+		// all inputs for the 6th player
+		"up5": [],
+        "down5": [],
+        "left5": [],
+        "right5": [],
+		"swap5": [],
+		"raise5": [],
+
+		// all inputs for the 7th player
+		"up6": [],
+        "down6": [],
+        "left6": [],
+        "right6": [],
+		"swap6": [],
+		"raise6": [],
+
+		// all inputs for the 6th player
+		"up7": [],
+        "down7": [],
+        "left7": [],
+        "right7": [],
+		"swap7": [],
+		"raise7": [],
     }
 )

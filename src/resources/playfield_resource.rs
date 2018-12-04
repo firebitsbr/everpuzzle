@@ -23,12 +23,14 @@ impl Default for PlayfieldResource {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Playfields {
     pub keys: Vec<PlayfieldResource>,
+    pub scale: Option<(f32, f32)>,
 }
 
 impl Default for Playfields {
     fn default() -> Self {
         Playfields {
             keys: vec![PlayfieldResource::default()],
+            scale: Some((1.0, 1.0)),
         }
     }
 }

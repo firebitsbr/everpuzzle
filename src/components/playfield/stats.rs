@@ -24,6 +24,13 @@ impl Stats {
             ..Default::default()
         }
     }
+
+    pub fn reset(&mut self) {
+        *self = Stats {
+            keys: self.keys.clone(),
+            ..Default::default()
+        };
+    }
 }
 
 impl Default for Stats {

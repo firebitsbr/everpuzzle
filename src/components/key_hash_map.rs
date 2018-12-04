@@ -1,10 +1,6 @@
 use amethyst::{ecs::Read, input::InputHandler};
 use std::collections::HashMap;
-
-const CURSOR_ACTIONS: [[&'static str; 6]; 2] = [
-    ["up0", "down0", "left0", "right0", "swap0", "raise0"],
-    ["up1", "down1", "left1", "right1", "swap1", "raise1"],
-];
+use data::cursor_data::CURSOR_ACTIONS;
 
 // A hashmap for storing ticks on inputs
 // an input signal will return true the amt of time its held down

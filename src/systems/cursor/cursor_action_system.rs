@@ -7,13 +7,11 @@ use components::{
     playfield::{push::Push, stack::Stack},
     playfield_id::PlayfieldId,
 };
-use data::block_data::SWAP_TIME;
-use data::playfield_data::{BLOCKS, COLUMNS};
-
-const CURSOR_ACTIONS: [[&'static str; 6]; 2] = [
-    ["up0", "down0", "left0", "right0", "swap0", "raise0"],
-    ["up1", "down1", "left1", "right1", "swap1", "raise1"],
-];
+use data::{
+    block_data::SWAP_TIME,
+    playfield_data::{BLOCKS, COLUMNS},
+    cursor_data::CURSOR_ACTIONS,
+};
 
 pub struct CursorActionSystem;
 
@@ -28,19 +26,14 @@ impl<'a> System<'a> for CursorActionSystem {
     );
 
     fn run(&mut self, (mut cursors, input, mut blocks, stacks, mut pushes, ids): Self::SystemData) {
-        for (cursor, id) in (&mut cursors, &ids).join() {
-            // swaps block kinds around, gets all blocks, searches through creation id,
-            // id matches cursor pos conversion, swapping from one block to another block
-            if cursor.keys.press(&input, CURSOR_ACTIONS[**id][4]) {
-                for stack in (&stacks).join() {
-                    swap(cursor.x, cursor.y, &stack, &mut blocks);
-                }
-            }
-        }
-
-        // raise will always be true when the raise key is held down
         for (stack, push, id) in (&stacks, &mut pushes, &ids).join() {
             let cursor = cursors.get_mut(stack.cursor_entity).unwrap();
+
+            if cursor.keys.press(&input, CURSOR_ACTIONS[**id][4]) {
+                swap(cursor.x, cursor.y, &stack, &mut blocks);
+            }
+
+            // raise will always be true when the raise key is held down
             push.signal_raise = cursor.keys.down(&input, CURSOR_ACTIONS[**id][5]);
         }
     }
