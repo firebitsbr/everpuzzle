@@ -4,6 +4,7 @@ use components::{
     block::Block,
     cursor::Cursor,
     playfield::{kind_generator::KindGenerator, push::Push, stack::Stack},
+    playfield_id::PlayfieldId,
 };
 use data::playfield_data::{BLOCKS, COLUMNS, RAISE_BLOCKED_TIME, RAISE_TIME, ROWS_VISIBLE};
 use resources::playfield_resource::Playfields;
@@ -22,14 +23,15 @@ impl<'a> System<'a> for PushSystem {
         WriteStorage<'a, KindGenerator>,
         Entities<'a>,
         Read<'a, Playfields>,
+        ReadStorage<'a, PlayfieldId>,
     );
 
     fn run(
         &mut self,
-        (mut pushes, stacks, mut blocks, mut cursors, mut kind_gens, entities, playfields): Self::SystemData,
+        (mut pushes, stacks, mut blocks, mut cursors, mut kind_gens, entities, playfields, ids): Self::SystemData,
 ){
         // playfield push info / push animation WIP
-        for (entity, stack) in (&entities, &stacks).join() {
+        for (entity, stack, id) in (&entities, &stacks, &ids).join() {
             {
                 // store info in push
                 let mut push = pushes.get_mut(entity).unwrap();
@@ -45,7 +47,7 @@ impl<'a> System<'a> for PushSystem {
                     &mut blocks,
                     cursors.get_mut(stack.cursor_entity).unwrap(),
                     kind_gens.get_mut(entity).unwrap(),
-                    playfields[0].level,
+                    playfields[**id].level,
                 );
             }
         }

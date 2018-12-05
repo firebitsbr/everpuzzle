@@ -23,10 +23,11 @@ impl Default for Cursor {
 }
 
 impl Cursor {
-    pub fn new(x: f32, y: f32) -> Cursor {
+    pub fn new(p_id: usize, x: f32, y: f32) -> Cursor {
         Cursor {
             x,
             y,
+            keys: KeyHashMap::new(p_id),
             ..Default::default()
         }
     }

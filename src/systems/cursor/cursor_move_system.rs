@@ -1,7 +1,10 @@
 use amethyst::{core::Transform, ecs::*, input::InputHandler, renderer::SpriteRender};
 
-use components::cursor::Cursor;
-use data::playfield_data::{COLUMNS, ROWS_VISIBLE};
+use components::{cursor::Cursor, playfield_id::PlayfieldId};
+use data::{
+    playfield_data::{COLUMNS, ROWS_VISIBLE},
+    cursor_data::CURSOR_ACTIONS,
+};
 use resources::playfield_resource::Playfields;
 
 pub struct CursorMoveSystem;
@@ -13,40 +16,43 @@ impl<'a> System<'a> for CursorMoveSystem {
         WriteStorage<'a, Cursor>,
         Read<'a, InputHandler<String, String>>,
         Read<'a, Playfields>,
+        ReadStorage<'a, PlayfieldId>,
     );
 
     fn run(
         &mut self,
-        (mut sprites, mut transforms, mut cursors, input, playfields): Self::SystemData,
+        (mut sprites, mut transforms, mut cursors, input, playfields, ids): Self::SystemData,
     ) {
-        for cursor in (&mut cursors).join() {
-            if cursor.keys.hold(&input, "up") {
+        for (cursor, id) in (&mut cursors, &ids).join() {
+            if cursor.keys.hold(&input, CURSOR_ACTIONS[**id][0]) {
                 if cursor.y < (ROWS_VISIBLE - 1) as f32 {
                     cursor.y += 1.0;
                 }
             }
 
-            if cursor.keys.hold(&input, "down") {
+            if cursor.keys.hold(&input, CURSOR_ACTIONS[**id][1]) {
                 if cursor.y > 1.0 {
                     cursor.y -= 1.0;
                 }
             }
 
-            if cursor.keys.hold(&input, "left") {
+            if cursor.keys.hold(&input, CURSOR_ACTIONS[**id][2]) {
                 if cursor.x > 0.0 {
                     cursor.x -= 1.0;
                 }
             }
 
-            if cursor.keys.hold(&input, "right") {
+            if cursor.keys.hold(&input, CURSOR_ACTIONS[**id][3]) {
                 if cursor.x < (COLUMNS - 2) as f32 {
                     cursor.x += 1.0;
                 }
             }
         }
 
-        for (sprite, transform, cursor) in (&mut sprites, &mut transforms, &mut cursors).join() {
-            set_position(cursor, transform, &playfields);
+        for (sprite, transform, cursor, id) in
+            (&mut sprites, &mut transforms, &mut cursors, &ids).join()
+        {
+            set_position(cursor, transform, &playfields, **id);
 
             sprite.sprite_number = cursor.anim_offset as usize;
             if cursor.anim_offset < 7.0 {
@@ -58,9 +64,15 @@ impl<'a> System<'a> for CursorMoveSystem {
     }
 }
 
-fn set_position(cursor: &Cursor, transform: &mut Transform, playfields: &Read<'_, Playfields>) {
+// sets the cursors position scaled on a grid with an offset by the playfield
+fn set_position(
+    cursor: &Cursor,
+    transform: &mut Transform,
+    playfields: &Read<'_, Playfields>,
+    id: usize,
+) {
     transform.translation.x =
-        (cursor.x * 32.0 + cursor.offset.0) * transform.scale.x + playfields[0].x;
+        (cursor.x * 32.0 + cursor.offset.0 + playfields[id].x * 2.0) * transform.scale.x;
     transform.translation.y =
-        (cursor.y * 32.0 + cursor.offset.1) * transform.scale.y + playfields[0].y;
+        (cursor.y * 32.0 + cursor.offset.1 + playfields[id].y * 2.0) * transform.scale.y;
 }

@@ -23,22 +23,23 @@ impl Default for PlayfieldResource {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Playfields {
     pub keys: Vec<PlayfieldResource>,
+    pub scale: Option<(f32, f32)>,
 }
 
 impl Default for Playfields {
     fn default() -> Self {
         Playfields {
             keys: vec![PlayfieldResource::default()],
+            scale: Some((1.0, 1.0)),
         }
     }
 }
 
-/*
 impl Playfields {
     pub fn len(&self) -> usize {
         self.keys.len()
     }
-}*/
+}
 
 // index easier so you dont need access keys all the time
 impl Index<usize> for Playfields {

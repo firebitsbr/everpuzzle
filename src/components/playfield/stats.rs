@@ -17,6 +17,22 @@ pub struct Stats {
     pub start_level: usize,
 }
 
+impl Stats {
+    pub fn new(p_id: usize) -> Stats {
+        Stats {
+            keys: KeyHashMap::new(p_id),
+            ..Default::default()
+        }
+    }
+
+    pub fn reset(&mut self) {
+        *self = Stats {
+            keys: self.keys.clone(),
+            ..Default::default()
+        };
+    }
+}
+
 impl Default for Stats {
     fn default() -> Self {
         Stats {

@@ -1,5 +1,6 @@
 use amethyst::{ecs::Read, input::InputHandler};
 use std::collections::HashMap;
+use data::cursor_data::CURSOR_ACTIONS;
 
 // A hashmap for storing ticks on inputs
 // an input signal will return true the amt of time its held down
@@ -12,14 +13,20 @@ pub struct KeyHashMap {
 
 impl Default for KeyHashMap {
     fn default() -> Self {
+        KeyHashMap {
+            key_presses: HashMap::new(),
+        }
+    }
+}
+
+impl KeyHashMap {
+    pub fn new(id: usize) -> KeyHashMap {
         let mut key_presses: HashMap<&'static str, i32> = HashMap::new();
-        key_presses.insert("up", 0);
-        key_presses.insert("down", 0);
-        key_presses.insert("right", 0);
-        key_presses.insert("left", 0);
-        key_presses.insert("swap", 0);
-        key_presses.insert("space", 0);
-        key_presses.insert("raise", 0);
+
+        // get the actions for the cursor specified by the id
+        for action in &CURSOR_ACTIONS[id] {
+            key_presses.insert(action, 0);
+        }
 
         KeyHashMap { key_presses }
     }

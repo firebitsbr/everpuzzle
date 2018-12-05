@@ -3,20 +3,24 @@ use amethyst::ecs::{Component, DenseVecStorage};
 use data::playfield_data::{BLOCKS, COLUMNS};
 use rand::prelude::*;
 
+// const STATIC_SEED: [u8; 16] = [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+
 // resource that stores the rng generator that will be global
 // accessed via the world
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct KindGenerator {
     pub rng: SmallRng,
 }
 
-impl Default for KindGenerator {
-    // default so it can be fetched by systems
-    fn default() -> KindGenerator {
-        KindGenerator {
-            rng: SmallRng::from_seed([0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
-        }
+// generates a new seed to be used by kind_generators rng
+pub fn generate_random_seed() -> [u8; 16] {
+    let mut rand_seed: [u8; 16] = [0; 16];
+
+    for x in &mut rand_seed {
+        *x = rand::random::<u8>();
     }
+
+    rand_seed
 }
 
 // returns a stack of blocks where no numbers are the same next to each other
@@ -24,6 +28,16 @@ impl Default for KindGenerator {
 // also has zones in which all blocks will definitely be nulled
 // and a safe zone where no nulling happens
 impl KindGenerator {
+    pub fn new(seed: [u8; 16]) -> KindGenerator {
+        KindGenerator {
+            rng: SmallRng::from_seed(seed),
+        }
+    }
+
+    pub fn new_rng(&mut self, seed: [u8; 16]) {
+        self.rng = SmallRng::from_seed(seed);
+    }
+
     pub fn create_stack(&mut self, safe: usize, nulling: usize) -> Vec<i32> {
         let safe_zone: usize = safe * COLUMNS;
         let nulling_zone: usize = nulling * COLUMNS;

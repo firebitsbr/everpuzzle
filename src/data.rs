@@ -64,3 +64,23 @@ pub mod block_data {
     // time the land will animate for
     pub const LAND_TIME: u32 = 10;
 }
+
+pub mod cursor_data {
+    // This is a really hardcoded way to have actions but I couldn't
+    // get anything working
+    //
+    // What I tried was using Strings instead with pushing the last num
+    // to each action but I always got into issues
+    //
+    // all strings for their actions, up to 8 players possible
+    pub const CURSOR_ACTIONS: [[&'static str; 6]; 8] = [
+        ["up0", "down0", "left0", "right0", "swap0", "raise0"],
+        ["up1", "down1", "left1", "right1", "swap1", "raise1"],
+        ["up2", "down2", "left2", "right2", "swap2", "raise2"],
+        ["up3", "down3", "left3", "right3", "swap3", "raise3"],
+        ["up4", "down4", "left4", "right4", "swap4", "raise4"],
+        ["up5", "down5", "left5", "right5", "swap5", "raise5"],
+        ["up6", "down6", "left6", "right6", "swap6", "raise6"],
+        ["up7", "down7", "left7", "right7", "swap7", "raise7"],
+    ];
+}
