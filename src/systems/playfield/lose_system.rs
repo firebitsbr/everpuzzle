@@ -68,12 +68,34 @@ impl<'a> System<'a> for LoseSystem {
         }
 
         // maybe reset the game for now
-        for (lose, stat, id) in (&mut loses, &mut stats, &ids).join() {
+        let mut anyone_lost = false;
+        for lose in (&mut loses).join() {
             if lose.lost {
-                println!("You lost the game, here are your stats");
-                println!("------------------------------------------");
-                println!("You can increase the difficulty by editing");
-                println!("the playfield_config.ron file .level");
+                anyone_lost = true;
+            }
+        }
+
+        if anyone_lost {
+            // generate a new seed to be shared with all kind generators
+            let random_seed = generate_random_seed();
+
+            // reset everything
+            for (lose, stat, id, stack, push, clear, kind_gen) in (
+                &mut loses,
+                &mut stats,
+                &ids,
+                &stacks,
+                &mut pushes,
+                &mut clears,
+                &mut kind_gens,
+            )
+                .join()
+            {
+                if lose.lost {
+                    println!("Player {} lost the game.", **id);
+                } else {
+                    println!("Player {} won the game!", **id);
+                }
                 println!("------------------------------------------");
                 println!("Highest Chain: {}", stat.highest_chain);
                 println!("Total Blocks Cleared: {}", stat.blocks_cleared);
@@ -90,32 +112,29 @@ impl<'a> System<'a> for LoseSystem {
                 );
                 println!("------------------------------------------");
 
-                // reset everything
-                let random_seed = generate_random_seed();
-                for (stack, push, clear, kind_gen) in
-                    (&stacks, &mut pushes, &mut clears, &mut kind_gens).join()
-                {
-                    kind_gen.new_rng(random_seed);
-                    let kinds = kind_gen.create_stack(5, 8);
+                // take the shared seed
+                kind_gen.new_rng(random_seed);
+                let kinds = kind_gen.create_stack(5, 8);
 
-                    // reset al blocks and set their kinds completely new
-                    for i in 0..BLOCKS {
-                        let b = blocks.get_mut(stack[i]).unwrap();
-                        b.reset();
-                        b.kind = kinds[i];
-                    }
-
-                    *push = Default::default();
-                    *clear = Default::default();
-                    *lose = Default::default();
-                    stat.reset();
-
-                    for i in 0..playfields.len() {
-                        playfields[i].level = playfields[i].start_level;
-                    }
-
-                    cursors.get_mut(stack.cursor_entity).unwrap().reset();
+                // reset al blocks and set their kinds completely new
+                for i in 0..BLOCKS {
+                    let b = blocks.get_mut(stack[i]).unwrap();
+                    b.reset();
+                    b.kind = kinds[i];
                 }
+
+                // default / reset all
+                *push = Default::default();
+                *clear = Default::default();
+                *lose = Default::default();
+                stat.reset();
+
+                // reset level to start
+                for i in 0..playfields.len() {
+                    playfields[i].level = playfields[i].start_level;
+                }
+
+                cursors.get_mut(stack.cursor_entity).unwrap().reset();
             }
         }
     }

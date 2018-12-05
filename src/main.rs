@@ -30,14 +30,14 @@ use systems::{
     },
 };
 
-// static seed for rand crate that can be used to have the same rand seed - good for debugging
-// const SOME_SEED: [u8; 16] = [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-
 fn main() -> amethyst::Result<()> {
     // log only warnings to create less logs
     let mut log = amethyst::LoggerConfig::default();
     log.level_filter = amethyst::LogLevelFilter::Warn;
     amethyst::start_logger(log);
+
+    println!("Change the amount of players in the playfield_config.ron");
+    println!("Controller / Keyboard Inputs can be changed in input.ron");
 
     // necessary to get users path on each separate device
     let app_root = application_root_dir();
@@ -60,13 +60,7 @@ fn main() -> amethyst::Result<()> {
     );
 
     // testing different inputs for keyboard/controller
-    let binding_path = {
-        if cfg!(feature = "sdl_controller") {
-            format!("{}/src/configs/input_controller.ron", app_root)
-        } else {
-            format!("{}/src/configs/input.ron", app_root)
-        }
-    };
+    let binding_path = format!("{}/src/configs/input.ron", app_root);
 
     // load input settings
     let input_bundle =
@@ -80,7 +74,7 @@ fn main() -> amethyst::Result<()> {
                 .with_sprite_sheet_processor()
                 .with_sprite_visibility_sorting(&["transform_system"]),
         )?.with_bundle(input_bundle)?
-        .with(FPSSystem, "fps_system", &[])
+        //.with(FPSSystem, "fps_system", &[])
         .with(BlockSystem {}, "block_system", &[])
         .with(CursorMoveSystem {}, "cursor_move_system", &["input_system"])
         .with(

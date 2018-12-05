@@ -6,9 +6,17 @@
 		//
 		// You can modify these or give multiple keys to one action by
 		// [Key(W), Key(Up)]
+		//
+		// example of controller inputs 
+		//"up0": [Controller(0, DPadUp)],
+        //"down0": [Controller(0, DPadDown)],
+        //"left0": [Controller(0, DPadLeft)],
+        //"right0": [Controller(0, DPadRight)],
+		//"swap0": [Controller(0, A), Controller(0, B)],
+		//"raise0": [Controller(0, LeftShoulder), Controller(0, RightShoulder)],
 
 		// all inputs for the 1st player
-        "up0": [Key(W)],
+		"up0": [Key(W)],
         "down0": [Key(S)],
         "left0": [Key(A)],
         "right0": [Key(D)],
@@ -16,12 +24,12 @@
 		"raise0": [Key(LShift)],
 
 		// all inputs for the 2nd player
-		"up1": [Key(Up)],
-        "down1": [Key(Down)],
-        "left1": [Key(Left)],
-        "right1": [Key(Right)],
-		"swap1": [Key(Return)],
-		"raise1": [Key(Back)],
+        "up1": [Controller(0, DPadUp)],
+        "down1": [Controller(0, DPadDown)],
+        "left1": [Controller(0, DPadLeft)],
+        "right1": [Controller(0, DPadRight)],
+		"swap1": [Controller(0, A), Controller(0, B)],
+		"raise1": [Controller(0, LeftShoulder), Controller(0, RightShoulder)],
 
 		// all inputs for the 3rd player
 		"up2": [],
@@ -63,7 +71,7 @@
 		"swap6": [],
 		"raise6": [],
 
-		// all inputs for the 6th player
+		// all inputs for the 8th player
 		"up7": [],
         "down7": [],
         "left7": [],
