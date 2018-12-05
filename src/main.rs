@@ -97,7 +97,7 @@ fn main() -> amethyst::Result<()> {
     Application::build(assets_dir, GameMode::new())?
         .with_frame_limit(
             FrameRateLimitStrategy::SleepAndYield(Duration::from_millis(1)),
-            75,
+            60,
         ).with_resource(display_config)
         .with_resource(playfield_config)
         .build(game_data)?

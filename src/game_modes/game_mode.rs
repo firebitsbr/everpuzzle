@@ -16,18 +16,16 @@ use components::{
         stats::Stats,
     },
     playfield_id::PlayfieldId,
-    spritesheet_loader::{load_sprite_sheet, SpriteSheetLoader},
+    spritesheet_loader::{load_blocks_sprite_sheet, load_sprite_sheet},
 };
 use data::playfield_data::BLOCKS;
 use resources::playfield_resource::Playfields;
 
-pub struct GameMode {
-    loader: Option<SpriteSheetLoader>,
-}
+pub struct GameMode;
 
 impl GameMode {
     pub fn new() -> GameMode {
-        GameMode { loader: None }
+        GameMode {}
     }
 
     // creates a cursor entity contains
@@ -135,20 +133,18 @@ impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
     fn on_start(&mut self, data: StateData<GameData>) {
         let world = data.world;
 
-        self.loader = Some(SpriteSheetLoader::new(world));
-        let test = self.loader.unwrap().block_handle;
-
         // create some randomized seed to be shared
         let random_seed = generate_random_seed();
         let mut block_entities: Vec<Entity> = Vec::new();
         let mut kind_generators: Vec<KindGenerator> = Vec::new();
         let amt = world.read_resource::<Playfields>().len();
+        let block_sprite = load_blocks_sprite_sheet(world);
 
         // create all block entities first to distribute them
         for id in 0..amt {
             kind_generators.push(KindGenerator::new(random_seed));
             block_entities.append(&mut create_blocks(
-                test.clone(),
+                &block_sprite,
                 id,
                 world,
                 kind_generators[id].create_stack(5, 8),
@@ -181,7 +177,7 @@ impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
 // takes a vec of i32's that will be used to init all the kinds
 // returns a vec of all block entities that should be stored in a playfield stack
 pub fn create_blocks(
-    handle: SpriteSheetHandle,
+    sprite: &SpriteRender,
     p_id: usize,
     world: &mut World,
     kinds: Vec<i32>,
@@ -202,17 +198,10 @@ pub fn create_blocks(
         let (x, y) = Stack::index_to_coordinates(i);
         let mut b = Block::new(i as u32, kinds[i], x as i32, y as i32, level);
 
-        let sprite_render_block = SpriteRender {
-            sprite_sheet: &handle,
-            sprite_number: 0,
-            flip_horizontal: false,
-            flip_vertical: false,
-        };
-
         block_entities.push(
             world
                 .create_entity()
-                .with(sprite_render_block)
+                .with(sprite.clone())
                 .with(b)
                 .with(GlobalTransform::default())
                 .with(trans)
