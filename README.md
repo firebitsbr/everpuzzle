@@ -29,7 +29,8 @@ Optional: Customize the config files to your liking.
 ## How to Build
 1. [Install Rust](https://www.rust-lang.org/en-US/install.html)
 2. Clone / Download this repository into a folder
-3. Open a command prompt / terminal inside the folder and run: cargo run (Downloading all crates will take some time... 2-10 minutes)
+3. Download the SDL2 development .dll and .lib and put them next to the src folder https://www.libsdl.org/download-2.0.php
+4. Open a command prompt / terminal inside the folder and run: cargo run (Downloading all crates will take some time... 2-10 minutes)
 
 If you get errors, make sure to update your Rust version before creating issues here! To do that, run `rustup update`.
 On Linux, make sure that Amethyst's dependencies are installed (see [Amethyst's documentation](https://www.amethyst.rs/book/latest/getting-started.html#required-dependencies) for more info).
@@ -37,13 +38,7 @@ On Linux, make sure that Amethyst's dependencies are installed (see [Amethyst's 
 If you still encounter problems, open an issue on GitHub with your OS and a screenshot / pastebin of the command line. 
 
 ## How to Play
-|  Action  | Keyboard  | Controller  |
-| ------------ | ------------ | ------------ |
-|  Move  | WASD / Arrows  |  Analog Arrows  |
-| Swap  | X / Y  |  A / B  |
-| Raise | C / V  | L / R  |
-| Reset | Space  | Select  |
-| Menu | Enter | Start |
+Inputs can be viewed in the input.ron, these can be manually modified! https://github.com/Skytrias/everpuzzle/blob/master/src/configs/input.ron
 
 ## About me
 *Skytrias#8787 on Discord*
