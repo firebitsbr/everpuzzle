@@ -169,6 +169,10 @@ impl Block {
             ..Default::default()
         };
     }
+
+    pub fn load(&mut self, other: Block) {
+        *self = other;
+    }
 }
 
 impl Component for Block {

@@ -18,6 +18,7 @@ mod data;
 mod game_modes;
 mod resources;
 mod systems;
+mod tests;
 use game_modes::game_mode::GameMode;
 use resources::playfield_resource::Playfields;
 use systems::{
@@ -29,7 +30,6 @@ use systems::{
         stats_system::StatsSystem,
     },
 };
-
 fn main() -> amethyst::Result<()> {
     // log only warnings to create less logs
     let mut log = amethyst::LoggerConfig::default();
@@ -40,11 +40,11 @@ fn main() -> amethyst::Result<()> {
     println!("Controller / Keyboard Inputs can be changed in input.ron");
 
     // necessary to get users path on each separate device
-    let app_root = application_root_dir();
+    let app_root = application_root_dir()?;
     // path to display settings
-    let display_path = format!("{}/src/configs/display_config.ron", app_root);
+    let display_path = app_root.join("src/configs/display_config.ron");
     let display_config = DisplayConfig::load(&display_path);
-    let playfield_path = format!("{}/src/configs/playfield_config.ron", app_root);
+    let playfield_path = app_root.join("src/configs/playfield_config.ron");
     let playfield_config = Playfields::load(&playfield_path);
 
     // start pipeline that clears to white background
@@ -52,7 +52,7 @@ fn main() -> amethyst::Result<()> {
     let pipe = Pipeline::build().with_stage(
         Stage::with_backbuffer()
             .clear_target([1.0, 1.0, 1.0, 1.0], 1.0)
-            .with_pass(DrawSprite::new().with_transparency(
+            .with_pass(DrawFlat2D::new().with_transparency(
                 ColorMask::all(),
                 ALPHA,
                 Some(DepthMode::LessEqualWrite),
@@ -60,7 +60,7 @@ fn main() -> amethyst::Result<()> {
     );
 
     // testing different inputs for keyboard/controller
-    let binding_path = format!("{}/src/configs/input.ron", app_root);
+    let binding_path = app_root.join("src/configs/input.ron");
 
     // load input settings
     let input_bundle =
@@ -73,7 +73,8 @@ fn main() -> amethyst::Result<()> {
             RenderBundle::new(pipe, Some(display_config.clone()))
                 .with_sprite_sheet_processor()
                 .with_sprite_visibility_sorting(&["transform_system"]),
-        )?.with_bundle(input_bundle)?
+        )?
+        .with_bundle(input_bundle)?
         //.with(FPSSystem, "fps_system", &[])
         .with(BlockSystem {}, "block_system", &[])
         .with(CursorMoveSystem {}, "cursor_move_system", &["input_system"])
@@ -81,18 +82,20 @@ fn main() -> amethyst::Result<()> {
             CursorActionSystem {},
             "cursor_action_system",
             &["input_system"],
-        ).with(PushSystem {}, "playfield_push_system", &[])
+        )
+        .with(PushSystem {}, "playfield_push_system", &[])
         .with(ClearSystem {}, "playfield_clear_system", &[])
         .with(LoseSystem {}, "playfield_lose_system", &[])
         .with(StatsSystem {}, "playfield_stats_system", &["input_system"]);
 
     // set the assets dir where all sprites will be loaded from
-    let assets_dir = format!("{}/src/sprites/", app_root);
+    let assets_dir = app_root.join("src/sprites");
     Application::build(assets_dir, GameMode::new())?
         .with_frame_limit(
             FrameRateLimitStrategy::SleepAndYield(Duration::from_millis(1)),
             60,
-        ).with_resource(display_config)
+        )
+        .with_resource(display_config)
         .with_resource(playfield_config)
         .build(game_data)?
         .run();

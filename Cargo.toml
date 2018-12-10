@@ -1,16 +1,18 @@
 [package]
 name = "everpuzzle"
-version = "0.0.5"
+version = "0.0.6"
 authors = ["Skytrias <skytrias@protonmail.com>"]
 
 [dependencies]
-amethyst = "0.9"
 rand = "0.6.1"
-serde_derive = "1.0.8"
-serde = "1.0.8"
+serde_derive = "1.0.81"
+serde = "1.0.81"
 
 # allow controller support by default!
 [dependencies.amethyst_input]
-version = "0.5.0"
+version = "0.6.0"
 features = ["sdl_controller"]
 
+[dependencies.amethyst]
+git = "https://github.com/amethyst/amethyst"
+rev = "36501cf580d1f7a41a787e470e431aef613d8875"

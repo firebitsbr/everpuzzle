@@ -1,5 +1,5 @@
 use amethyst::{
-    core::{cgmath::Vector3, GlobalTransform, Transform},
+    core::{nalgebra::Vector3, GlobalTransform, Transform},
     ecs::prelude::Entity,
     prelude::*,
     renderer::*,
@@ -38,8 +38,6 @@ impl GameMode {
         let sprite_sheet = SpriteRender {
             sprite_sheet: load_sprite_sheet(world, "cursor.png", "cursor_spritesheet.ron"),
             sprite_number: 0,
-            flip_horizontal: false,
-            flip_vertical: false,
         };
 
         // cursor scale should be half of the blocks, since its twice as big
@@ -50,7 +48,7 @@ impl GameMode {
 
         // cursor transform
         let mut trans = Transform::default();
-        trans.scale = Vector3::new(scale.0, scale.1, 1.0);
+        trans.set_scale(scale.0, scale.1, 1.0);
 
         let cursor = Cursor::new(p_id, 2.0, 5.0);
 
@@ -109,7 +107,7 @@ impl GameMode {
     // display_config.ron. TODO: use the dimensions
     fn initialise_camera(&mut self, world: &mut World) {
         let mut transform = Transform::default();
-        transform.translation.z = 1.0;
+        transform.translate_z(1.0);
 
         // get dimensions from main.rs display config
         let dimensions = {
@@ -122,14 +120,15 @@ impl GameMode {
             .with(Camera::from(Projection::orthographic(
                 0.0,
                 dimensions.0 as f32,
-                dimensions.1 as f32,
                 0.0,
-            ))).with(transform)
+                dimensions.1 as f32,
+            )))
+            .with(transform)
             .build();
     }
 }
 
-impl<'a, 'b> SimpleState<'a, 'b> for GameMode {
+impl SimpleState for GameMode {
     fn on_start(&mut self, data: StateData<GameData>) {
         let world = data.world;
 
@@ -192,7 +191,7 @@ pub fn create_blocks(
 
     for i in 0..BLOCKS {
         let mut trans = Transform::default();
-        trans.scale = Vector3::new(scale.0, scale.1, 1.0);
+        trans.set_scale(scale.0, scale.1, 1.0);
 
         // set position instantly so no weird spawn flash happens
         let (x, y) = Stack::index_to_coordinates(i);

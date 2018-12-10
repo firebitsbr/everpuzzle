@@ -2,8 +2,8 @@ use amethyst::{core::Transform, ecs::*, input::InputHandler, renderer::SpriteRen
 
 use components::{cursor::Cursor, playfield_id::PlayfieldId};
 use data::{
-    playfield_data::{COLUMNS, ROWS_VISIBLE},
     cursor_data::CURSOR_ACTIONS,
+    playfield_data::{COLUMNS, ROWS_VISIBLE},
 };
 use resources::playfield_resource::Playfields;
 
@@ -71,8 +71,12 @@ fn set_position(
     playfields: &Read<'_, Playfields>,
     id: usize,
 ) {
-    transform.translation.x =
-        (cursor.x * 32.0 + cursor.offset.0 + playfields[id].x * 2.0) * transform.scale.x;
-    transform.translation.y =
-        (cursor.y * 32.0 + cursor.offset.1 + playfields[id].y * 2.0) * transform.scale.y;
+    // immutable scale variables
+    let (scale_x, scale_y) = {
+        let scale = transform.scale();
+        (scale.x, scale.y)
+    };
+
+    transform.set_x((cursor.x * 32.0 + cursor.offset.0 + playfields[id].x * 2.0) * scale_x);
+    transform.set_y((cursor.y * 32.0 + cursor.offset.1 + playfields[id].y * 2.0) * scale_y);
 }

@@ -24,7 +24,7 @@ impl<'a> System<'a> for BlockSystem {
     fn run(
         &mut self,
         (stacks, mut sprites, mut transforms, mut blocks, mut hiddens, playfields, ids): Self::SystemData,
-){
+    ) {
         // run through all existing block stacks
         for stack in (&stacks).join() {
             // run through all states from a block
@@ -63,10 +63,14 @@ impl<'a> System<'a> for BlockSystem {
 
             // translation
             for (b, transform, id) in (&blocks, &mut transforms, &ids).join() {
-                transform.translation.x =
-                    (b.x as f32 * 16.0 + b.offset.0 + playfields[**id].x) * transform.scale.x;
-                transform.translation.y =
-                    (b.y as f32 * 16.0 + b.offset.1 + playfields[**id].y) * transform.scale.y;
+                // immutable scale variables
+                let (scale_x, scale_y) = {
+                    let scale = transform.scale();
+                    (scale.x, scale.y)
+                };
+
+                transform.set_x((b.x as f32 * 16.0 + b.offset.0 + playfields[**id].x) * scale_x);
+                transform.set_y((b.y as f32 * 16.0 + b.offset.1 + playfields[**id].y) * scale_y);
             }
 
             // rendering
