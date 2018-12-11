@@ -9,10 +9,7 @@ serde_derive = "1.0.81"
 serde = "1.0.81"
 
 # allow controller support by default!
-[dependencies.amethyst_input]
-version = "0.6.0"
-features = ["sdl_controller"]
-
 [dependencies.amethyst]
 git = "https://github.com/amethyst/amethyst"
 rev = "36501cf580d1f7a41a787e470e431aef613d8875"
+features = ["sdl_controller"]
