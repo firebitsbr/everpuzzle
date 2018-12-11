@@ -29,17 +29,15 @@ impl<'a> System<'a> for BlockSystem {
         for stack in (&stacks).join() {
             // run through all states from a block
             for i in 0..BLOCKS {
-                // decrease the counter if its over 0
-                {
-                    let mut b = blocks.get_mut(stack[i]).unwrap();
+                let b = *blocks.get(stack[i]).unwrap();
 
-                    if b.counter > 0 {
-                        b.counter -= 1;
-                    }
+                // decrease the counter if its over 0
+                if b.counter > 0 {
+                    blocks.get_mut(stack[i]).unwrap().counter -= 1;
                 }
 
                 // match all on the blocks state - run all execute functions
-                match blocks.get(stack[i]).unwrap().state {
+                match b.state {
                     "IDLE" => Idle::execute(i, &stack, &mut blocks),
                     "FALL" => Fall::execute(i, &stack, &mut blocks),
                     "LAND" => Land::execute(i, &stack, &mut blocks),
@@ -49,8 +47,8 @@ impl<'a> System<'a> for BlockSystem {
                 }
 
                 // if the counter is at 0, call current states counter end function
-                if blocks.get(stack[i]).unwrap().counter <= 0 {
-                    match blocks.get(stack[i]).unwrap().state {
+                if b.counter <= 0 {
+                    match b.state {
                         "HANG" => Hang::counter_end(i, &stack, &mut blocks),
                         "FALL" => Fall::counter_end(i, &stack, &mut blocks),
                         "LAND" => Land::counter_end(i, &stack, &mut blocks),
@@ -107,7 +105,7 @@ fn update_sprites(
                 hiddens.remove(stack[i]);
             }
 
-            if b.is_garbage {
+            if !b.is_garbage {
                 if b.state == "IDLE" {
                     // checks wether the highest block is null
                     if top.kind != -1 && top.state == "IDLE" {
@@ -116,14 +114,10 @@ fn update_sprites(
                         b.anim_offset = 1;
                     }
                 }
+            }
 
-                sprites.get_mut(stack[i]).unwrap().sprite_number =
-                    b.kind as usize * 8 + b.anim_offset as usize;
-            }
-            else {
-                sprites.get_mut(stack[i]).unwrap().sprite_number =
-                    8 * 8
-            }
+            sprites.get_mut(stack[i]).unwrap().sprite_number =
+                b.kind as usize * 8 + b.anim_offset as usize;
         } else {
             if !hiddens.contains(stack[i]) {
                 hiddens

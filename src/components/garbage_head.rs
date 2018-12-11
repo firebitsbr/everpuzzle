@@ -1,4 +1,4 @@
-use amethyst::ecs::{Component, Entity, DenseVecStorage};
+use amethyst::ecs::Entity;
 
 // individual parts that will lay in the master
 // consists of the head and its subparts
@@ -11,15 +11,15 @@ pub struct GarbageHead {
     pub lowest_blocks: Vec<Entity>,
     pub marked_clear: bool,
     pub hanged: bool,
-    pub new_kinds: Vec<Entity>
+    pub new_kinds: Vec<Entity>,
 }
 
 impl GarbageHead {
     pub fn new(
-        head: Entity, 
-        parts: Vec<Entity>, 
-        highest_blocks: Vec<Entity>, 
-        lowest_blocks: Vec<Entity>, 
+        head: Entity,
+        parts: Vec<Entity>,
+        highest_blocks: Vec<Entity>,
+        lowest_blocks: Vec<Entity>,
     ) -> GarbageHead {
         GarbageHead {
             head,
@@ -33,8 +33,4 @@ impl GarbageHead {
             new_kinds: Vec::new(),
         }
     }
-}
-
-impl Component for GarbageHead {
-    type Storage = DenseVecStorage<Self>;
 }

@@ -2,7 +2,7 @@ use amethyst::ecs::*;
 
 use components::{
     block::Block,
-    playfield::{clear::Clear, stack::Stack, stats::Stats},
+    playfield::{clear::Clear, garbage_master::GarbageMaster, stack::Stack, stats::Stats},
     playfield_id::PlayfieldId,
 };
 
@@ -24,16 +24,29 @@ impl<'a> System<'a> for ClearSystem {
         WriteStorage<'a, Stats>,
         Read<'a, Playfields>,
         ReadStorage<'a, PlayfieldId>,
+        WriteStorage<'a, GarbageMaster>,
     );
 
     fn run(
         &mut self,
-        (mut clears, mut blocks, stacks, mut stats, playfields, ids): Self::SystemData,
+        (
+            mut clears,
+            mut blocks,
+            stacks,
+            mut stats,
+            playfields,
+            ids,
+            mut garbages,
+        ): Self::SystemData,
     ) {
         // block clear detection
         // counts the amount of clears each frame, passes them uniquely to an array holding their ids
         // sets a lot of playfield_clear values and then sets the blocks to animate with given times
-        for (clear, stack, stats, id) in (&mut clears, &stacks, &mut stats, &ids).join() {
+        for (clear, stack, stats, id, garbage) in
+            (&mut clears, &stacks, &mut stats, &ids, &mut garbages).join()
+        {
+            // add all blocks to a vec that are clearing right now,
+            // each block can only exist once in this vec
             for x in 0..COLUMNS {
                 for y in 0..ROWS_VISIBLE {
                     for clear_block_id in check_clear(x, y, &stack, &blocks) {
@@ -80,6 +93,26 @@ impl<'a> System<'a> for ClearSystem {
                     b.counter = all_time;
                     b.clear_start_counter = all_time as i32;
                     change_state(b, "CLEAR");
+                }
+
+                // if a combo is bigger than 3
+                if clear.combo_counter > 3 {
+                    // either by combo or by chain
+                    let head = {
+                        // if chain == 1 use combo - 1 as x
+                        if clear.chain == 1 {
+                            garbage.spawn(
+                                (clear.combo_counter as usize - 1, 1),
+                                &stack,
+                                &mut blocks,
+                            )
+                        }
+                        // if chain is bigger than 1, use x as 6 and go by chain - 1 = y
+                        else {
+                            garbage.spawn((6, clear.chain as usize - 1), &stack, &mut blocks)
+                        }
+                    };
+                    garbage.children.push(head);
                 }
 
                 // clear the clear_queue if its not empty

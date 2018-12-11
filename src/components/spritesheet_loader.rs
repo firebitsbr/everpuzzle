@@ -8,8 +8,7 @@ fn load_texture<N>(name: N, world: &World) -> TextureHandle
 where
     N: Into<String>,
 {
-    let loader = world.read_resource::<Loader>();
-    loader.load(
+    world.read_resource::<Loader>().load(
         name,
         PngFormat,
         TextureMetadata::srgb_scale(),
@@ -19,8 +18,6 @@ where
 }
 
 pub fn load_blocks_sprite_sheet(world: &mut World) -> SpriteRender {
-    let loader = world.read_resource::<Loader>();
-
     const SPRITESHEET_SIZE: (u32, u32) = (128, 144);
 
     // Create the sprite for the paddles.

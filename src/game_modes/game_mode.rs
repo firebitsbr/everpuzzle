@@ -1,5 +1,5 @@
 use amethyst::{
-    core::{nalgebra::Vector3, GlobalTransform, Transform},
+    core::{GlobalTransform, Transform},
     ecs::prelude::Entity,
     prelude::*,
     renderer::*,
@@ -9,14 +9,13 @@ use components::{
     cursor::Cursor,
     playfield::{
         clear::Clear,
+        garbage_master::GarbageMaster,
         kind_generator::{generate_random_seed, KindGenerator},
         lose::Lose,
         push::Push,
         stack::Stack,
         stats::Stats,
-        garbage_master::GarbageMaster,
     },
-    garbage_head::GarbageHead,
     playfield_id::PlayfieldId,
     spritesheet_loader::{load_blocks_sprite_sheet, load_sprite_sheet},
 };
