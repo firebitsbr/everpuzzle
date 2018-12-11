@@ -4,7 +4,9 @@ use block_states::{
     block_state::BlockState, clear::Clear, fall::Fall, hang::Hang, idle::Idle, land::Land,
     swap::Swap,
 };
-use components::{block::Block, playfield::stack::Stack, playfield_id::PlayfieldId};
+use components::{
+    block::Block, garbage_head::GarbageHead, playfield::stack::Stack, playfield_id::PlayfieldId,
+};
 use data::playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE};
 use resources::playfield_resource::Playfields;
 
@@ -31,31 +33,13 @@ impl<'a> System<'a> for BlockSystem {
             for i in 0..BLOCKS {
                 let b = *blocks.get(stack[i]).unwrap();
 
-                // decrease the counter if its over 0
-                if b.counter > 0 {
-                    blocks.get_mut(stack[i]).unwrap().counter -= 1;
-                }
-
-                // match all on the blocks state - run all execute functions
-                match b.state {
-                    "IDLE" => Idle::execute(i, &stack, &mut blocks),
-                    "FALL" => Fall::execute(i, &stack, &mut blocks),
-                    "LAND" => Land::execute(i, &stack, &mut blocks),
-                    "CLEAR" => Clear::execute(i, &stack, &mut blocks),
-                    "SWAP" => Swap::execute(i, &stack, &mut blocks),
-                    _ => (),
-                }
-
-                // if the counter is at 0, call current states counter end function
-                if b.counter <= 0 {
-                    match b.state {
-                        "HANG" => Hang::counter_end(i, &stack, &mut blocks),
-                        "FALL" => Fall::counter_end(i, &stack, &mut blocks),
-                        "LAND" => Land::counter_end(i, &stack, &mut blocks),
-                        "CLEAR" => Clear::counter_end(i, &stack, &mut blocks),
-                        "SWAP" => Swap::counter_end(i, &stack, &mut blocks),
-                        _ => (),
-                    }
+                // if any block isnt garbage
+                if !b.is_garbage {
+                    // simple update its state
+                    update_state(b, i, &stack, &mut blocks);
+                } else {
+                    // let head update everything in its order
+                    // skip all normal blocks that are only garbage
                 }
             }
 
@@ -140,4 +124,35 @@ pub fn check_for_hang(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Blo
     }
 
     !blocks.get_mut(stack[i]).unwrap().is_empty() && down_condition
+}
+
+// updates the blocks state machine and triggers transitions to other states
+// from withing each state
+fn update_state(b: Block, i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
+    // decrease the counter if its over 0
+    if b.counter > 0 {
+        blocks.get_mut(stack[i]).unwrap().counter -= 1;
+    }
+
+    // match all on the blocks state - run all execute functions
+    match b.state {
+        "IDLE" => Idle::execute(i, &stack, blocks),
+        "FALL" => Fall::execute(i, &stack, blocks),
+        "LAND" => Land::execute(i, &stack, blocks),
+        "CLEAR" => Clear::execute(i, &stack, blocks),
+        "SWAP" => Swap::execute(i, &stack, blocks),
+        _ => (),
+    }
+
+    // if the counter is at 0, call current states counter end function
+    if b.counter <= 0 {
+        match b.state {
+            "HANG" => Hang::counter_end(i, &stack, blocks),
+            "FALL" => Fall::counter_end(i, &stack, blocks),
+            "LAND" => Land::counter_end(i, &stack, blocks),
+            "CLEAR" => Clear::counter_end(i, &stack, blocks),
+            "SWAP" => Swap::counter_end(i, &stack, blocks),
+            _ => (),
+        }
+    }
 }

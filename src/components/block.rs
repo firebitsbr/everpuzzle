@@ -91,7 +91,13 @@ impl Block {
     // other block isnt empty and currently in fall,
     // its state is land and its counter still below land time
     // valid blocks are currently swapping
+    //
+    // a block is never swappable when its a garbage block
     pub fn is_swappable(&self, other: &Block, above_block: Option<&Block>) -> bool {
+        if self.is_garbage {
+            return false;
+        }
+
         if let Some(above) = above_block {
             if above.state == "HANG" {
                 return true;
@@ -127,7 +133,9 @@ impl Block {
             return false;
         }
 
-        // garbage
+        if self.is_garbage {
+            return false;
+        }
 
         if self.kind != -1 && self.state == "IDLE" {
             return true;
@@ -164,6 +172,7 @@ impl Block {
         self.anim_offset = other.anim_offset;
 
         self.is_garbage = other.is_garbage;
+        self.garbage_head = other.garbage_head;
     }
 
     // reset everything but the set variables that should remain

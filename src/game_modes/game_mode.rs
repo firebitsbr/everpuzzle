@@ -93,6 +93,7 @@ impl GameMode {
         world.register::<KindGenerator>();
         world.register::<Stats>();
         world.register::<GarbageMaster>();
+        world.register::<Stack>();
         world
             .create_entity()
             .with(Clear::default())
@@ -185,6 +186,7 @@ pub fn create_blocks(
     kinds: Vec<i32>,
 ) -> Vec<Entity> {
     world.register::<Block>();
+    world.register::<GarbageHead>();
     let mut block_entities: Vec<Entity> = Vec::new();
 
     let (level, scale): (usize, (f32, f32)) = {

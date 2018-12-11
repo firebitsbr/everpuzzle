@@ -19,10 +19,6 @@ impl Default for GarbageMaster {
     }
 }
 
-impl Component for GarbageMaster {
-    type Storage = DenseVecStorage<Self>;
-}
-
 impl GarbageMaster {
     // spawns a garbage master with the dimensions provided
     // optionally offsets and 1 dimensional garbage when another 1d
@@ -52,8 +48,6 @@ impl GarbageMaster {
             for x in 0..dimensions.0 {
                 // get the entity of each block
                 let block_id = {
-                    println!("just spawned some shit {} {}", x, y);
-
                     // offset blocks optionally
                     if self.offset && last_garbage_matched {
                         stack[(x + 6 - dimensions.0, y)]
@@ -97,4 +91,8 @@ impl GarbageMaster {
             lowest_blocks,
         )
     }
+}
+
+impl Component for GarbageMaster {
+    type Storage = DenseVecStorage<Self>;
 }
