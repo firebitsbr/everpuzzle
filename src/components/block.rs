@@ -1,5 +1,5 @@
 #![allow(dead_code, unused_imports)]
-use amethyst::ecs::prelude::{Component, DenseVecStorage};
+use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity};
 use data::block_data::LAND_TIME;
 use std::clone::Clone;
 use std::marker::Copy;
@@ -31,6 +31,10 @@ pub struct Block {
 
     // playfield data
     pub level: usize,
+
+    // garbage each block needs to connect to its head
+    pub is_garbage: bool,
+    pub garbage_head: Option<Entity>,
 }
 
 impl Default for Block {
@@ -58,6 +62,8 @@ impl Default for Block {
             anim_offset: 0,
 
             level: 0,
+            is_garbage: false,
+            garbage_head: None,
         }
     }
 }
@@ -156,6 +162,8 @@ impl Block {
         // animation
         self.anim_counter = other.anim_counter;
         self.anim_offset = other.anim_offset;
+
+        self.is_garbage = other.is_garbage;
     }
 
     // reset everything but the set variables that should remain

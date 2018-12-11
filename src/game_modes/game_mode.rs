@@ -14,7 +14,9 @@ use components::{
         push::Push,
         stack::Stack,
         stats::Stats,
+        garbage_master::GarbageMaster,
     },
+    garbage_head::GarbageHead,
     playfield_id::PlayfieldId,
     spritesheet_loader::{load_blocks_sprite_sheet, load_sprite_sheet},
 };
@@ -91,6 +93,7 @@ impl GameMode {
         world.register::<Lose>();
         world.register::<KindGenerator>();
         world.register::<Stats>();
+        world.register::<GarbageMaster>();
         world
             .create_entity()
             .with(Clear::default())
@@ -100,6 +103,7 @@ impl GameMode {
             .with(kind_gen)
             .with(Stats::new(p_id))
             .with(PlayfieldId::new(p_id))
+            .with(GarbageMaster::default())
             .build();
     }
 

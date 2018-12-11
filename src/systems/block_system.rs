@@ -107,17 +107,23 @@ fn update_sprites(
                 hiddens.remove(stack[i]);
             }
 
-            if b.state == "IDLE" {
-                // checks wether the highest block is null
-                if top.kind != -1 && top.state == "IDLE" {
-                    b.anim_offset = 4;
-                } else if b.y == 0 {
-                    b.anim_offset = 1;
+            if b.is_garbage {
+                if b.state == "IDLE" {
+                    // checks wether the highest block is null
+                    if top.kind != -1 && top.state == "IDLE" {
+                        b.anim_offset = 4;
+                    } else if b.y == 0 {
+                        b.anim_offset = 1;
+                    }
                 }
-            }
 
-            sprites.get_mut(stack[i]).unwrap().sprite_number =
-                b.kind as usize * 8 + b.anim_offset as usize;
+                sprites.get_mut(stack[i]).unwrap().sprite_number =
+                    b.kind as usize * 8 + b.anim_offset as usize;
+            }
+            else {
+                sprites.get_mut(stack[i]).unwrap().sprite_number =
+                    8 * 8
+            }
         } else {
             if !hiddens.contains(stack[i]) {
                 hiddens
