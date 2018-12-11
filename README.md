@@ -50,6 +50,9 @@ I've worked on [swap'n'pop](https://github.com/omenking/swap-n-pop) but the proj
 ## Contributing
 If you are interested in helping out, you can take a look at the [issues](https://github.com/Skytrias/rust-attack/issues) and work on anything you'd want. Otherwhise you can contact me on Discord: ***Skytrias#8787***, or [visit the Discord server](https://discord.gg/sfXEKke).
 
+## ECS Diagram
+![screenshot](https://github.com/Skytrias/everpuzzle/blob/master/Everpuzzle%20Diagram%2006.png "diagram")
+
 ## Links
 [Spread sheet for frame times](https://docs.google.com/spreadsheets/d/1SsVXHad0z7Dbsqfj-UTd4HZSGCslujkbh7vOan61D1g/edit#gid=1601136205)
 
