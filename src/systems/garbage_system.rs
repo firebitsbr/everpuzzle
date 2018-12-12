@@ -1,5 +1,4 @@
-use amethyst::ecs::*;
-use components::{
+use amethyst::ecs::*; use components::{
     block::Block;
     playfield::{
         stack::Stack,

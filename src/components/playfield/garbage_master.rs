@@ -2,9 +2,9 @@ use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity, WriteStorage};
 use components::{block::Block, garbage_head::GarbageHead, playfield::stack::Stack};
 use data::playfield_data::{COLUMNS, ROWS_VISIBLE};
 
+// Deals with Garbage Spawns, and keeps info on general garbage
 // holds all sub garbages in an array easily acessible
 pub struct GarbageMaster {
-    pub children: Vec<GarbageHead>,
     pub last_dimensions: (usize, usize),
     pub offset: bool, // wether the next garbage should be ofsett
 }
@@ -12,7 +12,6 @@ pub struct GarbageMaster {
 impl Default for GarbageMaster {
     fn default() -> Self {
         GarbageMaster {
-            children: Vec::new(),
             last_dimensions: (0, 0),
             offset: false,
         }
@@ -85,7 +84,6 @@ impl GarbageMaster {
 
         self.last_dimensions = dimensions;
         GarbageHead::new(
-            first_block.unwrap(),
             garbage_blocks,
             highest_blocks,
             lowest_blocks,

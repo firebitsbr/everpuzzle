@@ -4,6 +4,7 @@ use components::{
     block::Block,
     playfield::{clear::Clear, garbage_master::GarbageMaster, stack::Stack, stats::Stats},
     playfield_id::PlayfieldId,
+    garbage_head::GarbageHead,
 };
 
 use block_states::block_state::change_state;
@@ -25,6 +26,7 @@ impl<'a> System<'a> for ClearSystem {
         Read<'a, Playfields>,
         ReadStorage<'a, PlayfieldId>,
         WriteStorage<'a, GarbageMaster>,
+        WriteStorage<'a, GarbageHead>,
     );
 
     fn run(
@@ -37,6 +39,7 @@ impl<'a> System<'a> for ClearSystem {
             playfields,
             ids,
             mut garbages,
+            mut garbage_heads,
         ): Self::SystemData,
     ) {
         // block clear detection
@@ -98,21 +101,31 @@ impl<'a> System<'a> for ClearSystem {
                 // if a combo is bigger than 3
                 if clear.combo_counter > 3 {
                     // either by combo or by chain
-                    let head = {
+                    let pos = {
                         // if chain == 1 use combo - 1 as x
                         if clear.chain == 1 {
-                            garbage.spawn(
-                                (clear.combo_counter as usize - 1, 1),
-                                &stack,
-                                &mut blocks,
-                            )
+                            (clear.combo_counter as usize - 1, 1)
+                            
                         }
                         // if chain is bigger than 1, use x as 6 and go by chain - 1 = y
                         else {
-                            garbage.spawn((6, clear.chain as usize - 1), &stack, &mut blocks)
+                            (6, clear.chain as usize - 1)
                         }
                     };
-                    garbage.children.push(head);
+
+                    // spawn the head and its sub parts
+                    let head = garbage.spawn(
+                        pos,
+                        &stack,
+                        &mut blocks,
+                    );
+
+                    // if no garbage is inside the block entity yet
+                    if !garbage_heads.contains(stack[pos]) {
+                        garbage_heads
+                            .insert(stack[pos], head)
+                            .expect("Garbage Head should be attached");
+                    }
                 }
 
                 // clear the clear_queue if its not empty

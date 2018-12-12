@@ -5,10 +5,9 @@ use std::cmp::max;
 // Head of garbage that stays with the block entity that is its head
 // consists of the head and its subparts
 pub struct GarbageHead {
-    pub head: Entity, // pointer to the block its being held in
     pub can_fall: bool, // saves wether the head is allowed to fall
     pub clearing: bool,
-    pub parts: Vec<Entity>,
+    pub parts: Vec<Entity>, // all garbage blocks in this head
     pub highest_blocks: Vec<Entity>,
     pub lowest_blocks: Vec<Entity>,
     pub marked_clear: bool,
@@ -18,13 +17,11 @@ pub struct GarbageHead {
 
 impl GarbageHead {
     pub fn new(
-        head: Entity,
         parts: Vec<Entity>,
         highest_blocks: Vec<Entity>,
         lowest_blocks: Vec<Entity>,
     ) -> GarbageHead {
         GarbageHead {
-            head,
             parts,
             lowest_blocks,
             highest_blocks,
