@@ -29,7 +29,7 @@ impl<'a> System<'a> for PushSystem {
     fn run(
         &mut self,
         (mut pushes, stacks, mut blocks, mut cursors, mut kind_gens, entities, playfields, ids): Self::SystemData,
-){
+    ) {
         // playfield push info / push animation WIP
         for (entity, stack, id) in (&entities, &stacks, &ids).join() {
             {
@@ -121,7 +121,7 @@ fn push_blocks(
         // since for i doesn't work backwards we do this
         let reverse = BLOCKS - i - 1;
 
-        let down: Block = *blocks.get(stack[reverse - COLUMNS]).unwrap();
+        let down: Block = blocks.get(stack[reverse - COLUMNS]).unwrap().clone();
 
         let b = blocks.get_mut(stack[reverse]).unwrap();
 

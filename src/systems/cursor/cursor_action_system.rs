@@ -1,6 +1,5 @@
 use amethyst::{ecs::*, input::*};
 
-use block_states::block_state::change_state;
 use components::{
     block::Block,
     cursor::Cursor,
@@ -9,9 +8,10 @@ use components::{
 };
 use data::{
     block_data::SWAP_TIME,
-    playfield_data::{BLOCKS, COLUMNS},
     cursor_data::CURSOR_ACTIONS,
+    playfield_data::{BLOCKS, COLUMNS},
 };
+use systems::block_system::change_state;
 
 pub struct CursorActionSystem;
 
@@ -70,22 +70,18 @@ fn swap(x: f32, y: f32, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
         set_swap_variables(blocks.get_mut(stack[i + 1]).unwrap(), -1.0);
 
         // set default stack blocks
-        let left_block = *blocks.get(stack[i]).unwrap();
-        let right_block = *blocks.get(stack[i + 1]).unwrap();
+        let left_block = blocks.get(stack[i]).unwrap().clone();
+        let right_block = blocks.get(stack[i + 1]).unwrap().clone();
 
-        {
-            blocks
-                .get_mut(stack[i + 1])
-                .unwrap()
-                .set_properties(left_block);
-        }
+        blocks
+            .get_mut(stack[i + 1])
+            .unwrap()
+            .set_properties(left_block);
 
-        {
-            blocks
-                .get_mut(stack[i])
-                .unwrap()
-                .set_properties(right_block);
-        }
+        blocks
+            .get_mut(stack[i])
+            .unwrap()
+            .set_properties(right_block);
     }
 }
 

@@ -27,8 +27,10 @@ impl GarbageMaster {
         dimensions: (usize, usize),
         stack: &Stack,
         blocks: &mut WriteStorage<'_, Block>,
-    ) -> GarbageHead {
-        let mut first_block: Option<Entity> = None;
+        garbage_heads: &mut WriteStorage<'_, GarbageHead>,
+    ) {
+        let mut first_block: Option<Entity> = None; // entity ref of the first block
+        let mut first_id: Option<(usize, usize)> = None; // stack id position of first block
         let mut garbage_blocks = Vec::new(); // all garbage blocks
         let mut highest_blocks = Vec::new(); // every block above each garbage block
         let mut lowest_blocks = Vec::new(); // every bottom block below each block
@@ -46,14 +48,16 @@ impl GarbageMaster {
         for y in (ROWS_VISIBLE - dimensions.1 + 1)..ROWS_VISIBLE + 1 {
             for x in 0..dimensions.0 {
                 // get the entity of each block
-                let block_id = {
+                let pos = {
                     // offset blocks optionally
                     if self.offset && last_garbage_matched {
-                        stack[(x + 6 - dimensions.0, y)]
+                        (x + 6 - dimensions.0, y)
                     } else {
-                        stack[(x, y)]
+                        (x, y)
                     }
                 };
+
+                let block_id = stack[pos];
 
                 // set highest blocks only until 6 wide
                 if counter < 6 {
@@ -64,6 +68,7 @@ impl GarbageMaster {
                 // the first block gone through will be the head
                 if first_block == None {
                     first_block = Some(block_id);
+                    first_id = Some(pos);
                 }
 
                 garbage_blocks.push(block_id);
@@ -83,11 +88,16 @@ impl GarbageMaster {
         }
 
         self.last_dimensions = dimensions;
-        GarbageHead::new(
-            garbage_blocks,
-            highest_blocks,
-            lowest_blocks,
-        )
+
+        let id = stack[first_id.unwrap()];
+        if !garbage_heads.contains(id) {
+            garbage_heads
+                .insert(
+                    id,
+                    GarbageHead::new(garbage_blocks, highest_blocks, lowest_blocks),
+                )
+                .expect("garbage head should be added");
+        }
     }
 }
 

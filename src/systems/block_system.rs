@@ -1,9 +1,6 @@
 use amethyst::{core::Transform, ecs::*, renderer::*};
 
-use block_states::{
-    block_state::BlockState, clear::Clear, fall::Fall, hang::Hang, idle::Idle, land::Land,
-    swap::Swap,
-};
+use block_states::{clear::Clear, fall::Fall, hang::Hang, idle::Idle, land::Land, swap::Swap};
 use components::{
     block::Block, garbage_head::GarbageHead, playfield::stack::Stack, playfield_id::PlayfieldId,
 };
@@ -21,25 +18,38 @@ impl<'a> System<'a> for BlockSystem {
         WriteStorage<'a, Hidden>,
         Read<'a, Playfields>,
         ReadStorage<'a, PlayfieldId>,
+        WriteStorage<'a, GarbageHead>,
     );
 
     fn run(
         &mut self,
-        (stacks, mut sprites, mut transforms, mut blocks, mut hiddens, playfields, ids): Self::SystemData,
+        (
+            stacks,
+            mut sprites,
+            mut transforms,
+            mut blocks,
+            mut hiddens,
+            playfields,
+            ids,
+            mut garbage_heads,
+        ): Self::SystemData,
     ) {
         // run through all existing block stacks
         for stack in (&stacks).join() {
             // run through all states from a block
             for i in 0..BLOCKS {
-                let b = *blocks.get(stack[i]).unwrap();
+                let b = blocks.get(stack[i]).unwrap().clone();
 
                 // if any block isnt garbage
                 if !b.is_garbage {
                     // simple update its state
-                    update_state(b, i, &stack, &mut blocks);
+                    update_state(b, i, &stack, &mut blocks, &mut garbage_heads);
                 } else {
                     // let head update everything in its order
                     // skip all normal blocks that are only garbage
+                    if stack[i] == b.garbage_head.unwrap() {
+                        update_state(b, i, &stack, &mut blocks, &mut garbage_heads);
+                    }
                 }
             }
 
@@ -113,30 +123,38 @@ fn update_sprites(
 }
 
 // checks whether the block below is empty or falling, also checks whether this block is empty
-pub fn check_for_hang(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) -> bool {
-    // condition based on another block in a different lifetime
-    let mut down_condition: bool = false;
-
+pub fn check_for_hang(i: usize, stack: &Stack, blocks: &WriteStorage<'_, Block>) -> bool {
     // check if is in vec boundary
     if i > COLUMNS {
-        let down = blocks.get_mut(stack[i - COLUMNS]).unwrap();
-        down_condition = down.is_empty() || down.state == "HANG";
-    }
+        let down = blocks.get(stack[i - COLUMNS]).unwrap();
+        let down_empty = down.is_empty() || down.state == "HANG";
 
-    !blocks.get_mut(stack[i]).unwrap().is_empty() && down_condition
+        !blocks.get(stack[i]).unwrap().is_empty() && down_empty
+    } else {
+        false
+    }
 }
 
 // updates the blocks state machine and triggers transitions to other states
 // from withing each state
-fn update_state(b: Block, i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
+fn update_state(
+    b: Block,
+    i: usize,
+    stack: &Stack,
+    blocks: &mut WriteStorage<'_, Block>,
+    garbage_heads: &mut WriteStorage<'_, GarbageHead>,
+) {
     // decrease the counter if its over 0
     if b.counter > 0 {
         blocks.get_mut(stack[i]).unwrap().counter -= 1;
     }
 
-    // match all on the blocks state - run all execute functions
+    // happens each frame,
+    // takes an iterator - to know which block you're looking at right now
+    // takes a stack of block entities that you can access
+    // takes the whole stack of blocks - get ref or mut out of this
     match b.state {
-        "IDLE" => Idle::execute(i, &stack, blocks),
+        "IDLE" => Idle::execute(i, &stack, blocks, garbage_heads),
         "FALL" => Fall::execute(i, &stack, blocks),
         "LAND" => Land::execute(i, &stack, blocks),
         "CLEAR" => Clear::execute(i, &stack, blocks),
@@ -144,15 +162,39 @@ fn update_state(b: Block, i: usize, stack: &Stack, blocks: &mut WriteStorage<'_,
         _ => (),
     }
 
-    // if the counter is at 0, call current states counter end function
+    // gets called once the block's counter runs down to 0
+    // mostly used to switch states
     if b.counter <= 0 {
         match b.state {
             "HANG" => Hang::counter_end(i, &stack, blocks),
-            "FALL" => Fall::counter_end(i, &stack, blocks),
             "LAND" => Land::counter_end(i, &stack, blocks),
             "CLEAR" => Clear::counter_end(i, &stack, blocks),
             "SWAP" => Swap::counter_end(i, &stack, blocks),
             _ => (),
         }
+    }
+}
+
+// changes the current block's state to a new one
+pub fn change_state(b: &mut Block, new_state: &'static str) {
+    if b.state == new_state {
+        return;
+    }
+
+    // call the current block's state's exit function
+    match b.state {
+        "LAND" => Land::exit(b),
+        "CLEAR" => Clear::exit(b),
+        _ => (),
+    }
+
+    b.state = new_state;
+
+    // call the current block's state's enter function
+    match b.state {
+        "HANG" => Hang::enter(b),
+        "LAND" => Land::enter(b),
+        "CLEAR" => Clear::enter(b),
+        _ => (),
     }
 }

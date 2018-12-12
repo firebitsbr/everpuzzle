@@ -1,21 +1,20 @@
 #![allow(unused_variables)]
-use amethyst::ecs::prelude::WriteStorage;
-use block_states::block_state::{change_state, BlockState};
-use components::block::Block;
-use components::playfield::stack::Stack;
+use amethyst::ecs::WriteStorage;
+use components::{block::Block, playfield::stack::Stack};
 use data::playfield_data::ROWS_VISIBLE;
+use systems::block_system::change_state;
 
 const FLASH_ANIM: [u32; 4] = [6, 6, 0, 0];
 const FLASH_TIME: i32 = 44;
 
 pub struct Clear;
-impl BlockState for Clear {
+impl Clear {
     // for safety of animating set the counter back
-    fn enter(b: &mut Block) {
+    pub fn enter(b: &mut Block) {
         b.anim_counter = 0
     }
 
-    fn exit(b: &mut Block) {
+    pub fn exit(b: &mut Block) {
         b.kind = -1;
         b.counter = 0;
         b.anim_offset = 0;
@@ -27,7 +26,7 @@ impl BlockState for Clear {
     }
 
     // just the animation part of the whole clearing
-    fn execute(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
+    pub fn execute(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
         let b = blocks.get_mut(stack[i]).unwrap();
 
         // clear at the end of the animation
@@ -55,7 +54,7 @@ impl BlockState for Clear {
     }
 
     // set this block to idle, also set chainable on all above that are real!
-    fn counter_end(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
+    pub fn counter_end(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
         set_chainables(i, &stack, blocks);
         change_state(blocks.get_mut(stack[i]).unwrap(), "IDLE");
     }

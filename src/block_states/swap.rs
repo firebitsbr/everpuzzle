@@ -1,25 +1,20 @@
 #![allow(unused_variables)]
-use amethyst::ecs::prelude::WriteStorage;
-use block_states::block_state::{change_state, BlockState};
-use components::block::Block;
-use components::playfield::stack::Stack;
+use amethyst::ecs::WriteStorage;
+use components::{block::Block, playfield::stack::Stack};
 use data::block_data::SWAP_TIME;
-use systems::block_system::check_for_hang;
+use systems::block_system::{change_state, check_for_hang};
 
 // animates movement of the block to a direction - either left or right
 pub struct Swap;
-impl BlockState for Swap {
-    fn enter(b: &mut Block) {}
-    fn exit(b: &mut Block) {}
-
-    fn execute(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
+impl Swap {
+    pub fn execute(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
         let b = blocks.get_mut(stack[i]).unwrap();
 
         b.offset.0 = b.move_dir * 16.0
             + -b.move_dir * ease_out_quad(SWAP_TIME - b.counter as f32, 0.0, 16.0, SWAP_TIME);
     }
 
-    fn counter_end(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
+    pub fn counter_end(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
         let can_fall = { check_for_hang(i, stack, blocks) };
 
         let b = blocks.get_mut(stack[i]).unwrap();

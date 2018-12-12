@@ -2,18 +2,18 @@ use amethyst::ecs::*;
 
 use components::{
     block::Block,
+    garbage_head::GarbageHead,
     playfield::{clear::Clear, garbage_master::GarbageMaster, stack::Stack, stats::Stats},
     playfield_id::PlayfieldId,
-    garbage_head::GarbageHead,
 };
 
-use block_states::block_state::change_state;
 use data::{
     block_data::{FACE_TIME, FLASH_TIME, POP_TIME},
     playfield_data::{COLUMNS, ROWS_VISIBLE},
 };
 use resources::playfield_resource::Playfields;
 use std::cmp::max;
+use systems::block_system::change_state;
 
 pub struct ClearSystem;
 
@@ -105,7 +105,6 @@ impl<'a> System<'a> for ClearSystem {
                         // if chain == 1 use combo - 1 as x
                         if clear.chain == 1 {
                             (clear.combo_counter as usize - 1, 1)
-                            
                         }
                         // if chain is bigger than 1, use x as 6 and go by chain - 1 = y
                         else {
@@ -114,18 +113,7 @@ impl<'a> System<'a> for ClearSystem {
                     };
 
                     // spawn the head and its sub parts
-                    let head = garbage.spawn(
-                        pos,
-                        &stack,
-                        &mut blocks,
-                    );
-
-                    // if no garbage is inside the block entity yet
-                    if !garbage_heads.contains(stack[pos]) {
-                        garbage_heads
-                            .insert(stack[pos], head)
-                            .expect("Garbage Head should be attached");
-                    }
+                    garbage.spawn(pos, &stack, &mut blocks, &mut garbage_heads);
                 }
 
                 // clear the clear_queue if its not empty
@@ -195,6 +183,7 @@ fn check_similar_block(
     None
 }
 
+// checks wether any current block is inside a chain
 fn any_chainable_exists(
     clear_ids: &Vec<u32>,
     stack: &Stack,

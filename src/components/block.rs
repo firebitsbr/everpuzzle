@@ -1,10 +1,9 @@
 #![allow(dead_code, unused_imports)]
 use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity};
+use components::garbage_head::GarbageHead;
 use data::block_data::LAND_TIME;
-use std::clone::Clone;
-use std::marker::Copy;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Clone)]
 pub struct Block {
     pub kind: i32, // sprite_number or -1 meaning invisible
     pub id: u32,
@@ -33,8 +32,8 @@ pub struct Block {
     pub level: usize,
 
     // garbage each block needs to connect to its head
-    pub is_garbage: bool,
-    pub garbage_head: Option<Entity>,
+    pub is_garbage: bool,             // bool flag
+    pub garbage_head: Option<Entity>, // flag for the head
 }
 
 impl Default for Block {
@@ -187,6 +186,7 @@ impl Block {
         };
     }
 
+    // loads this block into a new stack block
     pub fn load(&mut self, other: Block) {
         *self = other;
     }

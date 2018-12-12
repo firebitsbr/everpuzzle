@@ -1,11 +1,11 @@
-use amethyst::ecs::{Entity, WriteStorage, Component, DenseVecStorage};
+use amethyst::ecs::{Component, DenseVecStorage, Entity, WriteStorage};
 use components::{block::Block, playfield::stack::Stack};
 use std::cmp::max;
 
 // Head of garbage that stays with the block entity that is its head
 // consists of the head and its subparts
+#[derive(Clone)]
 pub struct GarbageHead {
-    pub can_fall: bool, // saves wether the head is allowed to fall
     pub clearing: bool,
     pub parts: Vec<Entity>, // all garbage blocks in this head
     pub highest_blocks: Vec<Entity>,
@@ -25,7 +25,6 @@ impl GarbageHead {
             parts,
             lowest_blocks,
             highest_blocks,
-            can_fall: false,
             clearing: false,
             marked_clear: false,
             hanged: false,
@@ -39,11 +38,8 @@ impl GarbageHead {
         let mut counter = 0;
 
         for entity in &self.lowest_blocks {
-            // get lower block, can be None
-            let down_block = blocks.get(*entity);
-
             // if not none
-            if let Some(down) = down_block {
+            if let Some(down) = blocks.get(*entity) {
                 if down.state == "IDLE" && down.kind == -1 {
                     counter += 1;
                 }
@@ -51,7 +47,13 @@ impl GarbageHead {
         }
 
         // return true if the lenght of lowest has been reached
-        counter == self.lowest_blocks.len()
+        if counter == self.lowest_blocks.len() {
+            println!("can fALL");
+            true
+        } else {
+            println!("cant fALL");
+            false
+        }
     }
 
     // returns wether this head and its parts can fall and the time the hang will
@@ -65,18 +67,20 @@ impl GarbageHead {
 
             // if not none
             if let Some(down) = down_block {
-                // looks at garbage beneat and at its head to see which counter it has
-                let down_head = blocks.get(down.garbage_head.unwrap()).unwrap();
-                if down.is_garbage && down_head.state == "HANG" {
-                    biggest_hang = max(biggest_hang, down_head.counter);
-                }
-                // look at the hanging block below and max out the counter
-                else if down.state == "HANG" {
-                    biggest_hang = max(biggest_hang, down.counter);
+                if down.state == "HANG" {
+                    // looks at garbage beneat and at its head to see which counter it has
+                    if down.is_garbage {
+                        let down_head = blocks.get(down.garbage_head.unwrap()).unwrap();
+                        biggest_hang = max(biggest_hang, down_head.counter);
+                    }
+                    // look at the hanging block below and max out the counter
+                    else {
+                        biggest_hang = max(biggest_hang, down.counter);
+                    }
                 }
                 // stops all hang wether the block isnt hanging and its a real block
                 // or a "dumb" garbage block
-                else if down.state != "HANG" && (down.kind != -1 || down.kind == 7) {
+                else if down.kind != -1 || down.kind == 7 {
                     return (false, 0);
                 }
             }

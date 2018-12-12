@@ -1,28 +1,45 @@
 #![allow(unused_variables)]
-use amethyst::ecs::prelude::WriteStorage;
-use block_states::block_state::{change_state, BlockState};
-use components::block::Block;
-use components::playfield::stack::Stack;
-use systems::block_system::check_for_hang;
+use amethyst::ecs::WriteStorage;
+use components::{block::Block, garbage_head::GarbageHead, playfield::stack::Stack};
+use systems::block_system::{change_state, check_for_hang};
 
 // only detects if this block can fall and sets the state to hang
 // resets chainable to false if this block can't fall
 pub struct Idle;
-impl BlockState for Idle {
-    fn enter(b: &mut Block) {}
-    fn exit(b: &mut Block) {}
+impl Idle {
+    pub fn execute(
+        i: usize,
+        stack: &Stack,
+        blocks: &mut WriteStorage<'_, Block>,
+        heads: &mut WriteStorage<'_, GarbageHead>,
+    ) {
+        if !blocks.get(stack[i]).unwrap().is_garbage {
+            let block_can_hang = check_for_hang(i, stack, blocks);
+            let b = blocks.get_mut(stack[i]).unwrap();
 
-    fn execute(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
-        let can_hang: bool = { check_for_hang(i, stack, blocks) };
-
-        // change the block to state if it isn't empty and the block below is empty or falling
-        let b = blocks.get_mut(stack[i]).unwrap();
-        if can_hang {
-            change_state(b, "HANG");
+            // change the block to state if it isn't empty and the block below is empty or falling
+            if block_can_hang {
+                change_state(b, "HANG");
+            } else {
+                b.chainable = false;
+            }
         } else {
-            b.chainable = false;
+            let head = heads.get_mut(stack[i]).unwrap();
+            let garbage_can_hang = head.below_hang(&blocks);
+            let garbage_can_fall = head.below_empty(&blocks);
+
+            let b = blocks.get_mut(stack[i]).unwrap();
+            // when all garbage can fall -> change head to hang
+            if garbage_can_fall {
+                change_state(b, "HANG");
+            }
+            // when anything is hanging below, set hang to it
+            // counter is set to the biggest counter
+            else if garbage_can_hang.0 {
+                head.hanged = true;
+                b.state = "HANG";
+                b.counter = garbage_can_hang.1;
+            }
         }
     }
-
-    fn counter_end(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {}
 }

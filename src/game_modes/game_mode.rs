@@ -7,6 +7,7 @@ use amethyst::{
 use components::{
     block::Block,
     cursor::Cursor,
+    garbage_head::GarbageHead,
     playfield::{
         clear::Clear,
         garbage_master::GarbageMaster,
@@ -18,7 +19,6 @@ use components::{
     },
     playfield_id::PlayfieldId,
     spritesheet_loader::{load_blocks_sprite_sheet, load_sprite_sheet},
-    garbage_head::GarbageHead,
 };
 use data::playfield_data::BLOCKS;
 use resources::playfield_resource::Playfields;
