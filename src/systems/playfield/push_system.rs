@@ -5,6 +5,7 @@ use components::{
     cursor::Cursor,
     playfield::{kind_generator::KindGenerator, push::Push, stack::Stack},
     playfield_id::PlayfieldId,
+    garbage_head::GarbageHead,
 };
 use data::playfield_data::{BLOCKS, COLUMNS, RAISE_BLOCKED_TIME, RAISE_TIME, ROWS_VISIBLE};
 use resources::playfield_resource::Playfields;
@@ -24,11 +25,12 @@ impl<'a> System<'a> for PushSystem {
         Entities<'a>,
         Read<'a, Playfields>,
         ReadStorage<'a, PlayfieldId>,
+        WriteStorage<'a, GarbageHead>,
     );
 
     fn run(
         &mut self,
-        (mut pushes, stacks, mut blocks, mut cursors, mut kind_gens, entities, playfields, ids): Self::SystemData,
+        (mut pushes, stacks, mut blocks, mut cursors, mut kind_gens, entities, playfields, ids, mut garbage_heads): Self::SystemData,
     ) {
         // playfield push info / push animation WIP
         for (entity, stack, id) in (&entities, &stacks, &ids).join() {
@@ -45,6 +47,7 @@ impl<'a> System<'a> for PushSystem {
                     pushes.get_mut(entity).unwrap(),
                     &stack,
                     &mut blocks,
+                    &mut garbage_heads,
                     cursors.get_mut(stack.cursor_entity).unwrap(),
                     kind_gens.get_mut(entity).unwrap(),
                     playfields[**id].level,
@@ -61,6 +64,7 @@ fn visual_offset(
     push: &mut Push,
     stack: &Stack,
     blocks: &mut WriteStorage<'_, Block>,
+    heads: &mut WriteStorage<'_, GarbageHead>,
     cursor: &mut Cursor,
     generator: &mut KindGenerator,
     level: usize,
@@ -91,7 +95,7 @@ fn visual_offset(
         set_visual_offsets(0.0, &stack, blocks, cursor);
         push.smooth_raise = false;
         push.raised_blocked_counter = RAISE_BLOCKED_TIME;
-        push_blocks(&stack, blocks, cursor, generator);
+        push_blocks(&stack, blocks, heads, cursor, generator);
     } else {
         // if smooth - increase faster
         if push.smooth_raise {
@@ -111,19 +115,23 @@ fn visual_offset(
 fn push_blocks(
     stack: &Stack,
     blocks: &mut WriteStorage<'_, Block>,
+    heads: &mut WriteStorage<'_, GarbageHead>,
     cursor: &mut Cursor,
     generator: &mut KindGenerator,
 ) {
     // have a block and store its down neighbor's values
     // go down the grid to not copy the same data
     for i in 0..BLOCKS - COLUMNS {
-        // TODO: Fix ceiling with upcoming data
         // since for i doesn't work backwards we do this
         let reverse = BLOCKS - i - 1;
 
-        let down: Block = blocks.get(stack[reverse - COLUMNS]).unwrap().clone();
-
+        let down = blocks.get(stack[reverse - COLUMNS]).unwrap().clone();
         let b = blocks.get_mut(stack[reverse]).unwrap();
+
+        if heads.contains(stack[reverse - COLUMNS]) {
+            let down_head = heads.remove(stack[reverse - COLUMNS]);
+            heads.insert(stack[i], down_head.unwrap());
+        }
 
         b.set_properties(down);
         b.anim_offset = 0;

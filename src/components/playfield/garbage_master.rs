@@ -65,14 +65,16 @@ impl GarbageMaster {
                     highest_blocks.push(block_id);
                 }
 
+                let b = blocks.get_mut(block_id).unwrap();
+
                 // the first block gone through will be the head
                 if first_block == None {
                     first_block = Some(block_id);
                     first_id = Some(pos);
+                    b.is_garbage_head = true;
                 }
 
                 garbage_blocks.push(block_id);
-                let b = blocks.get_mut(block_id).unwrap();
                 b.is_garbage = true;
                 b.kind = 7;
                 b.garbage_head = first_block;

@@ -33,6 +33,7 @@ pub struct Block {
 
     // garbage each block needs to connect to its head
     pub is_garbage: bool,             // bool flag
+    pub is_garbage_head: bool,             // bool flag
     pub garbage_head: Option<Entity>, // flag for the head
 }
 
@@ -62,6 +63,7 @@ impl Default for Block {
 
             level: 0,
             is_garbage: false,
+            is_garbage_head: false,
             garbage_head: None,
         }
     }
@@ -171,6 +173,7 @@ impl Block {
         self.anim_offset = other.anim_offset;
 
         self.is_garbage = other.is_garbage;
+        self.is_garbage_head = other.is_garbage_head;
         self.garbage_head = other.garbage_head;
     }
 

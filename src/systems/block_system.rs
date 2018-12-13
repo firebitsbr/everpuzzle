@@ -38,17 +38,19 @@ impl<'a> System<'a> for BlockSystem {
         for stack in (&stacks).join() {
             // run through all states from a block
             for i in 0..BLOCKS {
-                let b = blocks.get(stack[i]).unwrap().clone();
-
                 // if any block isnt garbage
-                if !b.is_garbage {
-                    // simple update its state
-                    update_state(b, i, &stack, &mut blocks, &mut garbage_heads);
+                if !blocks.get(stack[i]).unwrap().is_garbage {
+                    // update the states of all non garbage blocks
+                    update_state(i, &stack, &mut blocks, &mut garbage_heads);
                 } else {
                     // let head update everything in its order
                     // skip all normal blocks that are only garbage
-                    if stack[i] == b.garbage_head.unwrap() {
-                        update_state(b, i, &stack, &mut blocks, &mut garbage_heads);
+                    if blocks.get(stack[i]).unwrap().is_garbage_head {
+                        garbage_heads.get_mut(stack[i])
+                            .unwrap()
+                            .below_empty(&blocks);
+
+                        update_state(i, &stack, &mut blocks, &mut garbage_heads);
                     }
                 }
             }
@@ -138,24 +140,30 @@ pub fn check_for_hang(i: usize, stack: &Stack, blocks: &WriteStorage<'_, Block>)
 // updates the blocks state machine and triggers transitions to other states
 // from withing each state
 fn update_state(
-    b: Block,
     i: usize,
     stack: &Stack,
     blocks: &mut WriteStorage<'_, Block>,
     garbage_heads: &mut WriteStorage<'_, GarbageHead>,
 ) {
+    // get variables safely for comparisons
+    let (mut counter, block_state) = {
+        let b = blocks.get(stack[i]).unwrap();
+        (b.counter, b.state)
+    };
+
     // decrease the counter if its over 0
-    if b.counter > 0 {
+    if counter > 0 {
         blocks.get_mut(stack[i]).unwrap().counter -= 1;
+        counter -= 1;
     }
 
     // happens each frame,
     // takes an iterator - to know which block you're looking at right now
     // takes a stack of block entities that you can access
     // takes the whole stack of blocks - get ref or mut out of this
-    match b.state {
+    match block_state {
         "IDLE" => Idle::execute(i, &stack, blocks, garbage_heads),
-        "FALL" => Fall::execute(i, &stack, blocks),
+        "FALL" => Fall::execute(i, &stack, blocks, garbage_heads),
         "LAND" => Land::execute(i, &stack, blocks),
         "CLEAR" => Clear::execute(i, &stack, blocks),
         "SWAP" => Swap::execute(i, &stack, blocks),
@@ -164,8 +172,8 @@ fn update_state(
 
     // gets called once the block's counter runs down to 0
     // mostly used to switch states
-    if b.counter <= 0 {
-        match b.state {
+    if counter <= 0 {
+        match block_state {
             "HANG" => Hang::counter_end(i, &stack, blocks),
             "LAND" => Land::counter_end(i, &stack, blocks),
             "CLEAR" => Clear::counter_end(i, &stack, blocks),

@@ -26,11 +26,10 @@ impl Idle {
         } else {
             let head = heads.get_mut(stack[i]).unwrap();
             let garbage_can_hang = head.below_hang(&blocks);
-            let garbage_can_fall = head.below_empty(&blocks);
 
             let b = blocks.get_mut(stack[i]).unwrap();
             // when all garbage can fall -> change head to hang
-            if garbage_can_fall {
+            if head.can_fall {
                 change_state(b, "HANG");
             }
             // when anything is hanging below, set hang to it

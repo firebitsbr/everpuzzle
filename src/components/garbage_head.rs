@@ -10,9 +10,9 @@ pub struct GarbageHead {
     pub parts: Vec<Entity>, // all garbage blocks in this head
     pub highest_blocks: Vec<Entity>,
     pub lowest_blocks: Vec<Entity>,
+    pub can_fall: bool,
     pub marked_clear: bool,
-    pub hanged: bool,
-    pub new_kinds: Vec<Entity>,
+    pub hanged: bool, pub new_kinds: Vec<Entity>,
 }
 
 impl GarbageHead {
@@ -25,6 +25,7 @@ impl GarbageHead {
             parts,
             lowest_blocks,
             highest_blocks,
+            can_fall: false,
             clearing: false,
             marked_clear: false,
             hanged: false,
@@ -34,9 +35,10 @@ impl GarbageHead {
 
     // goes through all lowest blocks and checks wether theyre empty
     // all lowest blocks need to be empty for this to be true!
-    pub fn below_empty(&self, blocks: &WriteStorage<'_, Block>) -> bool {
+    pub fn below_empty(&mut self, blocks: &WriteStorage<'_, Block>) {
         let mut counter = 0;
 
+        // go through all lowest blocks
         for entity in &self.lowest_blocks {
             // if not none
             if let Some(down) = blocks.get(*entity) {
@@ -46,14 +48,12 @@ impl GarbageHead {
             }
         }
 
-        // return true if the lenght of lowest has been reached
         if counter == self.lowest_blocks.len() {
-            println!("can fALL");
-            true
-        } else {
-            println!("cant fALL");
-            false
+            println!("can fall");
         }
+
+        // return true if the length of lowest has been reached
+        self.can_fall = counter == self.lowest_blocks.len();
     }
 
     // returns wether this head and its parts can fall and the time the hang will
