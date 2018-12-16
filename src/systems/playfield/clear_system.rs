@@ -172,7 +172,7 @@ fn check_similar_block(
         if let Some(block2) = b2 {
             if let Some(block3) = b3 {
                 if block2.is_comboable_with(b1.kind) && block3.is_comboable_with(b1.kind) {
-                    return Some(vec![b1.id, block2.id, block3.id]);
+                    return Some(vec![b1.id as u32, block2.id as u32, block3.id as u32]);
                 }
             }
         }

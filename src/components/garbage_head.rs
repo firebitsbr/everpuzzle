@@ -1,5 +1,6 @@
 use amethyst::ecs::{Component, DenseVecStorage, Entity, WriteStorage};
 use components::{block::Block, playfield::stack::Stack};
+use data::playfield_data::COLUMNS;
 use std::cmp::max;
 
 // Head of garbage that stays with the block entity that is its head
@@ -7,19 +8,20 @@ use std::cmp::max;
 #[derive(Clone)]
 pub struct GarbageHead {
     pub clearing: bool,
-    pub parts: Vec<Entity>, // all garbage blocks in this head
-    pub highest_blocks: Vec<Entity>,
-    pub lowest_blocks: Vec<Entity>,
+    pub parts: Vec<usize>, // all garbage blocks in this head
+    pub highest_blocks: Vec<usize>,
+    pub lowest_blocks: Vec<usize>,
     pub can_fall: bool,
     pub marked_clear: bool,
-    pub hanged: bool, pub new_kinds: Vec<Entity>,
+    pub hanged: bool,
+    pub new_kinds: Vec<usize>,
 }
 
 impl GarbageHead {
     pub fn new(
-        parts: Vec<Entity>,
-        highest_blocks: Vec<Entity>,
-        lowest_blocks: Vec<Entity>,
+        parts: Vec<usize>,
+        highest_blocks: Vec<usize>,
+        lowest_blocks: Vec<usize>,
     ) -> GarbageHead {
         GarbageHead {
             parts,
@@ -35,21 +37,21 @@ impl GarbageHead {
 
     // goes through all lowest blocks and checks wether theyre empty
     // all lowest blocks need to be empty for this to be true!
-    pub fn below_empty(&mut self, blocks: &WriteStorage<'_, Block>) {
+    pub fn below_empty(&mut self, stack: &Stack, blocks: &WriteStorage<'_, Block>) {
         let mut counter = 0;
 
         // go through all lowest blocks
-        for entity in &self.lowest_blocks {
-            // if not none
-            if let Some(down) = blocks.get(*entity) {
+        for id in &self.lowest_blocks {
+            // get his neighbor from this ones id
+            let down_block = blocks.get(stack[id - COLUMNS]);
+
+            // look if the downwards block exists
+            if let Some(down) = down_block {
+                // check it
                 if down.state == "IDLE" && down.kind == -1 {
                     counter += 1;
                 }
             }
-        }
-
-        if counter == self.lowest_blocks.len() {
-            println!("can fall");
         }
 
         // return true if the length of lowest has been reached
@@ -58,19 +60,19 @@ impl GarbageHead {
 
     // returns wether this head and its parts can fall and the time the hang will
     // take until it falls down
-    pub fn below_hang(&self, blocks: &WriteStorage<'_, Block>) -> (bool, u32) {
+    pub fn below_hang(&self, stack: &Stack, blocks: &WriteStorage<'_, Block>) -> (bool, u32) {
         let mut biggest_hang = 0;
 
-        for entity in &self.lowest_blocks {
+        for id in &self.lowest_blocks {
             // get lower block, can be None
-            let down_block = blocks.get(*entity);
+            let down_block = blocks.get(stack[id - COLUMNS]);
 
             // if not none
             if let Some(down) = down_block {
                 if down.state == "HANG" {
                     // looks at garbage beneat and at its head to see which counter it has
                     if down.is_garbage {
-                        let down_head = blocks.get(down.garbage_head.unwrap()).unwrap();
+                        let down_head = blocks.get(stack[down.garbage_head.unwrap()]).unwrap();
                         biggest_hang = max(biggest_hang, down_head.counter);
                     }
                     // look at the hanging block below and max out the counter
@@ -87,6 +89,44 @@ impl GarbageHead {
         }
 
         return (true, biggest_hang);
+    }
+
+    // increases all ids a column lower without boundary checking
+    pub fn increase_block_ids(&mut self) {
+        // normal garbage blocks
+        for elem in self.parts.iter_mut() {
+            *elem += COLUMNS;
+        }
+
+        // lowest i32
+        for elem in self.lowest_blocks.iter_mut() {
+            *elem += COLUMNS;
+        }
+
+        // highest blocks
+        for elem in self.highest_blocks.iter_mut() {
+            *elem += COLUMNS;
+        }
+    }
+
+    // same function just for downwards offsetting, im too lazy to
+    // convert variables all over just to get a usize to get lower
+    // lowers all ids a column lower without boundary checking
+    pub fn decrease_block_ids(&mut self) {
+        // normal garbage blocks
+        for elem in self.parts.iter_mut() {
+            *elem -= COLUMNS;
+        }
+
+        // lowest i32
+        for elem in self.lowest_blocks.iter_mut() {
+            *elem -= COLUMNS;
+        }
+
+        // highest blocks
+        for elem in self.highest_blocks.iter_mut() {
+            *elem -= COLUMNS;
+        }
     }
 }
 

@@ -46,11 +46,13 @@ impl<'a> System<'a> for BlockSystem {
                     // let head update everything in its order
                     // skip all normal blocks that are only garbage
                     if blocks.get(stack[i]).unwrap().is_garbage_head {
-                        garbage_heads.get_mut(stack[i])
+                        garbage_heads
+                            .get_mut(stack[i])
                             .unwrap()
-                            .below_empty(&blocks);
+                            .below_empty(&stack, &blocks);
 
                         update_state(i, &stack, &mut blocks, &mut garbage_heads);
+                        println!("{}", blocks.get(stack[i]).unwrap().state);
                     }
                 }
             }
@@ -68,7 +70,13 @@ impl<'a> System<'a> for BlockSystem {
             }
 
             // rendering
-            update_sprites(&stack, &mut blocks, &mut sprites, &mut hiddens);
+            update_sprites(
+                &stack,
+                &mut blocks,
+                &mut sprites,
+                &mut hiddens,
+                &mut garbage_heads,
+            );
         }
     }
 }
@@ -81,6 +89,7 @@ fn update_sprites(
     blocks: &mut WriteStorage<'_, Block>,
     sprites: &mut WriteStorage<'_, SpriteRender>,
     hiddens: &mut WriteStorage<'_, Hidden>,
+    heads: &mut WriteStorage<'_, GarbageHead>,
 ) {
     for i in 0..BLOCKS {
         let x = blocks.get(stack[i]).unwrap().x;
@@ -88,6 +97,11 @@ fn update_sprites(
             .get(stack[(x as usize, ROWS_VISIBLE - 1)])
             .unwrap()
             .clone();
+        // if the top blocks is a garbage block
+        // get its head and check its state, if its idle
+        // then its sitting at the top
+        let top_garbage_non_idle =
+            top.is_garbage && blocks.get(stack[top.garbage_head.unwrap()]).unwrap().state == "IDLE";
         let b = blocks.get_mut(stack[i]).unwrap();
 
         // decrease all the time
@@ -104,12 +118,19 @@ fn update_sprites(
             if !b.is_garbage {
                 if b.state == "IDLE" {
                     // checks wether the highest block is null
-                    if top.kind != -1 && top.state == "IDLE" {
+                    if (top.kind != -1 && top.state == "IDLE" && !top.is_garbage)
+                        || top_garbage_non_idle
+                    {
                         b.anim_offset = 4;
                     } else if b.y == 0 {
                         b.anim_offset = 1;
+                    } else {
+                        b.anim_offset = 0;
                     }
                 }
+            } else {
+                // dont change the offset ever
+                b.anim_offset = 0;
             }
 
             sprites.get_mut(stack[i]).unwrap().sprite_number =

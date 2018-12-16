@@ -3,9 +3,9 @@ use amethyst::ecs::*;
 use components::{
     block::Block,
     cursor::Cursor,
+    garbage_head::GarbageHead,
     playfield::{kind_generator::KindGenerator, push::Push, stack::Stack},
     playfield_id::PlayfieldId,
-    garbage_head::GarbageHead,
 };
 use data::playfield_data::{BLOCKS, COLUMNS, RAISE_BLOCKED_TIME, RAISE_TIME, ROWS_VISIBLE};
 use resources::playfield_resource::Playfields;
@@ -30,7 +30,17 @@ impl<'a> System<'a> for PushSystem {
 
     fn run(
         &mut self,
-        (mut pushes, stacks, mut blocks, mut cursors, mut kind_gens, entities, playfields, ids, mut garbage_heads): Self::SystemData,
+        (
+            mut pushes,
+            stacks,
+            mut blocks,
+            mut cursors,
+            mut kind_gens,
+            entities,
+            playfields,
+            ids,
+            mut garbage_heads,
+        ): Self::SystemData,
     ) {
         // playfield push info / push animation WIP
         for (entity, stack, id) in (&entities, &stacks, &ids).join() {
@@ -128,9 +138,18 @@ fn push_blocks(
         let down = blocks.get(stack[reverse - COLUMNS]).unwrap().clone();
         let b = blocks.get_mut(stack[reverse]).unwrap();
 
+        // if theres a garbage head, move its inner ids up and offset its
+        // component one up too
         if heads.contains(stack[reverse - COLUMNS]) {
-            let down_head = heads.remove(stack[reverse - COLUMNS]);
-            heads.insert(stack[i], down_head.unwrap());
+            // offsets all garbage entities since ids move one up too
+            heads
+                .get_mut(stack[reverse - COLUMNS])
+                .unwrap()
+                .increase_block_ids();
+
+            let down_head_data = heads.get(stack[reverse - COLUMNS]).unwrap().clone();
+            heads.remove(stack[reverse - COLUMNS]);
+            heads.insert(stack[reverse], down_head_data);
         }
 
         b.set_properties(down);

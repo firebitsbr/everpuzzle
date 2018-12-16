@@ -6,7 +6,7 @@ use data::block_data::LAND_TIME;
 #[derive(Clone)]
 pub struct Block {
     pub kind: i32, // sprite_number or -1 meaning invisible
-    pub id: u32,
+    pub id: usize,
     pub x: i32,
     pub y: i32,
     pub offset: (f32, f32),
@@ -32,9 +32,9 @@ pub struct Block {
     pub level: usize,
 
     // garbage each block needs to connect to its head
-    pub is_garbage: bool,             // bool flag
-    pub is_garbage_head: bool,             // bool flag
-    pub garbage_head: Option<Entity>, // flag for the head
+    pub is_garbage: bool,            // bool flag
+    pub is_garbage_head: bool,       // bool flag
+    pub garbage_head: Option<usize>, // flag for the head
 }
 
 impl Default for Block {
@@ -70,7 +70,7 @@ impl Default for Block {
 }
 
 impl Block {
-    pub fn new(id: u32, kind: i32, x: i32, y: i32, level: usize) -> Block {
+    pub fn new(id: usize, kind: i32, x: i32, y: i32, level: usize) -> Block {
         Block {
             id,
             kind,

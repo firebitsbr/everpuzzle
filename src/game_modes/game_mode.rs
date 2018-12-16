@@ -201,7 +201,7 @@ pub fn create_blocks(
 
         // set position instantly so no weird spawn flash happens
         let (x, y) = Stack::index_to_coordinates(i);
-        let mut b = Block::new(i as u32, kinds[i], x as i32, y as i32, level);
+        let mut b = Block::new(i, kinds[i], x as i32, y as i32, level);
 
         block_entities.push(
             world

@@ -1,6 +1,6 @@
 use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity, WriteStorage};
 use components::{block::Block, garbage_head::GarbageHead, playfield::stack::Stack};
-use data::playfield_data::{COLUMNS, ROWS_VISIBLE};
+use data::playfield_data::{COLUMNS, ROWS};
 
 // Deals with Garbage Spawns, and keeps info on general garbage
 // holds all sub garbages in an array easily acessible
@@ -29,8 +29,7 @@ impl GarbageMaster {
         blocks: &mut WriteStorage<'_, Block>,
         garbage_heads: &mut WriteStorage<'_, GarbageHead>,
     ) {
-        let mut first_block: Option<Entity> = None; // entity ref of the first block
-        let mut first_id: Option<(usize, usize)> = None; // stack id position of first block
+        let mut first_block: Option<usize> = None; // entity ref of the first block
         let mut garbage_blocks = Vec::new(); // all garbage blocks
         let mut highest_blocks = Vec::new(); // every block above each garbage block
         let mut lowest_blocks = Vec::new(); // every bottom block below each block
@@ -45,36 +44,33 @@ impl GarbageMaster {
         }
 
         // go through all blocks in the dimensions specified
-        for y in (ROWS_VISIBLE - dimensions.1 + 1)..ROWS_VISIBLE + 1 {
+        for y in (ROWS - dimensions.1)..ROWS {
             for x in 0..dimensions.0 {
                 // get the entity of each block
-                let pos = {
+                let index = {
                     // offset blocks optionally
                     if self.offset && last_garbage_matched {
-                        (x + 6 - dimensions.0, y)
+                        Stack::coordinates_to_index(x + 6 - dimensions.0, y)
                     } else {
-                        (x, y)
+                        Stack::coordinates_to_index(x, y)
                     }
                 };
-
-                let block_id = stack[pos];
 
                 // set highest blocks only until 6 wide
                 if counter < 6 {
                     counter += 1;
-                    highest_blocks.push(block_id);
+                    highest_blocks.push(index);
                 }
 
-                let b = blocks.get_mut(block_id).unwrap();
+                let b = blocks.get_mut(stack[index]).unwrap();
 
                 // the first block gone through will be the head
                 if first_block == None {
-                    first_block = Some(block_id);
-                    first_id = Some(pos);
+                    first_block = Some(index);
                     b.is_garbage_head = true;
                 }
 
-                garbage_blocks.push(block_id);
+                garbage_blocks.push(index);
                 b.is_garbage = true;
                 b.kind = 7;
                 b.garbage_head = first_block;
@@ -85,13 +81,14 @@ impl GarbageMaster {
         let size = garbage_blocks.len() as i32;
         for i in (size - COLUMNS as i32)..size {
             if i >= 0 {
-                lowest_blocks.push(stack[i as usize]);
+                lowest_blocks.push(garbage_blocks[i as usize]);
             }
         }
 
         self.last_dimensions = dimensions;
 
-        let id = stack[first_id.unwrap()];
+        // add a garbage component to the block entity
+        let id = stack[first_block.unwrap()];
         if !garbage_heads.contains(id) {
             garbage_heads
                 .insert(
