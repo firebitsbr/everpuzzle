@@ -1,8 +1,11 @@
 #![allow(unused_variables)]
+use crate::{
+    components::{Block, playfield::Stack},
+    data::block_data::SWAP_TIME,
+    systems::BlockSystem,
+    block_states::change_state,
+};
 use amethyst::ecs::WriteStorage;
-use components::{block::Block, playfield::stack::Stack};
-use data::block_data::SWAP_TIME;
-use systems::block_system::{change_state, check_for_hang};
 
 // animates movement of the block to a direction - either left or right
 pub struct Swap;
@@ -15,7 +18,7 @@ impl Swap {
     }
 
     pub fn counter_end(i: usize, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
-        let can_fall = { check_for_hang(i, stack, blocks) };
+        let can_fall = { BlockSystem::check_for_hang(i, stack, blocks) };
 
         let b = blocks.get_mut(stack[i]).unwrap();
         if can_fall {

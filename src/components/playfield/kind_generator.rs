@@ -1,6 +1,6 @@
 #![allow(unused_variables)]
+use crate::data::playfield_data::{BLOCKS, COLUMNS};
 use amethyst::ecs::{Component, DenseVecStorage};
-use data::playfield_data::{BLOCKS, COLUMNS};
 use rand::prelude::*;
 
 // const STATIC_SEED: [u8; 16] = [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
@@ -10,17 +10,6 @@ use rand::prelude::*;
 #[derive(Debug, Clone)]
 pub struct KindGenerator {
     pub rng: SmallRng,
-}
-
-// generates a new seed to be used by kind_generators rng
-pub fn generate_random_seed() -> [u8; 16] {
-    let mut rand_seed: [u8; 16] = [0; 16];
-
-    for x in &mut rand_seed {
-        *x = rand::random::<u8>();
-    }
-
-    rand_seed
 }
 
 // returns a stack of blocks where no numbers are the same next to each other
@@ -34,8 +23,20 @@ impl KindGenerator {
         }
     }
 
+    // sets the smallrng to a new seed
     pub fn new_rng(&mut self, seed: [u8; 16]) {
         self.rng = SmallRng::from_seed(seed);
+    }
+
+    // generates a new seed to be used by kind_generators rng
+    pub fn new_random_seed() -> [u8; 16] {
+        let mut rand_seed: [u8; 16] = [0; 16];
+
+        for x in &mut rand_seed {
+            *x = rand::random::<u8>();
+        }
+
+        rand_seed
     }
 
     pub fn create_stack(&mut self, safe: usize, nulling: usize) -> Vec<i32> {
@@ -106,7 +107,7 @@ impl KindGenerator {
         let mut prev_before = -1;
 
         for i in 0..size {
-            let mut new_num;
+            let new_num;
             let mut bot_num: i32 = -1; // by default -1
 
             // set bot_num once it respects the boundaries

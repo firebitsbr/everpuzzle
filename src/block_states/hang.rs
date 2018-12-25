@@ -1,8 +1,10 @@
 #![allow(unused_variables)]
+use crate::{
+    block_states::change_state,
+    components::{playfield::Stack, Block},
+    data::block_data::HOVER_TIME,
+};
 use amethyst::ecs::WriteStorage;
-use components::{block::Block, playfield::stack::Stack};
-use data::block_data::HOVER_TIME;
-use systems::block_system::change_state;
 
 pub struct Hang;
 impl Hang {

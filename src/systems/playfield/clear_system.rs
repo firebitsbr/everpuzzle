@@ -1,19 +1,19 @@
+use crate::{
+    components::{
+        Block,
+        GarbageHead,
+        playfield::{Clear, GarbageMaster, Stack, Stats},
+        PlayfieldId,
+    },
+    data::{
+        block_data::{FACE_TIME, FLASH_TIME, POP_TIME},
+        playfield_data::{COLUMNS, ROWS_VISIBLE},
+    },
+    resources::Playfields,
+    block_states::change_state,
+};
 use amethyst::ecs::*;
-
-use components::{
-    block::Block,
-    garbage_head::GarbageHead,
-    playfield::{clear::Clear, garbage_master::GarbageMaster, stack::Stack, stats::Stats},
-    playfield_id::PlayfieldId,
-};
-
-use data::{
-    block_data::{FACE_TIME, FLASH_TIME, POP_TIME},
-    playfield_data::{COLUMNS, ROWS_VISIBLE},
-};
-use resources::playfield_resource::Playfields;
 use std::cmp::max;
-use systems::block_system::change_state;
 
 pub struct ClearSystem;
 
@@ -98,8 +98,8 @@ impl<'a> System<'a> for ClearSystem {
                     change_state(b, "CLEAR");
                 }
 
-                // if a combo is bigger than 3
-                if clear.combo_counter > 3 {
+                // if a combo is bigger than 3 or a chain greater than 1 is there
+                if clear.combo_counter > 3 || clear.chain != 1 {
                     // either by combo or by chain
                     let pos = {
                         // if chain == 1 use combo - 1 as x

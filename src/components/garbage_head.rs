@@ -1,6 +1,8 @@
-use amethyst::ecs::{Component, DenseVecStorage, Entity, WriteStorage};
-use components::{block::Block, playfield::stack::Stack};
-use data::playfield_data::COLUMNS;
+use amethyst::ecs::{Component, DenseVecStorage, WriteStorage};
+use crate::{
+    components::{Block, playfield::Stack},
+    data::playfield_data::COLUMNS,
+};
 use std::cmp::max;
 
 // Head of garbage that stays with the block entity that is its head
@@ -12,6 +14,8 @@ pub struct GarbageHead {
     pub highest_blocks: Vec<usize>,
     pub lowest_blocks: Vec<usize>,
     pub can_fall: bool,
+    pub can_hang: (bool, u32),
+    pub dimensions: (usize, usize),
     pub marked_clear: bool,
     pub hanged: bool,
     pub new_kinds: Vec<usize>,
@@ -22,12 +26,15 @@ impl GarbageHead {
         parts: Vec<usize>,
         highest_blocks: Vec<usize>,
         lowest_blocks: Vec<usize>,
+        dimensions: (usize, usize),
     ) -> GarbageHead {
         GarbageHead {
             parts,
             lowest_blocks,
             highest_blocks,
+            dimensions,
             can_fall: false,
+            can_hang: (false, 0),
             clearing: false,
             marked_clear: false,
             hanged: false,
@@ -87,7 +94,6 @@ impl GarbageHead {
                 }
             }
         }
-
         return (true, biggest_hang);
     }
 

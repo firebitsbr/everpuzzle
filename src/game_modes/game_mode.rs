@@ -1,27 +1,18 @@
+use crate::{
+    components::{
+        playfield::{Clear, GarbageMaster, KindGenerator, Lose, Push, Stack, Stats},
+        spritesheet_loader::{load_blocks_sprite_sheet, load_sprite_sheet},
+        Block, Cursor, GarbageHead, PlayfieldId,
+    },
+    data::playfield_data::BLOCKS,
+    resources::Playfields,
+};
 use amethyst::{
     core::{GlobalTransform, Transform},
     ecs::prelude::Entity,
     prelude::*,
     renderer::*,
 };
-use components::{
-    block::Block,
-    cursor::Cursor,
-    garbage_head::GarbageHead,
-    playfield::{
-        clear::Clear,
-        garbage_master::GarbageMaster,
-        kind_generator::{generate_random_seed, KindGenerator},
-        lose::Lose,
-        push::Push,
-        stack::Stack,
-        stats::Stats,
-    },
-    playfield_id::PlayfieldId,
-    spritesheet_loader::{load_blocks_sprite_sheet, load_sprite_sheet},
-};
-use data::playfield_data::BLOCKS;
-use resources::playfield_resource::Playfields;
 
 pub struct GameMode;
 
@@ -138,7 +129,7 @@ impl SimpleState for GameMode {
         let world = data.world;
 
         // create some randomized seed to be shared
-        let random_seed = generate_random_seed();
+        let random_seed = KindGenerator::new_random_seed();
         let mut block_entities: Vec<Entity> = Vec::new();
         let mut kind_generators: Vec<KindGenerator> = Vec::new();
         let amt = world.read_resource::<Playfields>().len();
@@ -201,7 +192,7 @@ pub fn create_blocks(
 
         // set position instantly so no weird spawn flash happens
         let (x, y) = Stack::index_to_coordinates(i);
-        let mut b = Block::new(i, kinds[i], x as i32, y as i32, level);
+        let b = Block::new(i, kinds[i], x as i32, y as i32, level);
 
         block_entities.push(
             world

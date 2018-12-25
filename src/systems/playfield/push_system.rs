@@ -1,14 +1,13 @@
 use amethyst::ecs::*;
 
-use components::{
-    block::Block,
-    cursor::Cursor,
-    garbage_head::GarbageHead,
-    playfield::{kind_generator::KindGenerator, push::Push, stack::Stack},
-    playfield_id::PlayfieldId,
+use crate::{
+    components::{
+        playfield::{KindGenerator, Push, Stack},
+        Block, Cursor, GarbageHead, PlayfieldId,
+    },
+    data::playfield_data::{BLOCKS, COLUMNS, RAISE_BLOCKED_TIME, RAISE_TIME, ROWS_VISIBLE},
+    resources::Playfields,
 };
-use data::playfield_data::{BLOCKS, COLUMNS, RAISE_BLOCKED_TIME, RAISE_TIME, ROWS_VISIBLE};
-use resources::playfield_resource::Playfields;
 
 // handles the entire pushing system which offsets all blocks and cursor
 // each complete grid offset the entire blocks get copied and move up one row
@@ -149,7 +148,7 @@ fn push_blocks(
 
             let down_head_data = heads.get(stack[reverse - COLUMNS]).unwrap().clone();
             heads.remove(stack[reverse - COLUMNS]);
-            heads.insert(stack[reverse], down_head_data);
+            heads.insert(stack[reverse], down_head_data).expect("head to be pushed");
         }
 
         b.set_properties(down);

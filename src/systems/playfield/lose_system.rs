@@ -1,19 +1,12 @@
-use amethyst::ecs::*;
-use components::{
-    block::Block,
-    cursor::Cursor,
-    playfield::{
-        clear::Clear,
-        kind_generator::{generate_random_seed, KindGenerator},
-        lose::Lose,
-        push::Push,
-        stack::Stack,
-        stats::Stats,
+use crate::{
+    components::{
+        playfield::{Clear, KindGenerator, Lose, Push, Stack, Stats},
+        Block, Cursor, PlayfieldId,
     },
-    playfield_id::PlayfieldId,
+    data::playfield_data::{BLOCKS, STOP_TIME},
+    resources::Playfields,
 };
-use data::playfield_data::{BLOCKS, STOP_TIME};
-use resources::playfield_resource::Playfields;
+use amethyst::ecs::*;
 
 // handles the losing mechanics of the game
 // counts the time up until you lose when at the top of the game
@@ -77,7 +70,7 @@ impl<'a> System<'a> for LoseSystem {
 
         if anyone_lost {
             // generate a new seed to be shared with all kind generators
-            let random_seed = generate_random_seed();
+            let random_seed = KindGenerator::new_random_seed();
 
             // reset everything
             for (lose, stat, id, stack, push, clear, kind_gen) in (

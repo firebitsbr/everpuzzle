@@ -18,18 +18,16 @@ mod data;
 mod game_modes;
 mod resources;
 mod systems;
-mod tests;
-use game_modes::game_mode::GameMode;
-use resources::playfield_resource::Playfields;
-use systems::{
-    block_system::BlockSystem,
-    cursor::{cursor_action_system::CursorActionSystem, cursor_move_system::CursorMoveSystem},
-    fps_system::FPSSystem,
-    playfield::{
-        clear_system::ClearSystem, lose_system::LoseSystem, push_system::PushSystem,
-        stats_system::StatsSystem,
+use crate::{
+    game_modes::GameMode,
+    resources::Playfields,
+    systems::{
+        cursor::{CursorActionSystem, CursorMoveSystem},
+        playfield::{ClearSystem, LoseSystem, PushSystem, StatsSystem},
+        BlockSystem,
     },
 };
+
 fn main() -> amethyst::Result<()> {
     // log only warnings to create less logs
     let mut log = amethyst::LoggerConfig::default();

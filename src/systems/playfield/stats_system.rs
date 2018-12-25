@@ -1,7 +1,9 @@
+use crate::{
+    components::{playfield::Stats, PlayfieldId},
+    data::cursor_data::CURSOR_ACTIONS,
+    resources::Playfields,
+};
 use amethyst::{ecs::*, input::InputHandler};
-use components::{playfield::stats::Stats, playfield_id::PlayfieldId};
-use resources::playfield_resource::Playfields;
-use data::cursor_data::CURSOR_ACTIONS;
 
 pub struct StatsSystem;
 

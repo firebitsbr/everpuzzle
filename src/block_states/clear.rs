@@ -1,8 +1,10 @@
 #![allow(unused_variables)]
+use crate::{
+    components::{playfield::Stack, Block},
+    data::playfield_data::ROWS_VISIBLE,
+    block_states::change_state,
+};
 use amethyst::ecs::WriteStorage;
-use components::{block::Block, playfield::stack::Stack};
-use data::playfield_data::ROWS_VISIBLE;
-use systems::block_system::change_state;
 
 const FLASH_ANIM: [u32; 4] = [6, 6, 0, 0];
 const FLASH_TIME: i32 = 44;

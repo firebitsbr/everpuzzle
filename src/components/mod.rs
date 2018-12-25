@@ -1,7 +1,13 @@
-pub mod block;
-pub mod cursor;
-pub mod key_hash_map;
+mod block;
+mod cursor;
+mod garbage_head;
+mod key_hash_map;
 pub mod playfield;
-pub mod playfield_id;
+mod playfield_id;
 pub mod spritesheet_loader;
-pub mod garbage_head;
+
+pub use self::block::Block;
+pub use self::cursor::Cursor;
+pub use self::garbage_head::GarbageHead;
+pub use self::key_hash_map::KeyHashMap;
+pub use self::playfield_id::PlayfieldId;

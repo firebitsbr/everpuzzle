@@ -1,6 +1,8 @@
-use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity, WriteStorage};
-use components::{block::Block, garbage_head::GarbageHead, playfield::stack::Stack};
-use data::playfield_data::{COLUMNS, ROWS};
+use crate::{
+    components::{block::Block, garbage_head::GarbageHead, playfield::stack::Stack},
+    data::playfield_data::ROWS,
+};
+use amethyst::ecs::prelude::{Component, DenseVecStorage, WriteStorage};
 
 // Deals with Garbage Spawns, and keeps info on general garbage
 // holds all sub garbages in an array easily acessible
@@ -56,10 +58,10 @@ impl GarbageMaster {
                     }
                 };
 
-                // set highest blocks only until 6 wide
+                // set first_lowest blocks only until 6 wide
                 if counter < 6 {
                     counter += 1;
-                    highest_blocks.push(index);
+                    lowest_blocks.push(index);
                 }
 
                 let b = blocks.get_mut(stack[index]).unwrap();
@@ -77,11 +79,13 @@ impl GarbageMaster {
             }
         }
 
-        // go below all blocks bottom ones
-        let size = garbage_blocks.len() as i32;
-        for i in (size - COLUMNS as i32)..size {
-            if i >= 0 {
-                lowest_blocks.push(garbage_blocks[i as usize]);
+        // clone the garbage_blocks contents, reverse order it and go for the new first
+        // column of it
+        let mut temp_blocks = garbage_blocks.clone();
+        temp_blocks.reverse();
+        for i in 0..temp_blocks.len() {
+            if i < 6 {
+                highest_blocks.push(temp_blocks[i]);
             }
         }
 
@@ -93,7 +97,7 @@ impl GarbageMaster {
             garbage_heads
                 .insert(
                     id,
-                    GarbageHead::new(garbage_blocks, highest_blocks, lowest_blocks),
+                    GarbageHead::new(garbage_blocks, highest_blocks, lowest_blocks, dimensions),
                 )
                 .expect("garbage head should be added");
         }

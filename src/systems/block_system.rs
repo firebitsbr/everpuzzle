@@ -1,11 +1,10 @@
-use amethyst::{core::Transform, ecs::*, renderer::*};
-
-use block_states::{clear::Clear, fall::Fall, hang::Hang, idle::Idle, land::Land, swap::Swap};
-use components::{
-    block::Block, garbage_head::GarbageHead, playfield::stack::Stack, playfield_id::PlayfieldId,
+use crate::{
+    block_states::{Clear, Fall, Hang, Idle, Land, Swap},
+    components::{playfield::Stack, Block, GarbageHead, PlayfieldId},
+    data::playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE},
+    resources::Playfields,
 };
-use data::playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE};
-use resources::playfield_resource::Playfields;
+use amethyst::{core::Transform, ecs::*, renderer::*};
 
 // handles everything a block should do itself or based on others
 pub struct BlockSystem;
@@ -46,13 +45,14 @@ impl<'a> System<'a> for BlockSystem {
                     // let head update everything in its order
                     // skip all normal blocks that are only garbage
                     if blocks.get(stack[i]).unwrap().is_garbage_head {
-                        garbage_heads
-                            .get_mut(stack[i])
-                            .unwrap()
-                            .below_empty(&stack, &blocks);
+                        {
+                            let head = garbage_heads.get_mut(stack[i]).unwrap();
+                            head.below_empty(&stack, &blocks);
+                            head.below_hang(&stack, &blocks);
+                        }
 
                         update_state(i, &stack, &mut blocks, &mut garbage_heads);
-                        println!("{}", blocks.get(stack[i]).unwrap().state);
+                        //println!("{}", blocks.get(stack[i]).unwrap().state);
                     }
                 }
             }
@@ -102,37 +102,52 @@ fn update_sprites(
         // then its sitting at the top
         let top_garbage_non_idle =
             top.is_garbage && blocks.get(stack[top.garbage_head.unwrap()]).unwrap().state == "IDLE";
-        let b = blocks.get_mut(stack[i]).unwrap();
-
-        // decrease all the time
-        if b.anim_counter > 0 {
-            b.anim_counter -= 1;
-        }
 
         // render sprite with kind if it's not -1
-        if b.kind != -1 && !b.clearing {
+        let visible = {
+            // decrease all the time
+            let b = blocks.get_mut(stack[i]).unwrap();
+            if b.anim_counter > 0 {
+                b.anim_counter -= 1;
+            }
+
+            b.kind != -1 && !b.clearing
+        };
+
+        if visible {
             if hiddens.contains(stack[i]) {
                 hiddens.remove(stack[i]);
             }
 
-            if !b.is_garbage {
+            let offset: u32;
+
+            // gets the animation offset for normal blocks that are animating (in IDLE)
+            if !blocks.get(stack[i]).unwrap().is_garbage {
+                let b = blocks.get_mut(stack[i]).unwrap();
+
                 if b.state == "IDLE" {
                     // checks wether the highest block is null
+                    // TODO: FIX 1 Frame WHEN GARBAGE IS FALLING
                     if (top.kind != -1 && top.state == "IDLE" && !top.is_garbage)
                         || top_garbage_non_idle
                     {
-                        b.anim_offset = 4;
+                        offset = 4;
                     } else if b.y == 0 {
-                        b.anim_offset = 1;
+                        offset = 1;
                     } else {
-                        b.anim_offset = 0;
+                        offset = 0;
                     }
+
+                    b.anim_offset = offset;
                 }
             } else {
-                // dont change the offset ever
-                b.anim_offset = 0;
+                if heads.contains(stack[blocks.get(stack[i]).unwrap().garbage_head.unwrap()]) {
+                    offset = get_garbage_offset(i, &stack, &blocks, &heads);
+                    blocks.get_mut(stack[i]).unwrap().anim_offset = offset;
+                }
             }
 
+            let b = blocks.get(stack[i]).unwrap();
             sprites.get_mut(stack[i]).unwrap().sprite_number =
                 b.kind as usize * 8 + b.anim_offset as usize;
         } else {
@@ -145,16 +160,47 @@ fn update_sprites(
     }
 }
 
-// checks whether the block below is empty or falling, also checks whether this block is empty
-pub fn check_for_hang(i: usize, stack: &Stack, blocks: &WriteStorage<'_, Block>) -> bool {
-    // check if is in vec boundary
-    if i > COLUMNS {
-        let down = blocks.get(stack[i - COLUMNS]).unwrap();
-        let down_empty = down.is_empty() || down.state == "HANG";
+// gets the animation offset for garbage blocks
+fn get_garbage_offset(
+    i: usize,
+    stack: &Stack,
+    blocks: &WriteStorage<'_, Block>,
+    heads: &WriteStorage<'_, GarbageHead>,
+) -> u32 {
+    // dont change the offset ever
+    //b.anim_offset = 0;
+    let b = blocks.get(stack[i]).unwrap();
+    println!("is_garbage: {}, head: {:?}", b.is_garbage, b.garbage_head);
+    let head_block = blocks.get(stack[b.garbage_head.unwrap()]).unwrap();
+    let head = heads.get(stack[b.garbage_head.unwrap()]).unwrap();
+    let size = head.dimensions.0 * head.dimensions.1;
 
-        !blocks.get(stack[i]).unwrap().is_empty() && down_empty
-    } else {
-        false
+    let rel_x = b.x - head_block.x;
+    let rel_y = b.y - head_block.y;
+
+    // if garbage is only 1 tall
+    // all spritesheet offsets
+    let garbage3x1 = [1, 4, 3, 0, 0, 0];
+    let garbage4x1 = [1, 5, 6, 3, 0, 0];
+    let garbage5x1 = [1, 2, 4, 2, 3, 0];
+    let garbage6x1 = [1, 2, 5, 6, 2, 3];
+    let all_garbages = [garbage3x1, garbage4x1, garbage5x1, garbage6x1];
+
+    all_garbages[size - 3][rel_x as usize]
+}
+
+// checks whether the block below is empty or falling, also checks whether this block is empty
+impl BlockSystem {
+    pub fn check_for_hang(i: usize, stack: &Stack, blocks: &WriteStorage<'_, Block>) -> bool {
+        // check if is in vec boundary
+        if i > COLUMNS {
+            let down = blocks.get(stack[i - COLUMNS]).unwrap();
+            let down_empty = down.is_empty() || down.state == "HANG";
+
+            !blocks.get(stack[i]).unwrap().is_empty() && down_empty
+        } else {
+            false
+        }
     }
 }
 
@@ -201,29 +247,5 @@ fn update_state(
             "SWAP" => Swap::counter_end(i, &stack, blocks),
             _ => (),
         }
-    }
-}
-
-// changes the current block's state to a new one
-pub fn change_state(b: &mut Block, new_state: &'static str) {
-    if b.state == new_state {
-        return;
-    }
-
-    // call the current block's state's exit function
-    match b.state {
-        "LAND" => Land::exit(b),
-        "CLEAR" => Clear::exit(b),
-        _ => (),
-    }
-
-    b.state = new_state;
-
-    // call the current block's state's enter function
-    match b.state {
-        "HANG" => Hang::enter(b),
-        "LAND" => Land::enter(b),
-        "CLEAR" => Clear::enter(b),
-        _ => (),
     }
 }

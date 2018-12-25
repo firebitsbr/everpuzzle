@@ -1,11 +1,12 @@
-use amethyst::{core::Transform, ecs::*, input::InputHandler, renderer::SpriteRender};
-
-use components::{cursor::Cursor, playfield_id::PlayfieldId};
-use data::{
-    cursor_data::CURSOR_ACTIONS,
-    playfield_data::{COLUMNS, ROWS_VISIBLE},
+use crate::{
+    components::{Cursor, PlayfieldId},
+    data::{
+        cursor_data::CURSOR_ACTIONS,
+        playfield_data::{COLUMNS, ROWS_VISIBLE},
+    },
+    resources::Playfields,
 };
-use resources::playfield_resource::Playfields;
+use amethyst::{core::Transform, ecs::*, input::InputHandler, renderer::SpriteRender};
 
 pub struct CursorMoveSystem;
 

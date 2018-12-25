@@ -1,5 +1,5 @@
+use crate::components::key_hash_map::KeyHashMap;
 use amethyst::ecs::{Component, DenseVecStorage};
-use components::key_hash_map::KeyHashMap;
 
 pub struct Stats {
     pub highest_chain: u32,

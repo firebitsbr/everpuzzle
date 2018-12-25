@@ -1,8 +1,10 @@
 #![allow(unused_variables)]
+use crate::{
+    block_states::change_state,
+    components::{playfield::Stack, Block, GarbageHead},
+    data::playfield_data::COLUMNS,
+};
 use amethyst::ecs::WriteStorage;
-use components::{block::Block, garbage_head::GarbageHead, playfield::stack::Stack};
-use data::playfield_data::COLUMNS;
-use systems::block_system::change_state;
 
 // falls to one block below IN 1 FRAME
 // sets the block below to this current one
@@ -57,8 +59,8 @@ impl Fall {
                 let head_parts = heads.get(stack[i]).unwrap().parts.clone();
                 let size = head_parts.len();
 
-                for rev in 0..size {
-                    let id = head_parts[size - rev - 1];
+                for iterator in 0..size {
+                    let id = head_parts[iterator];
                     // store data from the current to a temp
                     let temp_block = blocks.get(stack[id]).unwrap().clone();
 
@@ -77,7 +79,7 @@ impl Fall {
                 // remove this head and push it one lower if theres no head yet
                 let removed_head = heads.remove(stack[i]).unwrap();
                 if !heads.contains(stack[i - COLUMNS]) {
-                    heads.insert(stack[i - COLUMNS], removed_head);
+                    heads.insert(stack[i - COLUMNS], removed_head).expect("head to be inserted");
                 }
             } else {
                 if !heads.get(stack[i]).unwrap().hanged {

@@ -1,17 +1,16 @@
+use crate::{
+    block_states::change_state,
+    components::{
+        playfield::{Push, Stack},
+        Block, Cursor, PlayfieldId,
+    },
+    data::{
+        block_data::SWAP_TIME,
+        cursor_data::CURSOR_ACTIONS,
+        playfield_data::{BLOCKS, COLUMNS},
+    },
+};
 use amethyst::{ecs::*, input::*};
-
-use components::{
-    block::Block,
-    cursor::Cursor,
-    playfield::{push::Push, stack::Stack},
-    playfield_id::PlayfieldId,
-};
-use data::{
-    block_data::SWAP_TIME,
-    cursor_data::CURSOR_ACTIONS,
-    playfield_data::{BLOCKS, COLUMNS},
-};
-use systems::block_system::change_state;
 
 pub struct CursorActionSystem;
 

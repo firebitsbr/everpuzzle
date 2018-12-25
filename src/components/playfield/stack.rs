@@ -1,6 +1,6 @@
 #![allow(dead_code)]
+use crate::data::playfield_data::{BLOCKS, COLUMNS};
 use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity};
-use data::playfield_data::{BLOCKS, COLUMNS};
 use std::ops::Index;
 
 pub struct Stack {

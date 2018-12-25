@@ -1,7 +1,6 @@
 #![allow(dead_code, unused_imports)]
+use crate::{components::garbage_head::GarbageHead, data::block_data::LAND_TIME};
 use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity};
-use components::garbage_head::GarbageHead;
-use data::block_data::LAND_TIME;
 
 #[derive(Clone)]
 pub struct Block {
@@ -174,7 +173,9 @@ impl Block {
 
         self.is_garbage = other.is_garbage;
         self.is_garbage_head = other.is_garbage_head;
+        println!("before: {:?}", self.garbage_head);
         self.garbage_head = other.garbage_head;
+        println!("after: {:?}", self.garbage_head);
     }
 
     // reset everything but the set variables that should remain

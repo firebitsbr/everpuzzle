@@ -1,6 +1,6 @@
+use crate::data::cursor_data::CURSOR_ACTIONS;
 use amethyst::{ecs::Read, input::InputHandler};
 use std::collections::HashMap;
-use data::cursor_data::CURSOR_ACTIONS;
 
 // A hashmap for storing ticks on inputs
 // an input signal will return true the amt of time its held down

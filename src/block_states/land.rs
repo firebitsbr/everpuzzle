@@ -1,11 +1,13 @@
 #![allow(unused_variables)]
-use amethyst::ecs::WriteStorage;
-use components::{block::Block, playfield::stack::Stack};
-use data::{
-    block_data::LAND_TIME,
-    playfield_data::{BLOCKS, COLUMNS},
+use crate::{
+    components::{Block, playfield::Stack},
+    data::{
+        block_data::LAND_TIME,
+        playfield_data::{BLOCKS, COLUMNS},
+    },
+    block_states::change_state
 };
-use systems::block_system::change_state;
+use amethyst::ecs::WriteStorage;
 
 // local animation frames
 const LAND_ANIM: [u32; 10] = [2, 2, 2, 3, 3, 3, 4, 4, 4, 0];

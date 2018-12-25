@@ -1,3 +1,4 @@
+/*
 use amethyst::{
     utils::fps_counter::FPSCounter,
     core::timing::{duration_to_nanos, Time},
@@ -17,4 +18,4 @@ impl<'a> System<'a> for FPSSystem {
 
         println!("fps: {}, sampled: {}", counter.frame_fps(), counter.sampled_fps());
     }
-}
+}*/
