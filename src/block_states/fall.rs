@@ -68,7 +68,8 @@ impl Fall {
                     blocks
                         .get_mut(stack[id - COLUMNS])
                         .unwrap()
-                        .set_properties(temp_block);
+                        .set_properties(temp_block)
+                        .set_garbage_head(-1);
 
                     // reset data in the current one to default
                     blocks.get_mut(stack[id]).unwrap().reset();

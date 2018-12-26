@@ -170,7 +170,7 @@ fn get_garbage_offset(
     // dont change the offset ever
     //b.anim_offset = 0;
     let b = blocks.get(stack[i]).unwrap();
-    println!("is_garbage: {}, head: {:?}", b.is_garbage, b.garbage_head);
+    //println!("is_garbage: {}, head: {:?}", b.is_garbage, b.garbage_head);
     let head_block = blocks.get(stack[b.garbage_head.unwrap()]).unwrap();
     let head = heads.get(stack[b.garbage_head.unwrap()]).unwrap();
     let size = head.dimensions.0 * head.dimensions.1;

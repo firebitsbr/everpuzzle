@@ -1,5 +1,9 @@
 #![allow(dead_code, unused_imports)]
-use crate::{components::garbage_head::GarbageHead, data::block_data::LAND_TIME};
+use crate::{
+    components::garbage_head::GarbageHead, 
+    data::block_data::LAND_TIME,
+    data::playfield_data::COLUMNS
+};
 use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity};
 
 #[derive(Clone)]
@@ -155,7 +159,8 @@ impl Block {
 
     // set properties from another block
     // THIS SHOULD BE CHANGED WHENEVER DATA SHOULD PERSIST AFTER A FALL OR A SWAP!!!
-    pub fn set_properties(&mut self, other: Block) {
+    // returns itself to be modifiable again
+    pub fn set_properties(&mut self, other: Block) -> &mut Block {
         self.kind = other.kind;
         self.offset = other.offset;
 
@@ -173,9 +178,24 @@ impl Block {
 
         self.is_garbage = other.is_garbage;
         self.is_garbage_head = other.is_garbage_head;
-        println!("before: {:?}", self.garbage_head);
         self.garbage_head = other.garbage_head;
-        println!("after: {:?}", self.garbage_head);
+
+        self
+    }
+
+    // increases/decreases the garbage head id by the size
+    // returns itself to be modifiable again
+    // TODO: make this option mess easier
+    pub fn set_garbage_head(&mut self, value: i32) -> &mut Block {
+        if self.garbage_head.is_some() {
+            let new_num = self.garbage_head.map(|num| 
+                if value < 0 { num - COLUMNS } else { num + COLUMNS }
+            ).unwrap();
+
+            *self.garbage_head.as_mut().unwrap() = new_num;
+        }
+
+        self
     }
 
     // reset everything but the set variables that should remain

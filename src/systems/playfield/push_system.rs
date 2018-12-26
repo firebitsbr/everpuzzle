@@ -134,9 +134,6 @@ fn push_blocks(
         // since for i doesn't work backwards we do this
         let reverse = BLOCKS - i - 1;
 
-        let down = blocks.get(stack[reverse - COLUMNS]).unwrap().clone();
-        let b = blocks.get_mut(stack[reverse]).unwrap();
-
         // if theres a garbage head, move its inner ids up and offset its
         // component one up too
         if heads.contains(stack[reverse - COLUMNS]) {
@@ -151,8 +148,12 @@ fn push_blocks(
             heads.insert(stack[reverse], down_head_data).expect("head to be pushed");
         }
 
-        b.set_properties(down);
-        b.anim_offset = 0;
+        let down = blocks.get(stack[reverse - COLUMNS]).unwrap().clone();
+        blocks
+            .get_mut(stack[reverse]).unwrap()
+            .set_properties(down)
+            .set_garbage_head(1)
+            .anim_offset = 0;
     }
 
     // generate lowest row since it's now empty!
