@@ -1,8 +1,8 @@
-use amethyst::ecs::{Component, DenseVecStorage, WriteStorage};
 use crate::{
-    components::{Block, playfield::Stack},
+    components::{playfield::Stack, Block},
     data::playfield_data::COLUMNS,
 };
+use amethyst::ecs::{Component, DenseVecStorage, WriteStorage};
 use std::cmp::max;
 
 // Head of garbage that stays with the block entity that is its head

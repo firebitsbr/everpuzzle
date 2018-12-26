@@ -80,7 +80,9 @@ impl Fall {
                 // remove this head and push it one lower if theres no head yet
                 let removed_head = heads.remove(stack[i]).unwrap();
                 if !heads.contains(stack[i - COLUMNS]) {
-                    heads.insert(stack[i - COLUMNS], removed_head).expect("head to be inserted");
+                    heads
+                        .insert(stack[i - COLUMNS], removed_head)
+                        .expect("head to be inserted");
                 }
             } else {
                 if !heads.get(stack[i]).unwrap().hanged {

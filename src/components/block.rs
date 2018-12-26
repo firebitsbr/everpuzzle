@@ -1,8 +1,7 @@
 #![allow(dead_code, unused_imports)]
 use crate::{
-    components::garbage_head::GarbageHead, 
-    data::block_data::LAND_TIME,
-    data::playfield_data::COLUMNS
+    components::garbage_head::GarbageHead, data::block_data::LAND_TIME,
+    data::playfield_data::COLUMNS,
 };
 use amethyst::ecs::prelude::{Component, DenseVecStorage, Entity};
 
@@ -188,9 +187,16 @@ impl Block {
     // TODO: make this option mess easier
     pub fn set_garbage_head(&mut self, value: i32) -> &mut Block {
         if self.garbage_head.is_some() {
-            let new_num = self.garbage_head.map(|num| 
-                if value < 0 { num - COLUMNS } else { num + COLUMNS }
-            ).unwrap();
+            let new_num = self
+                .garbage_head
+                .map(|num| {
+                    if value < 0 {
+                        num - COLUMNS
+                    } else {
+                        num + COLUMNS
+                    }
+                })
+                .unwrap();
 
             *self.garbage_head.as_mut().unwrap() = new_num;
         }

@@ -1,9 +1,5 @@
 use crate::{
-    block_states::{
-        Land,
-        Clear,  
-        Hang,
-    },
+    block_states::{Clear, Hang, Land},
     components::Block,
 };
 

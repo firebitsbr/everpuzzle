@@ -145,12 +145,15 @@ fn push_blocks(
 
             let down_head_data = heads.get(stack[reverse - COLUMNS]).unwrap().clone();
             heads.remove(stack[reverse - COLUMNS]);
-            heads.insert(stack[reverse], down_head_data).expect("head to be pushed");
+            heads
+                .insert(stack[reverse], down_head_data)
+                .expect("head to be pushed");
         }
 
         let down = blocks.get(stack[reverse - COLUMNS]).unwrap().clone();
         blocks
-            .get_mut(stack[reverse]).unwrap()
+            .get_mut(stack[reverse])
+            .unwrap()
             .set_properties(down)
             .set_garbage_head(1)
             .anim_offset = 0;

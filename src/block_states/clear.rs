@@ -1,8 +1,8 @@
 #![allow(unused_variables)]
 use crate::{
+    block_states::change_state,
     components::{playfield::Stack, Block},
     data::playfield_data::ROWS_VISIBLE,
-    block_states::change_state,
 };
 use amethyst::ecs::WriteStorage;
 

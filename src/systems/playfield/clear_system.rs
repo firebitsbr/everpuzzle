@@ -1,16 +1,14 @@
 use crate::{
+    block_states::change_state,
     components::{
-        Block,
-        GarbageHead,
         playfield::{Clear, GarbageMaster, Stack, Stats},
-        PlayfieldId,
+        Block, GarbageHead, PlayfieldId,
     },
     data::{
         block_data::{FACE_TIME, FLASH_TIME, POP_TIME},
         playfield_data::{COLUMNS, ROWS_VISIBLE},
     },
     resources::Playfields,
-    block_states::change_state,
 };
 use amethyst::ecs::*;
 use std::cmp::max;
