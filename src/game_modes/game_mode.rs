@@ -132,7 +132,7 @@ impl SimpleState for GameMode {
         let random_seed = KindGenerator::new_random_seed();
         let mut block_entities: Vec<Entity> = Vec::new();
         let mut kind_generators: Vec<KindGenerator> = Vec::new();
-        let amt = world.read_resource::<Playfields>().len();
+        let amt = world.read_resource::<Playfields>().keys.len();
         let block_sprite = load_blocks_sprite_sheet(world);
 
         // create all block entities first to distribute them
@@ -187,20 +187,21 @@ pub fn create_blocks(
     };
 
     for i in 0..BLOCKS {
-        let mut trans = Transform::default();
-        trans.set_scale(scale.0, scale.1, 1.0);
-
-        // set position instantly so no weird spawn flash happens
-        let (x, y) = Stack::index_to_coordinates(i);
-        let b = Block::new(i, kinds[i], x as i32, y as i32, level);
+        let mut transform = Transform::default();
+        transform.set_scale(scale.0, scale.1, 1.0);
 
         block_entities.push(
             world
                 .create_entity()
                 .with(sprite.clone())
-                .with(b)
+                .with(Block::new(
+                    i,
+                    kinds[i],
+                    Stack::index_to_coordinates(i),
+                    level,
+                ))
                 .with(GlobalTransform::default())
-                .with(trans)
+                .with(transform)
                 .with(PlayfieldId::new(p_id))
                 .build(),
         );

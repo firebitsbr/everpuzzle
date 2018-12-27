@@ -123,9 +123,7 @@ impl<'a> System<'a> for LoseSystem {
                 stat.reset();
 
                 // reset level to start
-                for i in 0..playfields.len() {
-                    playfields[i].level = playfields[i].start_level;
-                }
+                playfields.iter_mut().for_each(|p| p.level = p.start_level);
 
                 cursors.get_mut(stack.cursor_entity).unwrap().reset();
             }

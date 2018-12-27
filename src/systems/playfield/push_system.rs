@@ -192,15 +192,12 @@ fn set_visual_offsets(
 // returns true when any block was found that is currently in clear state
 fn check_blocks_clearing(stack: &Stack, blocks: &WriteStorage<'_, Block>) -> bool {
     for i in 0..BLOCKS {
-        let b = blocks.get(stack[i]).unwrap();
-
-        if b.state == "CLEAR" {
-            // or garbage clear
+        if blocks.get(stack[i]).unwrap().state == "CLEAR" {
             return true;
         }
     }
 
-    return false;
+    false
 }
 
 // returns true if any "real" block is at the top of the grid
@@ -209,10 +206,11 @@ fn check_blocks_at_top(stack: &Stack, blocks: &WriteStorage<'_, Block>) -> bool 
         let b = blocks.get(stack[(x, ROWS_VISIBLE - 1)]).unwrap();
 
         if b.kind != -1 && b.state == "IDLE" {
+            // TODO: add garbage definition
             // or garbage
             return true;
         }
     }
 
-    return false;
+    false
 }

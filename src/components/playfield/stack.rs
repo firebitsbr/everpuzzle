@@ -33,8 +33,15 @@ impl Stack {
     pub fn index_to_coordinates(index: usize) -> (usize, usize) {
         (index % COLUMNS, index / COLUMNS)
     }
+
+    // returns an iterator of entity references
+    pub fn iter(&self) -> impl Iterator<Item = &Entity> {
+        self.block_entities.iter()
+    }
 }
 
+// impls index for stack so that you can directly access the block_entities
+// by calling stack[usize]
 impl Index<usize> for Stack {
     type Output = Entity;
 
@@ -43,6 +50,8 @@ impl Index<usize> for Stack {
     }
 }
 
+// impls index for stack so that you can directly access the block_entities
+// by calling stack[(usize, usize)]
 impl Index<(usize, usize)> for Stack {
     type Output = Entity;
 

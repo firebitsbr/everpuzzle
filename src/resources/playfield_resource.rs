@@ -36,8 +36,8 @@ impl Default for Playfields {
 }
 
 impl Playfields {
-    pub fn len(&self) -> usize {
-        self.keys.len()
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut PlayfieldResource> {
+        self.keys.iter_mut()
     }
 }
 

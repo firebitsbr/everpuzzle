@@ -72,12 +72,12 @@ impl Default for Block {
 }
 
 impl Block {
-    pub fn new(id: usize, kind: i32, x: i32, y: i32, level: usize) -> Block {
+    pub fn new(id: usize, kind: i32, xy: (usize, usize), level: usize) -> Block {
         Block {
             id,
             kind,
-            x,
-            y,
+            x: xy.0 as i32,
+            y: xy.1 as i32,
             level,
             ..Default::default()
         }
@@ -123,7 +123,7 @@ impl Block {
             return true;
         }
 
-        return false;
+        false
     }
 
     // a block is comboable under these conditions:

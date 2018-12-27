@@ -46,13 +46,17 @@ fn swap(x: f32, y: f32, stack: &Stack, blocks: &mut WriteStorage<'_, Block>) {
         let b1 = blocks.get(stack[i]).unwrap();
         let b2 = blocks.get(stack[i + 1]).unwrap();
 
-        let mut b1_above_block: Option<&Block> = None;
-        let mut b2_above_block: Option<&Block> = None;
-
-        if i < BLOCKS - COLUMNS {
-            b1_above_block = blocks.get(stack[i + COLUMNS]);
-            b2_above_block = blocks.get(stack[i + 1 + COLUMNS]);
-        }
+        // get above blocks if they exist without storing them as mut
+        let (b1_above_block, b2_above_block) = {
+            if i < BLOCKS - COLUMNS {
+                (
+                    blocks.get(stack[i + COLUMNS]),
+                    blocks.get(stack[i + 1 + COLUMNS]),
+                )
+            } else {
+                (None, None)
+            }
+        };
 
         if b1.is_swappable(b2, b1_above_block) && b2.is_swappable(b1, b2_above_block) {
             if b1.is_empty() && b2.is_empty() {

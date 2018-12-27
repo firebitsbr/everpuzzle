@@ -180,13 +180,46 @@ fn get_garbage_offset(
 
     // if garbage is only 1 tall
     // all spritesheet offsets
-    let garbage3x1 = [1, 4, 3, 0, 0, 0];
-    let garbage4x1 = [1, 5, 6, 3, 0, 0];
-    let garbage5x1 = [1, 2, 4, 2, 3, 0];
-    let garbage6x1 = [1, 2, 5, 6, 2, 3];
-    let all_garbages = [garbage3x1, garbage4x1, garbage5x1, garbage6x1];
+    if head.dimensions.1 == 1 {
+        // each garbage sprite offset with the face included
+        let garbage3x1 = [1, 4, 3, 0, 0, 0];
+        let garbage4x1 = [1, 5, 6, 3, 0, 0];
+        let garbage5x1 = [1, 2, 4, 2, 3, 0];
+        let garbage6x1 = [1, 2, 5, 6, 2, 3];
+        let all_garbages = [garbage3x1, garbage4x1, garbage5x1, garbage6x1];
 
-    all_garbages[size - 3][rel_x as usize]
+        // TODO: corner sprites
+
+        return all_garbages[size - 3][rel_x as usize];
+    } else {
+        // basic 6x2 of plain sprite offsets without the face yet
+        // has a left and right wall in the beginning / end
+        let mut garbage6xy = vec![[1, 2, 2, 2, 2, 3], [1, 2, 2, 2, 2, 3]];
+
+        // when dims are larger than 2 insert a new row for each more
+        if head.dimensions.1 != 2 {
+            for i in 0..head.dimensions.1 - 2 {
+                garbage6xy.insert(i + 1, [1, 2, 2, 2, 2, 3]);
+            }
+        }
+
+        // insert the face
+        // if the dims are mod 2 the faces will be in 4 different blocks!
+        if head.dimensions.1 % 2 == 0 {
+            let middle = head.dimensions.1 / 2;
+            garbage6xy[middle - 1][2] = 8;
+            garbage6xy[middle - 1][3] = 9;
+            garbage6xy[middle][2] = 10;
+            garbage6xy[middle][3] = 11;
+        }
+        // else just go to 2 and 3 and insert the face in 2 blocks
+        else {
+            garbage6xy[1][2] = 5;
+            garbage6xy[1][3] = 6;
+        }
+
+        return garbage6xy[rel_y as usize][rel_x as usize];
+    }
 }
 
 // checks whether the block below is empty or falling, also checks whether this block is empty

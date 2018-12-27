@@ -183,7 +183,7 @@ fn check_similar_block(
 
 // checks wether any current block is inside a chain
 fn any_chainable_exists(
-    clear_ids: &Vec<u32>,
+    clear_ids: &[u32],
     stack: &Stack,
     blocks: &WriteStorage<'_, Block>,
 ) -> bool {

@@ -39,12 +39,14 @@ impl KindGenerator {
         rand_seed
     }
 
+    // creates a vec of numbers that a blocks kind will need
+    // returns -1 which means the block will turn invisible instead
     pub fn create_stack(&mut self, safe: usize, nulling: usize) -> Vec<i32> {
         let safe_zone: usize = safe * COLUMNS;
         let nulling_zone: usize = nulling * COLUMNS;
 
         // empty array to destined length
-        let size: usize = BLOCKS; //TODO: ROWS_VIS data
+        let size: usize = BLOCKS;
         let mut nums: Vec<i32> = Vec::new();
         nums.resize(size, -1);
 
