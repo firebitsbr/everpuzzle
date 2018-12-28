@@ -76,25 +76,23 @@ impl GarbageHead {
 
             // if not none
             if let Some(down) = down_block {
-                if down.state == "HANG" {
-                    // looks at garbage beneat and at its head to see which counter it has
-                    if down.is_garbage {
-                        let down_head = blocks.get(stack[down.garbage_head.unwrap()]).unwrap();
+                if down.is_garbage {
+                    let down_head = blocks.get(stack[down.garbage_head.unwrap()]).unwrap();
+
+                    if down_head.state == "HANG" {
                         biggest_hang = max(biggest_hang, down_head.counter);
+                        println!("hang of garbage detected");
                     }
-                    // look at the hanging block below and max out the counter
-                    else {
-                        biggest_hang = max(biggest_hang, down.counter);
-                    }
-                }
-                // stops all hang wether the block isnt hanging and its a real block
-                // or a "dumb" garbage block
-                else if down.kind != -1 || down.kind == 7 {
+                } else if down.state == "HANG" {
+                    biggest_hang = max(biggest_hang, down.counter);
+                    println!("hang of blocks detected");
+                } else if down.state != "HANG" && down.kind != -1 || down.kind == 7 {
                     return (false, 0);
                 }
             }
         }
-        return (true, biggest_hang);
+
+        (true, biggest_hang)
     }
 
     // increases all ids a column lower without boundary checking

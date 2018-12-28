@@ -3,6 +3,7 @@ mod garbage_master;
 mod kind_generator;
 mod lose;
 mod push;
+mod shake;
 mod stack;
 mod stats;
 
@@ -11,5 +12,6 @@ pub use self::garbage_master::GarbageMaster;
 pub use self::kind_generator::KindGenerator;
 pub use self::lose::Lose;
 pub use self::push::Push;
+pub use self::shake::Shake;
 pub use self::stack::Stack;
 pub use self::stats::Stats;

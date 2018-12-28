@@ -1,8 +1,11 @@
 #![allow(unused_variables)]
 use crate::{
     block_states::change_state,
-    components::{playfield::Stack, Block, GarbageHead},
-    data::playfield_data::COLUMNS,
+    components::{
+        playfield::{Shake, Stack},
+        Block, GarbageHead,
+    },
+    data::playfield_data::{COLUMNS, SHAKE_CHAIN_TIME, SHAKE_COMBO_TIME},
 };
 use amethyst::ecs::WriteStorage;
 
@@ -16,6 +19,7 @@ impl Fall {
         stack: &Stack,
         blocks: &mut WriteStorage<'_, Block>,
         heads: &mut WriteStorage<'_, GarbageHead>,
+        shake: &mut Shake,
     ) {
         // when the block isnt garbage, do normal fall
         if !blocks.get(stack[i]).unwrap().is_garbage {
@@ -85,12 +89,32 @@ impl Fall {
                         .expect("head to be inserted");
                 }
             } else {
-                if !heads.get(stack[i]).unwrap().hanged {
-                    // shake animation code
+                let head = heads.get_mut(stack[i]).unwrap();
+
+                if !head.hanged {
+                    let (x, y) = head.dimensions;
+
+                    // set shake frame times for combos or chains
+                    if y == 1 {
+                        if y < 4 {
+                            shake.counter = SHAKE_COMBO_TIME[x - 3];
+                        } else {
+                            shake.counter = SHAKE_COMBO_TIME[SHAKE_COMBO_TIME.len() - 1];
+                        }
+                    } else {
+                        if y < 4 {
+                            shake.counter = SHAKE_CHAIN_TIME[y - 2];
+                        } else {
+                            shake.counter = SHAKE_CHAIN_TIME[SHAKE_CHAIN_TIME.len() - 1];
+                        }
+                    }
+
+                    shake.start = true;
+                    head.hanged = false;
                 }
 
                 // go through all blocks in garbage head and set all to idle
-                for id in heads.get(stack[i]).unwrap().parts.iter() {
+                for id in &head.parts {
                     blocks.get_mut(stack[*id]).unwrap().state = "IDLE";
                 }
             }

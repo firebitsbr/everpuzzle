@@ -1,8 +1,5 @@
 use crate::{
-    components::{
-        playfield::{Clear, KindGenerator, Lose, Push, Stack, Stats},
-        Block, Cursor, PlayfieldId,
-    },
+    components::{playfield::*, Block, Cursor, PlayfieldId},
     data::playfield_data::{BLOCKS, STOP_TIME},
     resources::Playfields,
 };
@@ -25,6 +22,7 @@ impl<'a> System<'a> for LoseSystem {
         WriteStorage<'a, Block>,
         WriteStorage<'a, KindGenerator>,
         ReadStorage<'a, Stack>,
+        WriteStorage<'a, Shake>,
     );
 
     fn run(
@@ -40,6 +38,7 @@ impl<'a> System<'a> for LoseSystem {
             mut blocks,
             mut kind_gens,
             stacks,
+            mut shakes,
         ): Self::SystemData,
     ) {
         for (lose, push, id) in (&mut loses, &pushes, &ids).join() {
@@ -73,7 +72,7 @@ impl<'a> System<'a> for LoseSystem {
             let random_seed = KindGenerator::new_random_seed();
 
             // reset everything
-            for (lose, stat, id, stack, push, clear, kind_gen) in (
+            for (lose, stat, id, stack, push, clear, kind_gen, shake) in (
                 &mut loses,
                 &mut stats,
                 &ids,
@@ -81,6 +80,7 @@ impl<'a> System<'a> for LoseSystem {
                 &mut pushes,
                 &mut clears,
                 &mut kind_gens,
+                &mut shakes,
             )
                 .join()
             {
@@ -120,6 +120,7 @@ impl<'a> System<'a> for LoseSystem {
                 *push = Default::default();
                 *clear = Default::default();
                 *lose = Default::default();
+                *shake = Default::default();
                 stat.reset();
 
                 // reset level to start

@@ -1,6 +1,9 @@
 use crate::{
     block_states::{Clear, Fall, Hang, Idle, Land, Swap},
-    components::{playfield::Stack, Block, GarbageHead, PlayfieldId},
+    components::{
+        playfield::{Shake, Stack},
+        Block, GarbageHead, PlayfieldId,
+    },
     data::playfield_data::{BLOCKS, COLUMNS, ROWS_VISIBLE},
     resources::Playfields,
 };
@@ -18,6 +21,7 @@ impl<'a> System<'a> for BlockSystem {
         Read<'a, Playfields>,
         ReadStorage<'a, PlayfieldId>,
         WriteStorage<'a, GarbageHead>,
+        WriteStorage<'a, Shake>,
     );
 
     fn run(
@@ -31,16 +35,17 @@ impl<'a> System<'a> for BlockSystem {
             playfields,
             ids,
             mut garbage_heads,
+            mut shakes,
         ): Self::SystemData,
     ) {
         // run through all existing block stacks
-        for stack in (&stacks).join() {
+        for (stack, shake) in (&stacks, &mut shakes).join() {
             // run through all states from a block
             for i in 0..BLOCKS {
                 // if any block isnt garbage
                 if !blocks.get(stack[i]).unwrap().is_garbage {
                     // update the states of all non garbage blocks
-                    update_state(i, &stack, &mut blocks, &mut garbage_heads);
+                    update_state(i, &stack, &mut blocks, &mut garbage_heads, shake);
                 } else {
                     // let head update everything in its order
                     // skip all normal blocks that are only garbage
@@ -51,8 +56,7 @@ impl<'a> System<'a> for BlockSystem {
                             head.below_hang(&stack, &blocks);
                         }
 
-                        update_state(i, &stack, &mut blocks, &mut garbage_heads);
-                        //println!("{}", blocks.get(stack[i]).unwrap().state);
+                        update_state(i, &stack, &mut blocks, &mut garbage_heads, shake);
                     }
                 }
             }
@@ -207,10 +211,10 @@ fn get_garbage_offset(
         // if the dims are mod 2 the faces will be in 4 different blocks!
         if head.dimensions.1 % 2 == 0 {
             let middle = head.dimensions.1 / 2;
-            garbage6xy[middle - 1][2] = 8;
-            garbage6xy[middle - 1][3] = 9;
-            garbage6xy[middle][2] = 10;
-            garbage6xy[middle][3] = 11;
+            garbage6xy[middle][2] = 8;
+            garbage6xy[middle][3] = 9;
+            garbage6xy[middle - 1][2] = 10;
+            garbage6xy[middle - 1][3] = 11;
         }
         // else just go to 2 and 3 and insert the face in 2 blocks
         else {
@@ -244,6 +248,7 @@ fn update_state(
     stack: &Stack,
     blocks: &mut WriteStorage<'_, Block>,
     garbage_heads: &mut WriteStorage<'_, GarbageHead>,
+    shake: &mut Shake,
 ) {
     // get variables safely for comparisons
     let (mut counter, block_state) = {
@@ -263,7 +268,7 @@ fn update_state(
     // takes the whole stack of blocks - get ref or mut out of this
     match block_state {
         "IDLE" => Idle::execute(i, &stack, blocks, garbage_heads),
-        "FALL" => Fall::execute(i, &stack, blocks, garbage_heads),
+        "FALL" => Fall::execute(i, &stack, blocks, garbage_heads, shake),
         "LAND" => Land::execute(i, &stack, blocks),
         "CLEAR" => Clear::execute(i, &stack, blocks),
         "SWAP" => Swap::execute(i, &stack, blocks),

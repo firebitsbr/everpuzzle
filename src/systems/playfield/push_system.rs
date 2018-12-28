@@ -50,18 +50,16 @@ impl<'a> System<'a> for PushSystem {
                 push.any_top_blocks = check_blocks_at_top(&stack, &blocks);
             }
 
-            {
-                // actually offset things based on time
-                visual_offset(
-                    pushes.get_mut(entity).unwrap(),
-                    &stack,
-                    &mut blocks,
-                    &mut garbage_heads,
-                    cursors.get_mut(stack.cursor_entity).unwrap(),
-                    kind_gens.get_mut(entity).unwrap(),
-                    playfields[**id].level,
-                );
-            }
+            // actually offset things based on time
+            visual_offset(
+                pushes.get_mut(entity).unwrap(),
+                &stack,
+                &mut blocks,
+                &mut garbage_heads,
+                cursors.get_mut(stack.cursor_entity).unwrap(),
+                kind_gens.get_mut(entity).unwrap(),
+                playfields[**id].level,
+            );
         }
     }
 }

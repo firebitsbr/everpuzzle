@@ -21,11 +21,7 @@ mod systems;
 use crate::{
     game_modes::GameMode,
     resources::Playfields,
-    systems::{
-        cursor::{CursorActionSystem, CursorMoveSystem},
-        playfield::{ClearSystem, LoseSystem, PushSystem, StatsSystem},
-        BlockSystem,
-    },
+    systems::{cursor::*, playfield::*, BlockSystem},
 };
 
 fn main() -> amethyst::Result<()> {
@@ -84,7 +80,8 @@ fn main() -> amethyst::Result<()> {
         .with(PushSystem {}, "playfield_push_system", &[])
         .with(ClearSystem {}, "playfield_clear_system", &[])
         .with(LoseSystem {}, "playfield_lose_system", &[])
-        .with(StatsSystem {}, "playfield_stats_system", &["input_system"]);
+        .with(StatsSystem {}, "playfield_stats_system", &["input_system"])
+        .with(ShakeSystem {}, "playfield_shake_system", &[]);
 
     // set the assets dir where all sprites will be loaded from
     let assets_dir = app_root.join("src/sprites");

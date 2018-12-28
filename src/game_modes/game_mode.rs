@@ -1,9 +1,5 @@
 use crate::{
-    components::{
-        playfield::{Clear, GarbageMaster, KindGenerator, Lose, Push, Stack, Stats},
-        spritesheet_loader::{load_blocks_sprite_sheet, load_sprite_sheet},
-        Block, Cursor, GarbageHead, PlayfieldId,
-    },
+    components::{playfield::*, spritesheet_loader::*, Block, Cursor, GarbageHead, PlayfieldId},
     data::playfield_data::BLOCKS,
     resources::Playfields,
 };
@@ -86,6 +82,7 @@ impl GameMode {
         world.register::<Stats>();
         world.register::<GarbageMaster>();
         world.register::<Stack>();
+        world.register::<Shake>();
         world
             .create_entity()
             .with(Clear::default())
@@ -96,6 +93,7 @@ impl GameMode {
             .with(Stats::new(p_id))
             .with(PlayfieldId::new(p_id))
             .with(GarbageMaster::default())
+            .with(Shake::default())
             .build();
     }
 

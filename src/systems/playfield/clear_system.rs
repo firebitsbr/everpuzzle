@@ -102,7 +102,8 @@ impl<'a> System<'a> for ClearSystem {
                     let pos = {
                         // if chain == 1 use combo - 1 as x
                         if clear.chain == 1 {
-                            (clear.combo_counter as usize - 1, 1)
+                            //(clear.combo_counter as usize - 1, 1)
+                            (6, 2)
                         }
                         // if chain is bigger than 1, use x as 6 and go by chain - 1 = y
                         else {
