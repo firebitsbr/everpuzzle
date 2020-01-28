@@ -1,4 +1,3 @@
-use crate::helpers::*;
 use crate::scripts::*;
 use Components::*;
 
@@ -18,7 +17,7 @@ impl Components {
             _ => 1.,
         }
     }
-
+	
     // the vframe of the component, used for drawing
     pub fn vframe(&self) -> f32 {
         match self {
@@ -26,7 +25,7 @@ impl Components {
             _ => -1.,
         }
     }
-
+	
     // returns the x_offset in the grid, used for drawing
     pub fn x_offset(&self) -> f32 {
         match self {
@@ -34,7 +33,7 @@ impl Components {
             _ => 0.,
         }
     }
-
+	
     // returns the x_offset in the grid, used for drawing
     pub fn y_offset(&self) -> f32 {
         match self {
@@ -42,7 +41,7 @@ impl Components {
             _ => 0.,
         }
     }
-
+	
     // returns the scale in the grid, used for drawing
     pub fn scale(&self) -> f32 {
         match self {
@@ -50,7 +49,7 @@ impl Components {
             _ => 0.,
         }
     }
-
+	
     // call updates on the component
     pub fn update(&mut self) {
         match self {
@@ -58,7 +57,7 @@ impl Components {
             _ => {}
         }
     }
-
+	
     // call reset on any component
     pub fn reset(&mut self) {
         match self {
@@ -66,7 +65,7 @@ impl Components {
             _ => {}
         }
     }
-
+	
     // returns true if component is a placeholder
     pub fn is_placeholder(&self) -> bool {
         match self {
@@ -74,7 +73,7 @@ impl Components {
             _ => false,
         }
     }
-
+	
     // returns true if the component is something real,
     pub fn is_some(&self) -> bool {
         match self {
@@ -83,7 +82,7 @@ impl Components {
             _ => true,
         }
     }
-
+	
     // returns true if the component is nothing
     pub fn is_none(&self) -> bool {
         match self {

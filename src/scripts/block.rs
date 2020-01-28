@@ -1,5 +1,4 @@
 use crate::helpers::*;
-use crate::scripts::*;
 use BlockStates::*;
 
 const HANG_TIME: u32 = 20;
@@ -17,10 +16,59 @@ pub struct Block {
 #[derive(Copy, Clone)]
 pub enum BlockStates {
     Idle,
-    Hang(u32, bool),
-    Swap(u32, SwapDirection, bool),
+    Hang(HangState),
+    Swap(SwapState),
     Bottom,
-    Clear(u32, bool),
+    Clear(ClearState),
+}
+
+#[derive(Copy, Clone)]
+pub struct SwapState {
+	pub counter: u32,
+	pub direction: SwapDirection,
+	pub finished: bool,
+}
+
+impl SwapState {
+	pub fn new(direction: SwapDirection) -> Self {
+		Self {
+			counter: 0,
+			direction,
+			finished: false,
+		}
+	}
+}
+
+// TODO(Skytrias): hang and clear as the same, use a default one?
+
+#[derive(Copy, Clone)]
+pub struct HangState {
+	pub counter: u32,
+	pub finished: bool,
+}
+
+impl Default for HangState {
+	fn default() -> Self {
+		Self {
+			counter: 0,
+			finished: false,
+		}
+	}
+}
+
+#[derive(Copy, Clone)]
+pub struct ClearState {
+	pub counter: u32,
+	pub finished: bool,
+}
+
+impl Default for ClearState {
+	fn default() -> Self {
+		Self {
+			counter: 0,
+			finished: false,
+		}
+	}
 }
 
 #[derive(Copy, Clone)]
@@ -38,7 +86,7 @@ impl BlockStates {
             _ => false,
         }
     }
-
+	
     // returns true if the block is hang
     pub fn is_hang(&self) -> bool {
         match self {
@@ -46,15 +94,15 @@ impl BlockStates {
             _ => false,
         }
     }
-
+	
     // returns true if the block hang state has finished counting up
     pub fn hang_finished(&self) -> bool {
         match self {
-            Hang(_, finished) => *finished,
+            Hang(state) => state.finished,
             _ => false,
         }
     }
-
+	
     // returns true if the block is swap
     pub fn is_swap(&self) -> bool {
         match self {
@@ -62,20 +110,20 @@ impl BlockStates {
             _ => false,
         }
     }
-
+	
     // returns true if the block is real meaning its idle or at the bottom
     pub fn is_real(&self) -> bool {
         self.is_idle() || self.is_bottom()
     }
-
+	
     // returns true if the block swap state has finished counting up
     pub fn swap_finished(&self) -> bool {
         match self {
-            Swap(.., finished) => *finished,
+            Swap(state) => state.finished,
             _ => false,
         }
     }
-
+	
     // returns true if the block is at the bottom of the grid
     pub fn is_bottom(&self) -> bool {
         match self {
@@ -83,7 +131,7 @@ impl BlockStates {
             _ => false,
         }
     }
-
+	
     // returns true if the block is clear
     pub fn is_clear(&self) -> bool {
         match self {
@@ -91,11 +139,11 @@ impl BlockStates {
             _ => false,
         }
     }
-
+	
     // returns true if the block swap state has finished counting up
     pub fn clear_finished(&self) -> bool {
         match self {
-            Clear(.., finished) => *finished,
+            Clear(state) => state.finished,
             _ => false,
         }
     }
@@ -120,45 +168,45 @@ impl Block {
             ..Default::default()
         }
     }
-
+	
     pub fn reset(&mut self) {
         self.state = Idle;
         self.offset.x = 0.;
     }
-
+	
     pub fn update(&mut self) {
         match &mut self.state {
-            Hang(counter, finished) => {
-                if *counter < HANG_TIME {
-                    *counter += 1;
+            Hang(state) => {
+                if state.counter < HANG_TIME {
+                    state.counter += 1;
                 } else {
-                    *finished = true;
+                    state.finished = true;
                 }
             }
-
-            Swap(counter, direction, finished) => {
-                if *counter < SWAP_TIME {
-                    self.offset.x = match direction {
-                        SwapDirection::Left => -(*counter as f32) / (SWAP_TIME as f32) * ATLAS_TILE,
-                        SwapDirection::Right => (*counter as f32) / (SWAP_TIME as f32) * ATLAS_TILE,
+			
+            Swap(state) => {
+                if state.counter < SWAP_TIME {
+                    self.offset.x = match state.direction {
+                        SwapDirection::Left => -(state.counter as f32) / (SWAP_TIME as f32) * ATLAS_TILE,
+                        SwapDirection::Right => (state.counter as f32) / (SWAP_TIME as f32) * ATLAS_TILE,
                     };
-
-                    *counter += 1;
+					
+                    state.counter += 1;
                 } else {
-                    *finished = true;
+                    state.finished = true;
                 }
             }
-
-            Clear(counter, finished) => {
-                if *counter < CLEAR_TIME {
-                    self.scale = (*counter as f32) / (CLEAR_TIME as f32);
-
-                    *counter += 1;
+			
+            Clear(state) => {
+                if state.counter < CLEAR_TIME {
+                    self.scale = (state.counter as f32) / (CLEAR_TIME as f32);
+					
+                    state.counter += 1;
                 } else {
-                    *finished = true;
+                    state.finished = true;
                 }
             }
-
+			
             _ => {}
         }
     }
