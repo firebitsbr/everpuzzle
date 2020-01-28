@@ -1,5 +1,8 @@
 use std::ffi::c_void;
 
+// TODO(Skytrias): use type alias for Texture instead?
+
+// holds texture info
 pub struct Texture {
     pub id: u32,
     pub width: u32,
@@ -7,6 +10,7 @@ pub struct Texture {
 }
 
 impl Texture {
+    // create a texture from a file, load it into gl and give back its id with additional info
     pub fn new(name: &'static str) -> Self {
         let data = std::fs::read(name).expect("Failed to open PNG");
         let data = std::io::Cursor::new(data);

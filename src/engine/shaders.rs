@@ -1,8 +1,11 @@
 use gl::types::*;
 use std::ffi::CString;
+use std::fs::File;
+use std::io::Read;
 use std::ptr;
 use std::str;
 
+// check gl shader error
 fn check_error(id: u32) {
     unsafe {
         let mut len = 0;
@@ -14,11 +17,12 @@ fn check_error(id: u32) {
             "{}",
             str::from_utf8(&buf)
                 .ok()
-                .expect("ShaderInfoLog not valid utf8")
+                .expect("GLSL: ShaderInfoLog not valid utf8")
         );
     }
 }
 
+// compile a shader with its str and its type
 fn compile_shader(src: &str, ty: GLenum) -> GLuint {
     let shader;
     unsafe {
@@ -40,6 +44,7 @@ fn compile_shader(src: &str, ty: GLenum) -> GLuint {
     shader
 }
 
+// links multiple shader ids together into a program
 fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
     unsafe {
         let program = gl::CreateProgram();
@@ -58,6 +63,7 @@ fn link_program(vs: GLuint, fs: GLuint) -> GLuint {
     }
 }
 
+// create a program from shader strings, delete loaded strings
 pub fn create_shader(vert_src: &str, frag_src: &str) -> u32 {
     let vs = compile_shader(vert_src, gl::VERTEX_SHADER);
     let fs = compile_shader(frag_src, gl::FRAGMENT_SHADER);
@@ -71,9 +77,7 @@ pub fn create_shader(vert_src: &str, frag_src: &str) -> u32 {
     program
 }
 
-use std::fs::File;
-use std::io::Read;
-
+// load a vert and frag shader from a file and return a program id
 pub fn load_shader(name: &'static str) -> u32 {
     let vert_path = format!("shaders/{}.vert", name);
     let mut vert_file = File::open(vert_path).expect("FS: vert file not found");

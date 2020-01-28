@@ -39,6 +39,9 @@ pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) 
     m
 }
 
+// own math vectors since its easy and i dont focus on optimization yet
+// only includes fns i actually use in the game
+
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub struct V4 {
     pub x: f32,

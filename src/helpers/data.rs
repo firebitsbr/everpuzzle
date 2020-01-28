@@ -1,7 +1,5 @@
 use crate::helpers::math::*;
 
-// TODO(Skytrias): color enum? with color_change
-
 // colors
 pub const WHITE: V4 = V4 {
     x: 1.,
@@ -34,6 +32,7 @@ pub const BLUE: V4 = V4 {
     w: 1.,
 };
 
+// change the color alpha part only
 pub fn color_alpha(color: V4, alpha: f32) -> V4 {
     v4(color.x, color.y, color.z, color.w * alpha)
 }

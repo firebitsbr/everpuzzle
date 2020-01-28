@@ -35,6 +35,7 @@ impl Default for Mouse {
 }
 
 impl Mouse {
+    // updates the mouse each frame for presses based on old events
     pub fn update_frame(&mut self) {
         self.left_pressed = if self.left_down {
             self.last_left_down == false
@@ -50,6 +51,7 @@ impl Mouse {
         self.last_right_down = self.right_down;
     }
 
+    // on mouse event sets down / released
     pub fn update_event(&mut self, state: ElementState, button: MouseButton) {
         if button == MouseButton::Left {
             self.left_down = state == ElementState::Pressed;

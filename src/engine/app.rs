@@ -11,9 +11,11 @@ use std::ffi::c_void;
 use std::mem;
 use std::ptr;
 
+// TODO(Skytrias): set to monitor framerate
 const FRAME_AMOUNT: f64 = 120.;
 const FPS: u64 = (1. / FRAME_AMOUNT * 1000.) as u64;
 
+// state of the Application, includes drawing, input, generators
 pub struct App {
     ubo_projection: u32,
     ubo_sprite: u32,
@@ -164,6 +166,7 @@ impl App {
     }
 }
 
+// drop gl allocs
 impl Drop for App {
     fn drop(&mut self) {
         unsafe {
@@ -171,9 +174,6 @@ impl Drop for App {
             gl::DeleteBuffers(1, &self.ubo_sprite);
             gl::DeleteBuffers(1, &self.ubo_grid);
             gl::DeleteBuffers(1, &self.ubo_text);
-            // TODO(Skytrias):
-            //gl::DeleteBuffers(1, &self.wave_ubo);
-            //gl::DeleteBuffers(1, &self.sprite_ubo);
 
             for (_, program) in &self.shaders {
                 gl::DeleteProgram(*program);
@@ -225,6 +225,8 @@ pub fn update_ubo<T>(ubo: u32, data: &[T], index: u32) {
     }
 }
 
+// main loop of the game
+// loads the window && gl && all script objects
 pub fn run(width: f32, height: f32, title: &'static str) {
     let mut event_loop = EventLoop::new();
     let wb = WindowBuilder::new()
@@ -277,7 +279,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
         shaders
     };
 
-    // TODO(Skytrias): env_dir?
+    // TODO(Skytrias): use env_dir?
     let _ = Texture::new("textures/atlas.png");
 
     // enable options
@@ -310,12 +312,14 @@ pub fn run(width: f32, height: f32, title: &'static str) {
     let mut quit = false;
     let mut fixedstep = fixedstep::FixedStep::start(FRAME_AMOUNT);
     while !quit {
+        // update scope
         while fixedstep.update() {
             // quit on escape
             if app.key_pressed(VirtualKeyCode::Escape) {
                 quit = true;
             }
 
+            // reload grid on space
             if app.key_pressed(VirtualKeyCode::Space) {
                 grid = Grid::new(&mut app);
             }
@@ -364,7 +368,6 @@ pub fn run(width: f32, height: f32, title: &'static str) {
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
-                                //scancode,
                                 virtual_keycode: Some(code),
                                 state,
                                 ..
@@ -396,18 +399,21 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             }
         });
 
-        let _delta = fixedstep.render_delta();
+        // render scope
+        {
+            let _delta = fixedstep.render_delta();
 
-        unsafe {
-            gl::ClearColor(1., 1., 1., 1.);
-            gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+            unsafe {
+                gl::ClearColor(1., 1., 1., 1.);
+                gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
+            }
+
+            grid.draw(&mut app);
+            cursor.draw(&mut app);
+            app.draw_sprites();
+
+            window.swap_buffers().unwrap();
         }
-
-        grid.draw(&mut app);
-        cursor.draw(&mut app);
-        app.draw_sprites();
-
-        window.swap_buffers().unwrap();
 
         std::thread::sleep(std::time::Duration::from_millis(FPS));
     }

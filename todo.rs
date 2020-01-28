@@ -55,11 +55,10 @@ General {
 	turn of pomodoro command,
 	color pomodoro break times all the time,
 	color long break differently,
+	dont include "//" in autocomplete, 
 	
 	Snippets {
-		fnx marker - 1,
-		match bad breaks,
-		dont return \n with snippets,
+		
 	}
 	
 	pomodoro if paste before time limit reached - start from 0 go til i.e. 25 - stop point,
