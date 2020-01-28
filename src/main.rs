@@ -6,5 +6,5 @@ mod helpers;
 mod scripts;
 
 fn main() {
-	engine::run(500., 500., "everpuzzle")
+    engine::run(500., 500., "everpuzzle")
 }
