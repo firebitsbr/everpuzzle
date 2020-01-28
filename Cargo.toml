@@ -1,15 +1,14 @@
 [package]
 name = "everpuzzle"
-version = "0.0.6"
-authors = ["Skytrias <skytrias@protonmail.com>"]
+version = "0.1.0"
+authors = ["skytrias <skytrias@protonmail.com>"]
+edition = "2018"
 
 [dependencies]
-rand = "0.6.1"
-serde_derive = "1.0.81"
-serde = "1.0.81"
-
-# allow controller support by default!
-[dependencies.amethyst]
-git = "https://github.com/amethyst/amethyst"
-rev = "36501cf580d1f7a41a787e470e431aef613d8875"
-features = ["sdl_controller"]
+glutin = "0.22"
+gl = "0.14.0"
+png_pong = "0.1.0"
+pix = "0.7.0"
+fixedstep = "0.3.0"
+oorandom = "11.1.0"
+num-traits = "0.2.11"
