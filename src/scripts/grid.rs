@@ -4,7 +4,7 @@ use crate::scripts::*;
 use std::ops::{Index, IndexMut};
 
 #[derive(Copy, Clone)]
-pub enum FloodDirection {
+enum FloodDirection {
 	Horizontal, // -x and +x
 	Vertical, // -y and +y
 }
@@ -75,8 +75,7 @@ impl Grid {
 		
 		// set bottom row to bottom state
 		for x in 0..GRID_WIDTH {
-			if let Components::Normal(b) = &mut self[(x, GRID_HEIGHT - 1)] {
-				// skip swap and clear, since bottom blocks can do those
+			if let Some(b) = self.block_mut((x, GRID_HEIGHT - 1)){
 				if b.state.is_swap() || b.state.is_clear() {
 					continue;
 				}
@@ -92,14 +91,14 @@ impl Grid {
 				let below_state =
 					self.block_state(ib).unwrap_or(&BlockStates::Idle).clone();
 				
-				if let Components::Normal(b) = &mut self[i] {
+				if let Some(state) = self.block_state_mut(i) {
 					if below_empty {
-						if b.state.is_idle() {
-							b.state = BlockStates::Hang(Default::default());
+						if state.is_idle() {
+							*state = BlockStates::Hang(Default::default());
 						}
 					} else {
 						if !below_state.is_bottom() && below_state.is_hang() {
-							b.state = below_state;
+							*state = below_state;
 						}
 					}
 				}
@@ -168,8 +167,8 @@ impl Grid {
 		
 		// clear the component if clear state is finished
 		for (_, _, i) in iter_xy() {
-			let finished = self.block(i)
-				.map(|b| b.state.is_clear() && b.state.clear_finished())
+			let finished = self.block_state(i)
+				.map(|s| s.is_clear() && s.clear_finished())
 				.unwrap_or(false);
 			
 			if finished {
@@ -183,7 +182,7 @@ impl Grid {
 		}
 	}
 	
-	pub fn flood_check(&mut self, x: usize, y: usize, vframe: f32, direction: FloodDirection) {
+	fn flood_check(&mut self, x: usize, y: usize, vframe: f32, direction: FloodDirection) {
 		if let Some(index) = (x, y).to_index() {
 			// dont allow empty components
 			if let Components::Empty = &self[index] {
@@ -289,6 +288,14 @@ impl Grid {
 		}
 	}
 	
+	// returns a block from the specified grid_index
+	pub fn block_mut<I: BoundIndex>(&mut self, index: I) -> Option<&mut Block> {
+		match &mut self[index] {
+			Components::Normal(b) => Some(b),
+			_ => None,
+		}
+	}
+	
 	// returns any state if the component is a block
 	pub fn block_state<I: BoundIndex>(&self, index: I) -> Option<&BlockStates> {
 		match &self[index] {
@@ -297,11 +304,18 @@ impl Grid {
 		}
 	}
 	
-	// TODO(Skytrias): bad to clone each state?
-	pub fn block_swap<I: BoundIndex>(&self, index: I) -> Option<SwapState> {
+	// returns any state if the component is a block
+	pub fn block_state_mut<I: BoundIndex>(&mut self, index: I) -> Option<&mut BlockStates> {
+		match &mut self[index] {
+			Components::Normal(b) => Some(&mut b.state),
+			_ => None,
+		}
+	}
+	
+	pub fn block_swap<I: BoundIndex>(&self, index: I) -> Option<&SwapState> {
 		match &self[index] {
-			Components::Normal(b) => match b.state {
-				BlockStates::Swap(s) => Some(s.clone()),
+			Components::Normal(b) => match &b.state {
+				BlockStates::Swap(s) => Some(s),
 				_ => None
 			},
 			_ => None

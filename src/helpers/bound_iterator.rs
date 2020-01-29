@@ -1,8 +1,8 @@
 use crate::helpers::{GRID_TOTAL, GRID_WIDTH, GRID_HEIGHT};
 
-// helper iterators
+// flow of xyi increase, i usually is converted automatically
 enum IteratorFlow {
-	IIncrease, // usual i 0..GRID_TOTAL
+	XY, // usual i 0..GRID_TOTAL
 	YXReverse, // y goes GRID_HEGIHT..0 THEN x GRID_WIDTH..0
 }
 
@@ -22,7 +22,7 @@ impl Default for BoundIterator {
 			y: 0,
 			i: 0,
 			steps: 0,
-			flow: IteratorFlow::IIncrease,
+			flow: IteratorFlow::XY,
 		}
 	}
 }
@@ -32,7 +32,7 @@ impl Iterator for BoundIterator {
 	
 	fn next(&mut self) -> Option<Self::Item> {
 		match self.flow {
-			IteratorFlow::IIncrease => {
+			IteratorFlow::XY => {
 				if self.steps == GRID_TOTAL {
 					return None;
 				}
