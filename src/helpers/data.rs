@@ -55,6 +55,7 @@ pub const GRID_TOTAL: usize = GRID_WIDTH * GRID_HEIGHT;
 
 // how many sprites can be drawn each frame
 pub const SPRITE_AMOUNT: usize = 100;
+// how many characters a drawn text can have
 pub const TEXT_AMOUNT: usize = 20;
 
 // generic sprite

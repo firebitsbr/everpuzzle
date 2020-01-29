@@ -36,15 +36,15 @@ impl Default for Grid {
 
 impl Grid {
     pub fn new(app: &mut App) -> Self {
-        let mut components = Vec::with_capacity(GRID_TOTAL);
-		
-		for _i in 0..GRID_TOTAL {
-			if app.rand_int(1) == 0 {
-				components.push(Components::Empty);
-			} else {
-				components.push(Components::Normal(Block::new((app.rand_int(5) + 2) as f32)));
-			}
-		}
+        let components: Vec<Components> = (0..GRID_TOTAL)
+			.map(|_| {
+					 if app.rand_int(1) == 0 {
+						 Components::Empty
+					 } else {
+						 Components::Normal(Block::new((app.rand_int(5) + 2) as f32))
+					 }
+				 })
+			.collect();
 		
         Self {
             components,
@@ -58,7 +58,7 @@ impl Grid {
         }
 		
         // check for swap state
-        for i in 0..GRID_TOTAL - 1 {
+        for (_, _, i) in iter_xy() {
 			let result = self.block_swap(i)
 				.filter(|s| s.finished)
 				.map(|s| match s.direction {
@@ -86,24 +86,20 @@ impl Grid {
 		}
 		
 		// hang setting
-		for x in (0..GRID_WIDTH).rev() {
-			for y in (0..GRID_HEIGHT).rev() {
-				if let Some(i) = (x, y).to_index() {
-					if let Some(ib) = (x, y + 1).to_index() {
-						let below_empty = self[ib].is_none();
-						let below_state =
-							self.block_state(ib).unwrap_or(&BlockStates::Idle).clone();
-						
-						if let Components::Normal(b) = &mut self[i] {
-							if below_empty {
-								if b.state.is_idle() {
-									b.state = BlockStates::Hang(Default::default());
-								}
-							} else {
-								if !below_state.is_bottom() && below_state.is_hang() {
-									b.state = below_state;
-								}
-							}
+		for (x, y, i) in iter_yx_rev() {
+			if let Some(ib) = (x, y + 1).to_index() {
+				let below_empty = self[ib].is_none();
+				let below_state =
+					self.block_state(ib).unwrap_or(&BlockStates::Idle).clone();
+				
+				if let Components::Normal(b) = &mut self[i] {
+					if below_empty {
+						if b.state.is_idle() {
+							b.state = BlockStates::Hang(Default::default());
+						}
+					} else {
+						if !below_state.is_bottom() && below_state.is_hang() {
+							b.state = below_state;
 						}
 					}
 				}
@@ -111,28 +107,24 @@ impl Grid {
 		}
 		
 		// hang finished execution
-		for x in (0..GRID_WIDTH).rev() {
-			for y in (0..GRID_HEIGHT).rev() {
-				if let Some(i) = (x, y).to_index() {
-					let should_fall = self
-						.block_state(i)
-						.filter(|s| s.is_hang() && s.hang_finished())
-						.is_some();
+		for (x, y, i) in iter_yx_rev() {
+			let should_fall = self
+				.block_state(i)
+				.filter(|s| s.is_hang() && s.hang_finished())
+				.is_some();
+			
+			if should_fall {
+				let index_below = (x, y + 1).to_index();
+				
+				if let Some(ib) = index_below {
+					self.components.swap(i, ib);
 					
-					if should_fall {
-						let index_below = (x, y + 1).to_index();
-						
-						if let Some(ib) = index_below {
-							self.components.swap(i, ib);
-							
-							let index_below_below = (x, y + 2).to_index();
-							
-							if let Some(ibb) = index_below_below {
-								if !self[ibb].is_none() {
-									&mut self[i].reset();
-									&mut self[ib].reset();
-								}
-							}
+					let index_below_below = (x, y + 2).to_index();
+					
+					if let Some(ibb) = index_below_below {
+						if !self[ibb].is_none() {
+							&mut self[i].reset();
+							&mut self[ib].reset();
 						}
 					}
 				}
@@ -140,44 +132,42 @@ impl Grid {
 		}
 		
 		// flood fill check for the current color of the block for any other near colors
-		for x in 0..GRID_WIDTH {
-			for y in 0..GRID_HEIGHT {
-				let frame = self.block((x, y))
-					.filter(|b| b.state.is_real())
-					.map(|b| b.vframe);
+		for (x, y, i) in iter_xy() {
+			let frame = self.block(i)
+				.filter(|b| b.state.is_real())
+				.map(|b| b.vframe);
+			
+			if let Some(vframe) = frame {
+				self.flood_check(x, y, vframe as f32, FloodDirection::Horizontal);
+				self.flood_check(x, y, vframe as f32, FloodDirection::Vertical);
 				
-				if let Some(vframe) = frame {
-					self.flood_check(x, y, vframe as f32, FloodDirection::Horizontal);
-					self.flood_check(x, y, vframe as f32, FloodDirection::Vertical);
-					
-					if self.flood_horizontal_count > 2 {
-						// TODO(Skytrias): bad to clone!
-						for clear_index in self.flood_horizontal_history.clone().iter() {
-							if let Components::Normal(b) = &mut self[*clear_index] {
-								b.state = BlockStates::Clear(Default::default());
-							}
+				if self.flood_horizontal_count > 2 {
+					// TODO(Skytrias): bad to clone!
+					for clear_index in self.flood_horizontal_history.clone().iter() {
+						if let Components::Normal(b) = &mut self[*clear_index] {
+							b.state = BlockStates::Clear(Default::default());
 						}
 					}
-					
-					if self.flood_vertical_count > 2 {
-						// TODO(Skytrias): bad to clone!
-						for clear_index in self.flood_vertical_history.clone().iter() {
-							if let Components::Normal(b) = &mut self[*clear_index] {
-								b.state = BlockStates::Clear(Default::default());
-							}
-						}
-					}
-					
-					self.flood_horizontal_count = 0;
-					self.flood_horizontal_history.clear();
-					self.flood_vertical_count = 0;
-					self.flood_vertical_history.clear();
 				}
+				
+				if self.flood_vertical_count > 2 {
+					// TODO(Skytrias): bad to clone!
+					for clear_index in self.flood_vertical_history.clone().iter() {
+						if let Components::Normal(b) = &mut self[*clear_index] {
+							b.state = BlockStates::Clear(Default::default());
+						}
+					}
+				}
+				
+				self.flood_horizontal_count = 0;
+				self.flood_horizontal_history.clear();
+				self.flood_vertical_count = 0;
+				self.flood_vertical_history.clear();
 			}
 		}
 		
 		// clear the component if clear state is finished
-		for i in 0..GRID_TOTAL {
+		for (_, _, i) in iter_xy() {
 			let finished = self.block(i)
 				.map(|b| b.state.is_clear() && b.state.clear_finished())
 				.unwrap_or(false);

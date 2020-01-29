@@ -3,3 +3,6 @@ pub use self::math::*;
 
 mod data;
 pub use self::data::*;
+
+mod bound_iterator;
+pub use self::bound_iterator::*;
