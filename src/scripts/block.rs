@@ -200,6 +200,7 @@ impl Block {
             Clear(state) => {
                 if state.counter < CLEAR_TIME {
                     self.scale = (state.counter as f32) / (CLEAR_TIME as f32);
+					self.hframe = 1.;
 					
                     state.counter += 1;
                 } else {

@@ -48,20 +48,27 @@ impl Cursor {
 		
         if app.key_pressed(VirtualKeyCode::S) {
             // safe for no_bounds since the cursor is limited to the grid indexes
-			let index = self.position.no_bounds();
+			let i = self.position.no_bounds();
 			
-            if let Components::Normal(b) = &mut grid[index] {
-                if b.state.is_real() {
-                    b.state = BlockStates::Swap(SwapState::new(SwapDirection::Right));
-                }
-            }
+			// look for valid state or check if the spot is empty
+			// TODO(Skytrias): make grid.block_real() -> bool?
+			let left_state = grid.block_state(i).filter(|s| s.is_real()).is_some();
+			let left_empty = grid.block(i).is_none(); 
+			let right_state = grid.block_state(i + 1).filter(|s| s.is_real()).is_some();
+			let right_empty = grid.block(i + 1).is_none(); 
 			
-            if let Components::Normal(b) = &mut grid[index + 1] {
-                if b.state.is_real() {
-                    b.state = BlockStates::Swap(SwapState::new(SwapDirection::Left));
-                }
-            }
-        }
+			if let Some(state) = grid.block_state_mut(i) {
+				if left_state && (right_state || right_empty) {
+					*state = BlockStates::Swap(SwapState::new(SwapDirection::Right));
+				}
+			}
+			
+			if let Some(state) = grid.block_state_mut(i + 1) {
+				if right_state && (left_state || left_empty) {
+					*state = BlockStates::Swap(SwapState::new(SwapDirection::Left));
+				}
+			}
+		}
     }
 	
     pub fn draw(&mut self, app: &mut App) {

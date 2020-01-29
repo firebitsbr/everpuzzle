@@ -6,7 +6,9 @@ use Components::*;
 pub enum Components {
     Empty,
     Normal(Block),
-    Placeholder, // used to differentiate between empty
+    GarbageParent(Garbage),
+	GarbageChild(usize), // index to parent
+	Placeholder, // used to differentiate between empty
 }
 
 impl Components {
@@ -15,6 +17,14 @@ impl Components {
         match self {
             Empty => -1.,
             _ => 1.,
+        }
+    }
+	
+    // the vframe of the component, used for drawing
+    pub fn hframe(&self) -> f32 {
+        match self {
+            Normal(b) => b.hframe,
+            _ => -1.,
         }
     }
 	

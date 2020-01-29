@@ -274,7 +274,7 @@ impl Grid {
 		// NOTE(Skytrias): send and draw ubo data
 		let mut data: Vec<V4> = Vec::new();
 		for c in self.components.iter() {
-			data.push(v4(0., c.vframe(), c.visible(), 1.));
+			data.push(v4(c.hframe(), c.vframe(), c.visible(), 1.));
 			data.push(v4(c.x_offset(), c.y_offset(), 0., 0.));
 		}
 		app.draw_grid(&data);
