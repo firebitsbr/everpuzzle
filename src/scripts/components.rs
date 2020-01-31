@@ -24,7 +24,12 @@ impl Components {
     pub fn hframe(&self) -> f32 {
         match self {
             Normal(b) => b.hframe,
-            _ => -1.,
+            GarbageParent(g) => g.hframe,
+			
+			// TODO(Skytrias): depends on the parent!
+			//GarbageChild(_) => 0.,
+            
+            _ => 0.,
         }
     }
 	
@@ -32,7 +37,12 @@ impl Components {
     pub fn vframe(&self) -> f32 {
         match self {
             Normal(b) => b.vframe,
-            _ => -1.,
+            GarbageParent(g) => g.vframe,
+            
+			// TODO(Skytrias): depends on the parent!
+			GarbageChild(_) => 10.,
+            
+			_ => 0.,
         }
     }
 	
@@ -56,6 +66,7 @@ impl Components {
     pub fn scale(&self) -> f32 {
         match self {
             Normal(b) => b.scale,
+            GarbageParent(_) => 1.,
             _ => 0.,
         }
     }
@@ -64,6 +75,7 @@ impl Components {
     pub fn update(&mut self) {
         match self {
             Normal(b) => b.update(),
+            GarbageParent(g) => g.update(),
             _ => {}
         }
     }
@@ -72,6 +84,7 @@ impl Components {
     pub fn reset(&mut self) {
         match self {
             Normal(b) => b.reset(),
+            GarbageParent(g) => g.reset(),
             _ => {}
         }
     }
@@ -80,6 +93,22 @@ impl Components {
     pub fn is_placeholder(&self) -> bool {
         match self {
             Placeholder => true,
+            _ => false,
+        }
+    }
+	
+    // returns true if component is a garbage parent
+    pub fn is_garbage(&self) -> bool {
+        match self {
+			GarbageParent(_) => true,
+            _ => false,
+        }
+    }
+	
+    // returns true if component is a garbage child
+    pub fn is_garbage_child(&self) -> bool {
+        match self {
+			GarbageChild(_) => true,
             _ => false,
         }
     }
@@ -95,10 +124,14 @@ impl Components {
 	
     // returns true if the component is nothing
     pub fn is_none(&self) -> bool {
-        match self {
-            Empty => true,
-            // NOTE(Skytrias): include placeholder?
-            _ => false,
-        }
+        !self.is_some()
     }
+	
+    // returns true if the component is empty
+    pub fn is_empty(&self) -> bool {
+		match self {
+			Empty => true,
+			_ => false, 
+		}
+	}
 }

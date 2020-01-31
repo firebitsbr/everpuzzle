@@ -1,9 +1,25 @@
 use crate::helpers::*;
+use crate::engine::App;
 use BlockStates::*;
 
 const HANG_TIME: u32 = 20;
 const SWAP_TIME: u32 = 5;
 const CLEAR_TIME: u32 = 100;
+
+#[derive(Copy, Clone, Debug)]
+pub enum SwapDirection {
+    Left,
+    Right,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum BlockStates {
+    Idle,
+    Hang { counter: u32, finished: bool },
+	Swap { counter: u32, direction: SwapDirection, finished: bool },
+    Bottom,
+	Clear { counter: u32, finished: bool },
+}
 
 pub struct Block {
     pub hframe: f32,
@@ -11,70 +27,6 @@ pub struct Block {
     pub state: BlockStates,
     pub offset: V2,
     pub scale: f32,
-}
-
-#[derive(Copy, Clone)]
-pub enum BlockStates {
-    Idle,
-    Hang(HangState),
-    Swap(SwapState),
-    Bottom,
-    Clear(ClearState),
-}
-
-#[derive(Copy, Clone)]
-pub struct SwapState {
-	pub counter: u32,
-	pub direction: SwapDirection,
-	pub finished: bool,
-}
-
-impl SwapState {
-	pub fn new(direction: SwapDirection) -> Self {
-		Self {
-			counter: 0,
-			direction,
-			finished: false,
-		}
-	}
-}
-
-// TODO(Skytrias): hang and clear as the same, use a default one?
-
-#[derive(Copy, Clone)]
-pub struct HangState {
-	pub counter: u32,
-	pub finished: bool,
-}
-
-impl Default for HangState {
-	fn default() -> Self {
-		Self {
-			counter: 0,
-			finished: false,
-		}
-	}
-}
-
-#[derive(Copy, Clone)]
-pub struct ClearState {
-	pub counter: u32,
-	pub finished: bool,
-}
-
-impl Default for ClearState {
-	fn default() -> Self {
-		Self {
-			counter: 0,
-			finished: false,
-		}
-	}
-}
-
-#[derive(Copy, Clone)]
-pub enum SwapDirection {
-    Left,
-    Right,
 }
 
 // TODO(Skytrias): make inline?
@@ -90,7 +42,7 @@ impl BlockStates {
     // returns true if the block is hang
     pub fn is_hang(&self) -> bool {
         match self {
-            Hang(..) => true,
+            Hang {..} => true,
             _ => false,
         }
     }
@@ -98,7 +50,7 @@ impl BlockStates {
     // returns true if the block hang state has finished counting up
     pub fn hang_finished(&self) -> bool {
         match self {
-            Hang(state) => state.finished,
+			Hang { finished, .. } => *finished,
             _ => false,
         }
     }
@@ -106,7 +58,7 @@ impl BlockStates {
     // returns true if the block is swap
     pub fn is_swap(&self) -> bool {
         match self {
-            Swap(..) => true,
+            Swap {..} => true,
             _ => false,
         }
     }
@@ -119,7 +71,7 @@ impl BlockStates {
     // returns true if the block swap state has finished counting up
     pub fn swap_finished(&self) -> bool {
         match self {
-            Swap(state) => state.finished,
+            Swap { finished, .. } => *finished,
             _ => false,
         }
     }
@@ -135,7 +87,7 @@ impl BlockStates {
     // returns true if the block is clear
     pub fn is_clear(&self) -> bool {
         match self {
-            Clear(..) => true,
+            Clear {..} => true,
             _ => false,
         }
     }
@@ -143,10 +95,32 @@ impl BlockStates {
     // returns true if the block swap state has finished counting up
     pub fn clear_finished(&self) -> bool {
         match self {
-            Clear(state) => state.finished,
+            Clear { finished, .. } => *finished,
             _ => false,
         }
     }
+	
+    // returns true if the block swap state has finished counting up
+    pub fn clear_started(&self) -> bool {
+        match self {
+            Clear { counter, .. } => *counter == 1,
+            _ => false,
+        }
+    }
+	
+	// helpers for state data
+	
+	pub fn to_swap(&mut self, direction: SwapDirection) {
+		*self = Swap { counter: 0, direction, finished: false };
+	}
+	
+	pub fn to_hang(&mut self) {
+		*self = Hang { counter: 0, finished: false };
+	}
+	
+	pub fn to_clear(&mut self) {
+		*self = Clear { counter: 0, finished: false };
+	}
 }
 
 impl Default for Block {
@@ -162,9 +136,9 @@ impl Default for Block {
 }
 
 impl Block {
-    pub fn new(vframe: f32) -> Self {
+    pub fn random(app: &mut App) -> Self {
         Self {
-            vframe,
+            vframe: (app.rand_int(5) + 2) as f32,
             ..Default::default()
         }
     }
@@ -176,35 +150,35 @@ impl Block {
 	
     pub fn update(&mut self) {
         match &mut self.state {
-            Hang(state) => {
-                if state.counter < HANG_TIME {
-                    state.counter += 1;
+            Hang { counter, finished } => {
+                if *counter < HANG_TIME {
+                    *counter += 1;
                 } else {
-                    state.finished = true;
+                    *finished = true;
                 }
             }
 			
-            Swap(state) => {
-                if state.counter < SWAP_TIME {
-                    self.offset.x = match state.direction {
-                        SwapDirection::Left => -(state.counter as f32) / (SWAP_TIME as f32) * ATLAS_TILE,
-                        SwapDirection::Right => (state.counter as f32) / (SWAP_TIME as f32) * ATLAS_TILE,
+            Swap { counter, direction, finished } => {
+                if *counter < SWAP_TIME {
+                    self.offset.x = match *direction {
+                        SwapDirection::Left => -(*counter as f32) / (SWAP_TIME as f32) * ATLAS_TILE,
+                        SwapDirection::Right => (*counter as f32) / (SWAP_TIME as f32) * ATLAS_TILE,
                     };
 					
-                    state.counter += 1;
+                    *counter += 1;
                 } else {
-                    state.finished = true;
+                    *finished = true;
                 }
             }
 			
-            Clear(state) => {
-                if state.counter < CLEAR_TIME {
-                    self.scale = (state.counter as f32) / (CLEAR_TIME as f32);
+            Clear { counter, finished } => {
+                if *counter < CLEAR_TIME {
+                    self.scale = (*counter as f32) / (CLEAR_TIME as f32);
 					self.hframe = 1.;
 					
-                    state.counter += 1;
+                    *counter += 1;
                 } else {
-                    state.finished = true;
+                    *finished = true;
                 }
             }
 			

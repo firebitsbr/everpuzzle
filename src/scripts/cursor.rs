@@ -48,7 +48,7 @@ impl Cursor {
 		
         if app.key_pressed(VirtualKeyCode::S) {
             // safe for no_bounds since the cursor is limited to the grid indexes
-			let i = self.position.no_bounds();
+			let i = self.position.raw();
 			
 			// look for valid state or check if the spot is empty
 			// TODO(Skytrias): make grid.block_real() -> bool?
@@ -59,13 +59,13 @@ impl Cursor {
 			
 			if let Some(state) = grid.block_state_mut(i) {
 				if left_state && (right_state || right_empty) {
-					*state = BlockStates::Swap(SwapState::new(SwapDirection::Right));
+					state.to_swap(SwapDirection::Right);
 				}
 			}
 			
 			if let Some(state) = grid.block_state_mut(i + 1) {
 				if right_state && (left_state || left_empty) {
-					*state = BlockStates::Swap(SwapState::new(SwapDirection::Left));
+					state.to_swap(SwapDirection::Left);
 				}
 			}
 		}

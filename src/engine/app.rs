@@ -323,6 +323,21 @@ pub fn run(width: f32, height: f32, title: &'static str) {
                 grid = Grid::new(&mut app);
             }
 			
+            // reload grid on space
+            if app.key_pressed(VirtualKeyCode::Return) {
+				let children: Vec<usize> = (0..GRID_WIDTH).collect();
+				
+				for x in 0..GRID_WIDTH {
+					grid.components[(x, 0).raw()] = {
+						if x == 0 {
+							Components::GarbageParent(Garbage::new(children.clone()))
+						} else {
+							Components::GarbageChild(0)
+						}
+					};
+				}
+			}
+			
             grid.update(&mut app);
             cursor.update(&app, &mut grid);
 			

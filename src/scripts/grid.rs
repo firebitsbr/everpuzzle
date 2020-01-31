@@ -2,6 +2,7 @@ use crate::engine::App;
 use crate::helpers::*;
 use crate::scripts::*;
 use std::ops::{Index, IndexMut};
+use std::cmp::max;
 
 #[derive(Copy, Clone)]
 enum FloodDirection {
@@ -41,7 +42,7 @@ impl Grid {
 					 if app.rand_int(1) == 0 {
 						 Components::Empty
 					 } else {
-						 Components::Normal(Block::new((app.rand_int(5) + 2) as f32))
+						 Components::Normal(Block::random(app))
 					 }
 				 })
 			.collect();
@@ -52,28 +53,126 @@ impl Grid {
         }
     }
 	
-    pub fn update(&mut self, _app: &mut App) {
-        if self.components.len() == 0 {
-            return;
-        }
+	pub fn garbage_can_hang<I: Copy + BoundIndex>(&self, i: I) -> Option<u32> {
+		// get copy of indexes
+		let child_indexes: Option<Vec<usize>> = self.garbage(i)
+			.map(|g| g.lowest());
 		
-        // check for swap state
-        for (_, _, i) in iter_xy() {
-			let result = self.block_swap(i)
-				.filter(|s| s.finished)
-				.map(|s| match s.direction {
-						 SwapDirection::Left => i - 1,
-						 SwapDirection::Right => i + 1,
-					 });
+		let mut can_hang = true;
+		let mut hang_counter = 0;
+		
+		// loop through children, look below each and check
+		if let Some(indexes) = child_indexes {
+			for child_index in indexes.iter() {
+				if let Some(ib) = (child_index + GRID_WIDTH).to_index() {
+					let below_component_empty = self[ib].is_empty();
+					let below_block_state = self.block_state(ib).unwrap_or(&BlockStates::Idle).clone();
+					let _below_garbage_state = self.garbage_state(ib).unwrap_or(&GarbageStates::Idle).clone();
+					
+					if !below_component_empty {
+						if let BlockStates::Hang { counter, .. } = below_block_state {
+							hang_counter = max(hang_counter, counter);
+						} else {
+							can_hang = false;
+						}
+					}
+				}
+			}
 			
-			if let Some(offset) = result {
-				self.components.swap(i, offset);
-				&mut self[i].reset();
-				&mut self[offset].reset();
+			// set to hang if not already
+			if can_hang {
+				return Some(hang_counter);
 			}
 		}
 		
-		// set bottom row to bottom state
+		None
+	}
+	
+	pub fn update(&mut self, app: &mut App) {
+		if self.components.len() == 0 {
+			return;
+		}
+		
+		// garbage hang detection
+		for (_, _, i) in iter_yx_rev() {
+			// skip none garbage
+			if self.garbage(i).is_none() {
+				continue;
+			}
+			
+			if let Some(counter) = self.garbage_can_hang(i) {
+				if let Some(state) = self.garbage_state_mut(i) {
+					if state.is_idle() {
+						state.to_hang(counter);
+					}
+				}
+			}
+		}
+		
+		// garbage clear detection
+		for (_, _, i) in iter_yx_rev() {
+			// skip none garbage and also only allow idle to be detected
+			if self.garbage(i).is_none() {
+				continue;
+			}
+			
+			let g = self.garbage(i).unwrap();
+			
+			if !g.state.is_idle() {
+				continue;
+			}
+			
+			let mut clear_found = false;
+			for index in g.children.iter() {
+				if let Some(ib) = (index + GRID_WIDTH).to_index() {
+					if let Some(s) = self.block_state(ib) {
+						if s.clear_started() {
+							clear_found = true;
+							println!("found!");
+							break;
+						}
+					}
+				}
+			}
+			
+			if clear_found {
+				if let Some(g) = self.garbage_mut(i) {
+					g.state.to_clear();
+				}
+			}
+		}
+		
+		for (_, _, i) in iter_xy() {
+			if let Some(g) = self.garbage_mut(i) {
+				if g.state.clear_finished() {
+					for index in g.children.clone().iter() {
+						self.components[*index] = Components::Normal(Block::random(app));
+					}
+				}
+			}
+		}
+		
+		// block check for swap state
+		for (_, _, i) in iter_xy() {
+			if let Some(b) = self.block(i) {
+				if let BlockStates::Swap { finished, direction, .. } = b.state {
+					if !finished { 
+						continue 
+					}
+					
+					let offset = match direction {
+						SwapDirection::Left => i - 1,
+						SwapDirection::Right => i + 1,
+					};
+					
+					self.components.swap(i, offset);
+					&mut self[i].reset();
+					&mut self[offset].reset();
+				}
+			}
+		}
+		
+		// block set bottom row to bottom state
 		for x in 0..GRID_WIDTH {
 			if let Some(b) = self.block_mut((x, GRID_HEIGHT - 1)){
 				if b.state.is_swap() || b.state.is_clear() {
@@ -84,20 +183,25 @@ impl Grid {
 			}
 		}
 		
-		// hang setting
+		// block hang setting
 		for (x, y, i) in iter_yx_rev() {
+			// only allow idle
+			if self.block_state(i).filter(|s| s.is_idle()).is_none() {
+				continue;
+			}
+			
 			if let Some(ib) = (x, y + 1).to_index() {
-				let below_empty = self[ib].is_none();
+				let below_empty = self[ib].is_empty();
 				let below_state =
 					self.block_state(ib).unwrap_or(&BlockStates::Idle).clone();
 				
 				if let Some(state) = self.block_state_mut(i) {
 					if below_empty {
 						if state.is_idle() {
-							*state = BlockStates::Hang(Default::default());
+							state.to_hang();
 						}
 					} else {
-						if !below_state.is_bottom() && below_state.is_hang() {
+						if below_state.is_hang() {
 							*state = below_state;
 						}
 					}
@@ -105,32 +209,80 @@ impl Grid {
 			}
 		}
 		
-		// hang finished execution
+		// block hang finished execution
 		for (x, y, i) in iter_yx_rev() {
-			let should_fall = self
-				.block_state(i)
-				.filter(|s| s.is_hang() && s.hang_finished())
-				.is_some();
+			if let Some(state) = self.block_state(i) {
+				if !state.hang_finished() {
+					continue;
+				}
+			} else {
+				continue;
+			}
 			
-			if should_fall {
-				let index_below = (x, y + 1).to_index();
+			let index_below = (x, y + 1).to_index();
+			
+			if let Some(ib) = index_below {
+				self.components.swap(i, ib);
 				
-				if let Some(ib) = index_below {
-					self.components.swap(i, ib);
-					
-					let index_below_below = (x, y + 2).to_index();
-					
-					if let Some(ibb) = index_below_below {
-						if !self[ibb].is_none() {
-							&mut self[i].reset();
-							&mut self[ib].reset();
-						}
+				let index_below_below = (x, y + 2).to_index();
+				
+				if let Some(ibb) = index_below_below {
+					if !self[ibb].is_empty() {
+						&mut self[i].reset();
+						&mut self[ib].reset();
 					}
 				}
 			}
 		}
 		
-		// flood fill check for the current color of the block for any other near colors
+		// garbage hang finish
+		for (_, _, head_index) in iter_yx_rev() {
+			// skip non garbage hang state
+			if let Some(state) = self.garbage_state(head_index) {
+				if !state.hang_finished() {
+					continue;
+				}
+			} else {
+				continue;
+			}
+			
+			// get copy of indexes
+			let child_indexes: Option<Vec<usize>> = self.garbage(head_index)
+				.map(|g| g.children.clone());
+			
+			// move all children including the parent down
+			if let Some(indexes) = child_indexes {
+				for &index in indexes.iter() {
+					let index_below = (index + GRID_WIDTH).to_index();
+					
+					if let Some(ib) = index_below {
+						self.components.swap(index, ib);
+						
+						if let Components::GarbageChild(parent_index) = &mut self[ib] {
+							*parent_index = head_index + GRID_WIDTH;
+						}
+					}
+				}
+			}
+			
+			let head_index = head_index + GRID_WIDTH;
+			
+			// shift all children indexes one down from the new head index position
+			if let Some(g) = self.garbage_mut(head_index) {
+				for child_index in g.children.iter_mut() {
+					*child_index += GRID_WIDTH;
+				}
+			}
+			
+			let hang_counter = self.garbage_can_hang(head_index);
+			if let Some(g) = self.garbage_mut(head_index) {
+				if hang_counter.is_none() {
+					g.reset();
+				}
+			}
+		}
+		
+		// block flood fill check for the current color of the block for any other near colors
 		for (x, y, i) in iter_xy() {
 			let frame = self.block(i)
 				.filter(|b| b.state.is_real())
@@ -143,8 +295,8 @@ impl Grid {
 				if self.flood_horizontal_count > 2 {
 					// TODO(Skytrias): bad to clone!
 					for clear_index in self.flood_horizontal_history.clone().iter() {
-						if let Components::Normal(b) = &mut self[*clear_index] {
-							b.state = BlockStates::Clear(Default::default());
+						if let Some(state) = self.block_state_mut(*clear_index) {
+							state.to_clear();
 						}
 					}
 				}
@@ -152,8 +304,8 @@ impl Grid {
 				if self.flood_vertical_count > 2 {
 					// TODO(Skytrias): bad to clone!
 					for clear_index in self.flood_vertical_history.clone().iter() {
-						if let Components::Normal(b) = &mut self[*clear_index] {
-							b.state = BlockStates::Clear(Default::default());
+						if let Some(state) = self.block_state_mut(*clear_index) {
+							state.to_clear();
 						}
 					}
 				}
@@ -165,7 +317,7 @@ impl Grid {
 			}
 		}
 		
-		// clear the component if clear state is finished
+		// block clear the component if clear state is finished
 		for (_, _, i) in iter_xy() {
 			let finished = self.block_state(i)
 				.map(|s| s.is_clear() && s.clear_finished())
@@ -176,7 +328,7 @@ impl Grid {
 			}
 		}
 		
-		// update state timers
+		// update all components 
 		for c in self.components.iter_mut() {
 			c.update();
 		}
@@ -185,8 +337,11 @@ impl Grid {
 	fn flood_check(&mut self, x: usize, y: usize, vframe: f32, direction: FloodDirection) {
 		if let Some(index) = (x, y).to_index() {
 			// dont allow empty components
-			if let Components::Empty = &self[index] {
-				return;
+			match self[index] {
+				Components::Empty => return,
+				Components::GarbageParent(_) => return,
+				Components::GarbageChild(_) => return,
+				_ => {}
 			}
 			
 			// only allow the same vframe to be counted
@@ -236,39 +391,9 @@ impl Grid {
 	}
 	
 	pub fn draw(&mut self, app: &mut App) {
-		// draw traversal info
-		if false {
-			let mut i = 0;
-			for x in (0..GRID_WIDTH).rev() {
-				for y in (0..GRID_HEIGHT).rev() {
-					app.draw_number(i as f32, v2(x as f32, y as f32) * ATLAS_SPACING);
-					i += 1;
-				}
-			}
-		}
-		
 		// NOTE(Skytrias): dirty check
 		if self.components.len() == 0 {
 			return;
-		}
-		
-		// draw clear info
-		for x in 0..GRID_WIDTH {
-			for y in 0..GRID_HEIGHT {
-				let index = (x, y).no_bounds();
-				
-				if let Components::Normal(b) = &self[index] {
-					if b.state.is_clear() {
-						/*
-						app.push_sprite(Sprite {
-											depth: 0.01,
-											position: v2(x as f32, y as f32) * ATLAS_SPACING,
-											color: color_alpha(RED, 0.5),
-											..Default::default()
-										});*/
-					}
-				}
-			}
 		}
 		
 		// NOTE(Skytrias): send and draw ubo data
@@ -279,6 +404,8 @@ impl Grid {
 		}
 		app.draw_grid(&data);
 	}
+	
+	// block & and &mut accesors
 	
 	// returns a block from the specified grid_index
 	pub fn block<I: BoundIndex>(&self, index: I) -> Option<&Block> {
@@ -312,22 +439,42 @@ impl Grid {
 		}
 	}
 	
-	pub fn block_swap<I: BoundIndex>(&self, index: I) -> Option<&SwapState> {
+	// garbage & and &mut accesors
+	
+	pub fn garbage<I: BoundIndex>(&self, index: I) -> Option<&Garbage> {
 		match &self[index] {
-			Components::Normal(b) => match &b.state {
-				BlockStates::Swap(s) => Some(s),
-				_ => None
-			},
+			Components::GarbageParent(g) => Some(&g),
+			_ => None
+		}
+	}
+	
+	pub fn garbage_mut<I: BoundIndex>(&mut self, index: I) -> Option<&mut Garbage> {
+		match &mut self[index] {
+			Components::GarbageParent(g) => Some(g),
+			_ => None
+		}
+	}
+	
+	pub fn garbage_state<I: BoundIndex>(&self, index: I) -> Option<&GarbageStates> {
+		match &self[index] {
+			Components::GarbageParent(g) => Some(&g.state),
+			_ => None
+		}
+	}
+	
+	pub fn garbage_state_mut<I: BoundIndex>(&mut self, index: I) -> Option<&mut GarbageStates> {
+		match &mut self[index] {
+			Components::GarbageParent(g) => Some(&mut g.state),
 			_ => None
 		}
 	}
 }
 
-impl<T: BoundIndex> Index<T> for Grid {
+impl<I: BoundIndex> Index<I> for Grid {
 	type Output = Components;
 	
-	fn index(&self, grid_index: T) -> &Self::Output {
-		if let Some(i) = grid_index.to_index() {
+	fn index(&self, bound_index: I) -> &Self::Output {
+		if let Some(i) = bound_index.to_index() {
 			&self.components[i]
 		} else {
 			&self.placeholder
@@ -335,9 +482,9 @@ impl<T: BoundIndex> Index<T> for Grid {
 	}
 }
 
-impl<T: BoundIndex> IndexMut<T> for Grid {
-	fn index_mut(&mut self, grid_index: T) -> &mut Self::Output {
-		if let Some(i) = grid_index.to_index() {
+impl<I: BoundIndex> IndexMut<I> for Grid {
+	fn index_mut(&mut self, bound_index: I) -> &mut Self::Output {
+		if let Some(i) = bound_index.to_index() {
 			&mut self.components[i]
 		} else {
 			&mut self.placeholder
