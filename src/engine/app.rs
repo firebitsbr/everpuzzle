@@ -35,6 +35,11 @@ impl App {
         self.key_downs.get(&code).filter(|&&v| v != 0).is_some()
     }
 	
+	// returns true if a key is held down
+    pub fn key_down_frames(&self, code: VirtualKeyCode) -> Option<u32> {
+        self.key_downs.get(&code).filter(|&&v| v != 0).map(|v| *v)
+    }
+	
     // returns true if a key is pressed for a single frame
     pub fn key_pressed(&self, code: VirtualKeyCode) -> bool {
         self.key_downs.get(&code).filter(|&&v| v == 1).is_some()

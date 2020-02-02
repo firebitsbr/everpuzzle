@@ -3,6 +3,8 @@ use crate::helpers::*;
 use crate::scripts::*;
 use glutin::event::VirtualKeyCode;
 
+const FRAME_LIMIT: u32 = 25;
+
 pub struct Cursor {
     position: V2,
     sprite: Sprite,
@@ -25,25 +27,43 @@ impl Default for Cursor {
 
 impl Cursor {
     pub fn update(&mut self, app: &App, grid: &mut Grid) {
-        let left = app.key_pressed(VirtualKeyCode::Left);
-        let right = app.key_pressed(VirtualKeyCode::Right);
-        let up = app.key_pressed(VirtualKeyCode::Up);
-        let down = app.key_pressed(VirtualKeyCode::Down);
+        let left = app.key_down_frames(VirtualKeyCode::Left);
+        let right = app.key_down_frames(VirtualKeyCode::Right);
+        let up = app.key_down_frames(VirtualKeyCode::Up);
+        let down = app.key_down_frames(VirtualKeyCode::Down);
 		
-        if left && self.position.x > 0. {
-            self.position.x -= 1.;
+		// movement dependant on how long a key down has been held for in frames
+		
+		if self.position.x > 0. {
+			if let Some(frame) = left {
+				if frame == 1 || frame > FRAME_LIMIT {
+					self.position.x -= 1.;
+				}
+			}
+		}
+		
+        if self.position.x < (GRID_WIDTH - 2) as f32 {
+            if let Some(frame) = right {
+				if frame == 1 || frame > FRAME_LIMIT {
+					self.position.x += 1.;
+				}
+			}
         }
 		
-        if right && self.position.x < (GRID_WIDTH - 2) as f32 {
-            self.position.x += 1.;
-        }
+		if self.position.y > 0. {
+			if let Some(frame) = up {
+				if frame == 1 || frame > FRAME_LIMIT {
+					self.position.y -= 1.;
+				}
+			}
+		}
 		
-        if up && self.position.y > 0. {
-            self.position.y -= 1.;
-        }
-		
-        if down && self.position.y < (GRID_HEIGHT - 1) as f32 {
-            self.position.y += 1.;
+        if self.position.y < (GRID_HEIGHT - 1) as f32 {
+            if let Some(frame) = down {
+				if frame == 1 || frame > FRAME_LIMIT {
+					self.position.y += 1.;
+				}
+			}
         }
 		
         if app.key_pressed(VirtualKeyCode::S) {

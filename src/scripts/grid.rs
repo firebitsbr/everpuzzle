@@ -67,13 +67,18 @@ impl Grid {
 				if let Some(ib) = (child_index + GRID_WIDTH).to_index() {
 					let below_component_empty = self[ib].is_empty();
 					let below_block_state = self.block_state(ib).unwrap_or(&BlockStates::Idle).clone();
-					let _below_garbage_state = self.garbage_state(ib).unwrap_or(&GarbageStates::Idle).clone();
+					let below_garbage_state = self.garbage_state(ib).unwrap_or(&GarbageStates::Idle).clone();
 					
 					if !below_component_empty {
 						if let BlockStates::Hang { counter, .. } = below_block_state {
 							hang_counter = max(hang_counter, counter);
 						} else {
-							can_hang = false;
+							if let GarbageStates::Hang { counter, .. } = below_garbage_state {
+								hang_counter = max(hang_counter, counter);
+								//println!("got garbage hang {}, {}", i.raw(), counter);
+							} else {
+								can_hang = false;
+							}
 						}
 					}
 				}
