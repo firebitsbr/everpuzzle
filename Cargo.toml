@@ -5,8 +5,8 @@ authors = ["skytrias <skytrias@protonmail.com>"]
 edition = "2018"
 
 [dependencies]
-glutin = "0.22"
-gl = "0.14.0"
+wgpu = "0.4"
+winit = "0.20"
 png_pong = "0.1.0"
 pix = "0.7.0"
 fixedstep = "0.3.0"

@@ -2,18 +2,18 @@ use std::fmt;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 // empty types for size comparison
-pub type Matrix = [[f32; 4]; 4];
+pub type Matrix = [f32; 16];
 
 pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> Matrix {
-    let mut m = [[0.; 4]; 4];
+    let mut m = [0.; 16];
 	
-    m[0][0] = 2. / (right - left);
-    m[1][1] = 2. / (top - bottom);
-    m[2][2] = 2. / (far - near);
-    m[3][0] = -(right + left) / (right - left);
-    m[3][1] = -(top + bottom) / (top - bottom);
-    m[3][2] = -(far + near) / (far - near);
-    m[3][3] = 1.;
+	m[0] = 2. / (right - left);
+	m[5] = 2. / (top - bottom);
+    m[10] = 2. / (far - near);
+    m[12] = -(right + left) / (right - left);
+    m[13] = -(top + bottom) / (top - bottom);
+    m[14] = -(far + near) / (far - near);
+    m[15] = 1.;
 	
     m
 }

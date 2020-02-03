@@ -1,7 +1,7 @@
 use crate::engine::App;
 use crate::helpers::*;
 use crate::scripts::*;
-use glutin::event::VirtualKeyCode;
+use winit::event::VirtualKeyCode;
 
 const FRAME_LIMIT: u32 = 25;
 
