@@ -48,7 +48,7 @@ void main() {
 	
 	vec2 vertice = rect_pos[gl_VertexIndex] - 0.5;
     vec2 position = vec2(mod_i(gl_InstanceIndex, WIDTH), floor((gl_InstanceIndex) / WIDTH)); 
-	gl_Position = projection * vec4((vertice * scale + position) * TILE_SIZE + offset + vec2(16, 16), 0.1, 1);
+	gl_Position = projection * vec4((vertice * scale + position) * TILE_SIZE + offset + vec2(16, 16), 0.9, 1);
 	
     vec2 i_uv = vec2(gl_VertexIndex & 1, gl_VertexIndex >> 1);
     o_uv.x = (hframe + i_uv.x) * (1. / 26.);

@@ -19,11 +19,23 @@ const PROJECTION_SIZE: u64 = PROJECTION_LEN as u64 * FLOAT_SIZE; // 16 * 4bytes
 const GRID_LEN: usize = GRID_TOTAL;
 const GRID_SIZE: u64 = GRID_LEN as u64 * (8 * FLOAT_SIZE); // GRID_TOTAL * (2v2 * 4bytes) * 2
 const SPRITE_SIZE: usize = std::mem::size_of::<Sprite>(); // GRID_TOTAL * (2v2 * 4bytes) * 2
+
+// wgpu consts
 const TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
 // TODO(Skytrias): set to monitor framerate
 const FRAME_AMOUNT: f64 = 120.;
 const FPS: u64 = (1. / FRAME_AMOUNT * 1000.) as u64;
+
+fn create_depth_texture(device: &wgpu::Device, swapchain_desc: &wgpu::SwapChainDescriptor) -> wgpu::Texture {
+	let desc = wgpu::TextureDescriptor {
+		format: DEPTH_FORMAT,
+		usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+		..swapchain_desc.to_texture_desc()
+	};
+	device.create_texture(&desc)
+}
 
 // state of the Application, includes drawing, input, generators
 pub struct App {
@@ -39,6 +51,8 @@ pub struct App {
 	sprite_group: wgpu::BindGroup,
 	sprite_pipeline: wgpu::RenderPipeline,
 	queue: wgpu::Queue,
+	swapchain_desc: wgpu::SwapChainDescriptor,
+	depth_texture_view: wgpu::TextureView,
 	
     key_downs: HashMap<VirtualKeyCode, u32>,
     sprites: Vec<Sprite>,
@@ -98,11 +112,19 @@ impl App {
 																					   store_op: wgpu::StoreOp::Store,
 																					   clear_color: wgpu::Color::WHITE,
 																				   }],
-															  depth_stencil_attachment: None,
+															  depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
+																								 attachment: &self.depth_texture_view,
+																								 depth_load_op: wgpu::LoadOp::Load,
+																								 depth_store_op: wgpu::StoreOp::Store,
+																								 clear_depth: 1.0,
+																								 stencil_load_op: wgpu::LoadOp::Clear,
+																								 stencil_store_op: wgpu::StoreOp::Store,
+																								 clear_stencil: 0,
+																							 }),
 														  });
+				
 				rpass.set_pipeline(&self.grid_pipeline);
 				rpass.set_bind_group(0, &self.grid_group, &[]);
-				
 				rpass.draw(0..4, 0..GRID_LEN as u32);
 			}
 			
@@ -149,11 +171,19 @@ impl App {
 																					   store_op: wgpu::StoreOp::Store,
 																					   clear_color: wgpu::Color::WHITE,
 																				   }],
-															  depth_stencil_attachment: None,
+															  depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
+																								 attachment: &self.depth_texture_view,
+																								 depth_load_op: wgpu::LoadOp::Clear,
+																								 depth_store_op: wgpu::StoreOp::Store,
+																								 clear_depth: 1.0,
+																								 stencil_load_op: wgpu::LoadOp::Clear,
+																								 stencil_store_op: wgpu::StoreOp::Store,
+																								 clear_stencil: 0,
+																							 })
 														  });
+				
 				rpass.set_pipeline(&self.sprite_pipeline);
 				rpass.set_bind_group(0, &self.sprite_group, &[]);
-				
 				rpass.draw(0..4, 0..self.sprites.len() as u32);
 			}
 			
@@ -400,6 +430,23 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 											compare_function: wgpu::CompareFunction::Always,
 										});
 	
+	// swapchain
+	let (mut swap_chain, swapchain_desc) = {
+		let desc = wgpu::SwapChainDescriptor {
+			usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+			format: wgpu::TextureFormat::Bgra8UnormSrgb,
+			width: width as u32,
+			height: height as u32,
+			present_mode: wgpu::PresentMode::Vsync,
+		};
+		
+		(device.create_swap_chain(&surface, &desc), desc)
+	};
+	
+	// depth texture
+	let mut depth_texture = create_depth_texture(&device, &swapchain_desc);
+	let depth_texture_view = depth_texture.create_default_view();
+	
 	// order of shader
 	let (grid_group, grid_pipeline) = {
 		let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -501,7 +548,15 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 																					alpha_blend: wgpu::BlendDescriptor::REPLACE,
 																					write_mask: wgpu::ColorWrite::ALL,
 																				}],
-																depth_stencil_state: None,
+																depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
+																							  format: DEPTH_FORMAT,
+																							  depth_write_enabled: true,
+																							  depth_compare: wgpu::CompareFunction::Less, 
+																							  stencil_front: wgpu::StencilStateFaceDescriptor::IGNORE,
+																							  stencil_back: wgpu::StencilStateFaceDescriptor::IGNORE,
+																							  stencil_read_mask: 0,
+																							  stencil_write_mask: 0,
+																						  }),
 																index_format: wgpu::IndexFormat::Uint16,
 																vertex_buffers: &[],
 																sample_count: 1,
@@ -614,7 +669,15 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 																					alpha_blend: wgpu::BlendDescriptor::REPLACE,
 																					write_mask: wgpu::ColorWrite::ALL,
 																				}],
-																depth_stencil_state: None,
+																depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
+																							  format: DEPTH_FORMAT,
+																							  depth_write_enabled: true,
+																							  depth_compare: wgpu::CompareFunction::Less, 
+																							  stencil_front: wgpu::StencilStateFaceDescriptor::IGNORE,
+																							  stencil_back: wgpu::StencilStateFaceDescriptor::IGNORE,
+																							  stencil_read_mask: 0,
+																							  stencil_write_mask: 0,
+																						  }),
 																index_format: wgpu::IndexFormat::Uint16,
 																vertex_buffers: &[],
 																sample_count: 1,
@@ -624,17 +687,6 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 		
 		(bind_group, render_pipeline)
 	};
-	
-	let mut swap_chain = device.create_swap_chain(
-												  &surface,
-												  &wgpu::SwapChainDescriptor {
-													  usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-													  format: wgpu::TextureFormat::Bgra8UnormSrgb,
-													  width: width as u32,
-													  height: height as u32,
-													  present_mode: wgpu::PresentMode::Vsync,
-												  },
-												  );
 	
     let mut app = App {
         device: device,
@@ -649,6 +701,8 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 		sprite_group,
 		sprite_pipeline,
 		queue,
+		swapchain_desc,
+		depth_texture_view,
 		
         key_downs: HashMap::new(),
         sprites: Vec::with_capacity(SPRITE_AMOUNT),
@@ -717,6 +771,15 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 									  
 									  Event::WindowEvent { event, .. } => match event {
 										  WindowEvent::Resized(size) => {
+											  // recreate swapchain
+											  app.swapchain_desc.width = size.width;
+											  app.swapchain_desc.height = size.height;
+											  swap_chain = app.device.create_swap_chain(&surface, &app.swapchain_desc);
+											  
+											  depth_texture = create_depth_texture(&app.device, &app.swapchain_desc);
+											  app.depth_texture_view = depth_texture.create_default_view();
+											  
+											  // upload new projection
 											  let projection = ortho(0., size.width as f32, size.height as f32, 0., -1., 1.);
 											  let temp_buffer = app.device.create_buffer_mapped(
 																								PROJECTION_LEN,
@@ -726,7 +789,6 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 											  let mut init_encoder =
 												  app.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
 											  init_encoder.copy_buffer_to_buffer(&temp_buffer, 0, &app.ubo_projection, 0, PROJECTION_SIZE);
-											  // TODO(Skytrias): why no queue?
 											  init_encoder.finish();
 										  }
 										  
@@ -782,7 +844,6 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             let _delta = fixedstep.render_delta();
 			
 			let frame = swap_chain.get_next_texture();
-			
 			cursor.draw(&mut app);
             app.draw_sprites(&frame);
 			grid.draw(&mut app, &frame);
