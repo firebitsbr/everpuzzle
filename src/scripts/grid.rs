@@ -4,6 +4,13 @@ use crate::scripts::*;
 use std::ops::{Index, IndexMut};
 use std::cmp::max;
 
+// like shader
+#[derive(Copy, Clone, Debug)]
+pub struct GridBlock {
+	pub first: V4,
+	pub second: V4,
+}
+
 #[derive(Copy, Clone)]
 enum FloodDirection {
 	Horizontal, // -x and +x
@@ -94,9 +101,7 @@ impl Grid {
 	}
 	
 	pub fn update(&mut self, app: &mut App) {
-		if self.components.len() == 0 {
-			return;
-		}
+		assert!(self.components.len() != 0);
 		
 		// garbage hang detection
 		for (_, _, i) in iter_yx_rev() {
@@ -395,19 +400,20 @@ impl Grid {
 		}
 	}
 	
-	pub fn draw(&mut self, app: &mut App) {
-		// NOTE(Skytrias): dirty check
-		if self.components.len() == 0 {
-			return;
-		}
+	pub fn draw(&mut self, app: &mut App, frame: &wgpu::SwapChainOutput<'_>) {
+		assert!(self.components.len() != 0);
 		
-		// NOTE(Skytrias): send and draw ubo data
-		let mut data: Vec<V4> = Vec::new();
-		for c in self.components.iter() {
-			data.push(v4(c.hframe(), c.vframe(), c.visible(), 1.));
-			data.push(v4(c.x_offset(), c.y_offset(), 0., 0.));
-		}
-		app.draw_grid(&data);
+		// gather info
+		let data: Vec<GridBlock> = self.components.iter()
+			.map(|c| {
+					 GridBlock {
+						 first: v4(c.hframe(), c.vframe(), c.visible(), 1.),
+						 second: v4(c.x_offset(), c.y_offset(), 0., 0.),
+					 }
+				 })
+			.collect();
+		
+		app.draw_grid(&data, frame);
 	}
 	
 	// block & and &mut accesors

@@ -39,6 +39,11 @@ impl V4 {
 		pub fn zero() -> V4 {
         v4(0., 0., 0., 0.)
     }
+	
+	#[inline]
+		pub fn one() -> V4 {
+        v4(1., 1., 1., 1.)
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]

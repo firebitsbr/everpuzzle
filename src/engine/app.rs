@@ -12,17 +12,33 @@ use crate::engine::*;
 use crate::helpers::*;
 use crate::scripts::*;
 
+// size_of's
+const FLOAT_SIZE: u64 = 4;
+const PROJECTION_LEN: usize = 16; // 16 floats?
+const PROJECTION_SIZE: u64 = PROJECTION_LEN as u64 * FLOAT_SIZE; // 16 * 4bytes 
+const GRID_LEN: usize = GRID_TOTAL;
+const GRID_SIZE: u64 = GRID_LEN as u64 * (8 * FLOAT_SIZE); // GRID_TOTAL * (2v2 * 4bytes) * 2
+const SPRITE_SIZE: usize = std::mem::size_of::<Sprite>(); // GRID_TOTAL * (2v2 * 4bytes) * 2
+const TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+
 // TODO(Skytrias): set to monitor framerate
 const FRAME_AMOUNT: f64 = 120.;
 const FPS: u64 = (1. / FRAME_AMOUNT * 1000.) as u64;
 
 // state of the Application, includes drawing, input, generators
 pub struct App {
-    ubo_projection: wgpu::Buffer,
-    //ubo_grid: u32,
-    //ubo_sprite: u32,
+    device: wgpu::Device,
+	
+	ubo_projection: wgpu::Buffer,
+    ubo_grid: wgpu::Buffer,
+	sbo_sprite: wgpu::Buffer,
     //ubo_text: u32,
-    //shaders: HashMap<String, u32>,
+	
+	grid_group: wgpu::BindGroup,
+	grid_pipeline: wgpu::RenderPipeline,
+	sprite_group: wgpu::BindGroup,
+	sprite_pipeline: wgpu::RenderPipeline,
+	queue: wgpu::Queue,
 	
     key_downs: HashMap<VirtualKeyCode, u32>,
     sprites: Vec<Sprite>,
@@ -54,14 +70,44 @@ impl App {
     }
 	
     // draws the grid with all v4 info
-    pub fn draw_grid(&mut self, _data: &[V4]) {
-        /*
-		unsafe {
-            gl::UseProgram(self.shaders["grid"]);
-            update_ubo(self.ubo_grid, data, 2);
-            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, GRID_TOTAL as i32);
-        }
-    */
+    pub fn draw_grid(&mut self, data: &[GridBlock], frame: &wgpu::SwapChainOutput<'_>) {
+		// map ubo data into gpu
+		{
+			let temp_buffer = self.device.create_buffer_mapped(
+															   GRID_LEN,
+															   wgpu::BufferUsage::COPY_SRC
+															   ).fill_from_slice(data);
+			
+			let mut encoder =
+				self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+			encoder.copy_buffer_to_buffer(&temp_buffer, 0, &self.ubo_grid, 0, GRID_SIZE);
+			self.queue.submit(&[encoder.finish()]);
+		}
+		
+		// render call
+		{
+			let mut encoder =
+				self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+			
+			{
+				let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+															  color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+																					   attachment: &frame.view,
+																					   resolve_target: None,
+																					   load_op: wgpu::LoadOp::Load,
+																					   store_op: wgpu::StoreOp::Store,
+																					   clear_color: wgpu::Color::WHITE,
+																				   }],
+															  depth_stencil_attachment: None,
+														  });
+				rpass.set_pipeline(&self.grid_pipeline);
+				rpass.set_bind_group(0, &self.grid_group, &[]);
+				
+				rpass.draw(0..4, 0..GRID_LEN as u32);
+			}
+			
+			self.queue.submit(&[encoder.finish()]);
+		}
 	}
 	
     // pushes a sprite to the anonymous sprites
@@ -70,21 +116,51 @@ impl App {
     }
 	
     // draws all acquired sprites and clears the sprites again
-    fn draw_sprites(&mut self) {
-		/*
+    fn draw_sprites(&mut self, frame: &wgpu::SwapChainOutput<'_>) {
 		// dont draw anything if sprites havent been set
         if self.sprites.len() == 0 {
             return;
         }
 		
-        unsafe {
-            gl::UseProgram(self.shaders["sprite"]);
-            update_ubo(self.ubo_sprite, self.sprites.as_slice(), 1);
-            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, SPRITE_AMOUNT as i32);
-        }
+		// map ubo data into gpu
+		{
+			let temp_buffer = self.device.create_buffer_mapped(
+															   self.sprites.len(),
+															   wgpu::BufferUsage::COPY_SRC
+															   ).fill_from_slice(&self.sprites);
+			
+			let mut encoder =
+				self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+			encoder.copy_buffer_to_buffer(&temp_buffer, 0, &self.sbo_sprite, 0, self.sprites.len() as u64 * SPRITE_SIZE as u64);
+			self.queue.submit(&[encoder.finish()]);
+		}
+		
+		// render call
+		{
+			let mut encoder =
+				self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+			
+			{
+				let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+															  color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+																					   attachment: &frame.view,
+																					   resolve_target: None,
+																					   load_op: wgpu::LoadOp::Clear,
+																					   store_op: wgpu::StoreOp::Store,
+																					   clear_color: wgpu::Color::WHITE,
+																				   }],
+															  depth_stencil_attachment: None,
+														  });
+				rpass.set_pipeline(&self.sprite_pipeline);
+				rpass.set_bind_group(0, &self.sprite_group, &[]);
+				
+				rpass.draw(0..4, 0..self.sprites.len() as u32);
+			}
+			
+			self.queue.submit(&[encoder.finish()]);
+		}
 		
         self.sprites = Vec::with_capacity(SPRITE_AMOUNT);
-    */
 	}
 	
 	/*
@@ -179,8 +255,6 @@ impl App {
 	*/
 }
 
-const TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
-
 // opens a shader from a file lives next to src directory
 fn load_shader(device: &wgpu::Device, name: &'static str) -> wgpu::ShaderModule {
 	let file = std::fs::File::open(name).expect("FS: file open failed");
@@ -214,19 +288,40 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 														 limits: wgpu::Limits::default(),
 													 });
 	
-	// shaders
-	let vs_module = load_shader(&device, "shaders/grid.vert.spv");
-	let fs_module = load_shader(&device, "shaders/grid.frag.spv");
-	
 	// projection matrix ubo
-	let (ubo_projection, matrix_size) = {
+	let ubo_projection = {
 		let projection = ortho(0., width, 0., height, -1., 1.);
-		let ubo_projection = device.create_buffer_mapped(
-														 16, // 16 bits?
-														 wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST
-														 ).fill_from_slice(&projection);
+		device.create_buffer_mapped(
+									PROJECTION_LEN,
+									wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST
+									).fill_from_slice(&projection)
+	};
+	
+	// TODO(Skytrias): not do empty fill?
+	// empty fill to the grid
+	let ubo_grid = {
+		let data = [GridBlock { first: V4::one(), second: V4::one() }; GRID_LEN];
+		device.create_buffer_mapped(
+									GRID_LEN,
+									wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST
+									).fill_from_slice(&data)
+	};
+	
+	// TODO(Skytrias): not do empty fill?
+	// empty fill to the grid
+	let (sbo_sprite, init_sprite_size) = {
+		let mut sprites = Vec::new();
+		sprites.push(Sprite {
+						 color: RED,
+						 ..Default::default()
+					 });
 		
-		(ubo_projection, std::mem::size_of::<Matrix>())
+		let sbo = device.create_buffer_mapped(
+											  sprites.len(), 
+											  wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::COPY_DST
+											  ).fill_from_slice(&sprites);
+		
+		(sbo, sprites.len() * SPRITE_SIZE)
 	};
 	
 	// load our single texture atlas into ubo
@@ -261,6 +356,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 			.create_buffer_mapped(texels.len(), wgpu::BufferUsage::COPY_SRC)
 			.fill_from_slice(texels);
 		
+		// copy texels into into gpu
 		{
 			let mut init_encoder =
 				device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
@@ -291,11 +387,6 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 		texture_view
 	};
 	
-    // other ubos
-    //let ubo_sprite = init_ubo(mem::size_of::<Sprite>() * SPRITE_AMOUNT, 1);
-    //let ubo_grid = init_ubo(mem::size_of::<V4>() * GRID_TOTAL * 2, 2);
-    //let ubo_text = init_ubo(mem::size_of::<V4>() * TEXT_AMOUNT, 3);
-	
 	// sampler used for textures
 	let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
 											address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -310,7 +401,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 										});
 	
 	// order of shader
-	let (bind_group, render_pipeline) = {
+	let (grid_group, grid_pipeline) = {
 		let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
 																	bindings: &[
 																				wgpu::BindGroupLayoutBinding {
@@ -335,6 +426,15 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 																					visibility: wgpu::ShaderStage::FRAGMENT,
 																					ty: wgpu::BindingType::Sampler,
 																				},
+																				
+																				wgpu::BindGroupLayoutBinding {
+																					binding: 3,
+																					visibility: wgpu::ShaderStage::VERTEX,
+																					ty: wgpu::BindingType::UniformBuffer {
+																						// NOTE(Skytrias): use non dynamic?
+																						dynamic: false,
+																					},
+																				},
 																				],
 																});
 		
@@ -345,7 +445,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 																	  binding: 0,
 																	  resource: wgpu::BindingResource::Buffer {
 																		  buffer: &ubo_projection,
-																		  range: 0..matrix_size as wgpu::BufferAddress,
+																		  range: 0..PROJECTION_SIZE,
 																	  },
 																  },
 																  
@@ -358,12 +458,24 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 																	  binding: 2,
 																	  resource: wgpu::BindingResource::Sampler(&sampler),
 																  },
+																  
+																  wgpu::Binding {
+																	  binding: 3,
+																	  resource: wgpu::BindingResource::Buffer {
+																		  buffer: &ubo_grid,
+																		  range: 0..GRID_SIZE,
+																	  },
+																  },
 																  ],
 												  });
 		
 		let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
 																bind_group_layouts: &[&bind_group_layout],
 															});
+		
+		// shaders
+		let vs_module = load_shader(&device, "shaders/grid.vert.spv");
+		let fs_module = load_shader(&device, "shaders/grid.frag.spv");
 		
 		let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
 																layout: &pipeline_layout,
@@ -376,7 +488,120 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 																						 entry_point: "main",
 																					 }),
 																rasterization_state: Some(wgpu::RasterizationStateDescriptor {
-																							  front_face: wgpu::FrontFace::Ccw,
+																							  front_face: wgpu::FrontFace::Cw,
+																							  cull_mode: wgpu::CullMode::None,
+																							  depth_bias: 0,
+																							  depth_bias_slope_scale: 0.0,
+																							  depth_bias_clamp: 0.0,
+																						  }),
+																primitive_topology: wgpu::PrimitiveTopology::TriangleStrip,
+																color_states: &[wgpu::ColorStateDescriptor {
+																					format: wgpu::TextureFormat::Bgra8UnormSrgb,
+																					color_blend: wgpu::BlendDescriptor::REPLACE,
+																					alpha_blend: wgpu::BlendDescriptor::REPLACE,
+																					write_mask: wgpu::ColorWrite::ALL,
+																				}],
+																depth_stencil_state: None,
+																index_format: wgpu::IndexFormat::Uint16,
+																vertex_buffers: &[],
+																sample_count: 1,
+																sample_mask: !0,
+																alpha_to_coverage_enabled: false,
+															});
+		
+		(bind_group, render_pipeline)
+	};
+	
+	// order of shader
+	let (sprite_group, sprite_pipeline) = {
+		let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+																	bindings: &[
+																				wgpu::BindGroupLayoutBinding {
+																					binding: 0,
+																					visibility: wgpu::ShaderStage::VERTEX,
+																					ty: wgpu::BindingType::UniformBuffer {
+																						dynamic: false,
+																					},
+																				},
+																				
+																				wgpu::BindGroupLayoutBinding {
+																					binding: 1,
+																					visibility: wgpu::ShaderStage::FRAGMENT,
+																					ty: wgpu::BindingType::SampledTexture {
+																						multisampled: false,
+																						dimension: wgpu::TextureViewDimension::D2,
+																					},
+																				},
+																				
+																				wgpu::BindGroupLayoutBinding {
+																					binding: 2,
+																					visibility: wgpu::ShaderStage::FRAGMENT,
+																					ty: wgpu::BindingType::Sampler,
+																				},
+																				
+																				wgpu::BindGroupLayoutBinding {
+																					binding: 3,
+																					visibility: wgpu::ShaderStage::VERTEX,
+																					ty: wgpu::BindingType::StorageBuffer {
+																						// NOTE(Skytrias): use non dynamic?
+																						dynamic: false,
+																						readonly: false,
+																					},
+																				},
+																				],
+																});
+		
+		let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+													  layout: &bind_group_layout,
+													  bindings: &[
+																  wgpu::Binding {
+																	  binding: 0,
+																	  resource: wgpu::BindingResource::Buffer {
+																		  buffer: &ubo_projection,
+																		  range: 0..PROJECTION_SIZE,
+																	  },
+																  },
+																  
+																  wgpu::Binding {
+																	  binding: 1,
+																	  resource: wgpu::BindingResource::TextureView(&texture_view),
+																  },
+																  
+																  wgpu::Binding {
+																	  binding: 2,
+																	  resource: wgpu::BindingResource::Sampler(&sampler),
+																  },
+																  
+																  wgpu::Binding {
+																	  binding: 3,
+																	  resource: wgpu::BindingResource::Buffer {
+																		  buffer: &sbo_sprite,
+																		  range: 0..init_sprite_size as u64,
+																	  },
+																  },
+																  ],
+												  });
+		
+		let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+																bind_group_layouts: &[&bind_group_layout],
+															});
+		
+		// shaders
+		let vs_module = load_shader(&device, "shaders/sprite.vert.spv");
+		let fs_module = load_shader(&device, "shaders/sprite.frag.spv");
+		
+		let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+																layout: &pipeline_layout,
+																vertex_stage: wgpu::ProgrammableStageDescriptor {
+																	module: &vs_module,
+																	entry_point: "main",
+																},
+																fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
+																						 module: &fs_module,
+																						 entry_point: "main",
+																					 }),
+																rasterization_state: Some(wgpu::RasterizationStateDescriptor {
+																							  front_face: wgpu::FrontFace::Cw,
 																							  cull_mode: wgpu::CullMode::None,
 																							  depth_bias: 0,
 																							  depth_bias_slope_scale: 0.0,
@@ -411,23 +636,19 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 												  },
 												  );
 	
-    // load all shaders
-	/*
-	let shaders = {
-        let mut shaders = HashMap::new();
-        shaders.insert("sprite".to_string(), load_shader("sprite"));
-        shaders.insert("grid".to_string(), load_shader("grid"));
-        shaders.insert("text".to_string(), load_shader("text"));
-        shaders
-    };
-	*/
-	
     let mut app = App {
-        ubo_projection,
-        //ubo_sprite,
-        //ubo_grid,
+        device: device,
+		
+		ubo_projection,
+        ubo_grid,
+        sbo_sprite,
         //ubo_text,
-        //shaders,
+		
+		grid_group,
+		grid_pipeline,
+		sprite_group,
+		sprite_pipeline,
+		queue,
 		
         key_downs: HashMap::new(),
         sprites: Vec::with_capacity(SPRITE_AMOUNT),
@@ -495,9 +716,18 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 									  }
 									  
 									  Event::WindowEvent { event, .. } => match event {
-										  WindowEvent::Resized(_physical_size) => {
-											  //window.resize(physical_size),
-											  // TODO(Skytrias): resize
+										  WindowEvent::Resized(size) => {
+											  let projection = ortho(0., size.width as f32, size.height as f32, 0., -1., 1.);
+											  let temp_buffer = app.device.create_buffer_mapped(
+																								PROJECTION_LEN,
+																								wgpu::BufferUsage::COPY_SRC
+																								).fill_from_slice(&projection);
+											  
+											  let mut init_encoder =
+												  app.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+											  init_encoder.copy_buffer_to_buffer(&temp_buffer, 0, &app.ubo_projection, 0, PROJECTION_SIZE);
+											  // TODO(Skytrias): why no queue?
+											  init_encoder.finish();
 										  }
 										  
 										  WindowEvent::CloseRequested => {
@@ -551,31 +781,11 @@ pub fn run(width: f32, height: f32, title: &'static str) {
         {
             let _delta = fixedstep.render_delta();
 			
-            //grid.draw(&mut app);
-            //cursor.draw(&mut app);
-            //app.draw_sprites();
-			
-            //window.swap_buffers().unwrap();
 			let frame = swap_chain.get_next_texture();
-			let mut encoder =
-				device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-			{
-				let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-															  color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-																					   attachment: &frame.view,
-																					   resolve_target: None,
-																					   load_op: wgpu::LoadOp::Clear,
-																					   store_op: wgpu::StoreOp::Store,
-																					   clear_color: wgpu::Color::WHITE,
-																				   }],
-															  depth_stencil_attachment: None,
-														  });
-				rpass.set_pipeline(&render_pipeline);
-				rpass.set_bind_group(0, &bind_group, &[]);
-				rpass.draw(0 .. 4, 0 .. 1);
-			}
 			
-			queue.submit(&[encoder.finish()]);
+			cursor.draw(&mut app);
+            app.draw_sprites(&frame);
+			grid.draw(&mut app, &frame);
 		}
 		
         std::thread::sleep(std::time::Duration::from_millis(FPS));

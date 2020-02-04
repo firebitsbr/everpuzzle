@@ -1,18 +1,20 @@
-#version 460 core
+#version 450
 
-in vec2 o_uv;
-in vec4 o_color;
-out vec4 frag_color;
+layout(location = 0) in vec2 o_uv;
+layout(location = 1) in vec4 o_color;
+layout(location = 0) out vec4 frag_color;
 
-uniform sampler2D image;
+// NOTE(Skytrias): use new set?
+layout(set = 0, binding = 1) uniform texture2D texture_color;
+layout(set = 0, binding = 2) uniform sampler sampler_color;
 
 void main() {
-	vec4 texture_color = texture(image, o_uv);
+	vec4 texture_color = texture(sampler2D(texture_color, sampler_color), o_uv);
 	
     // discard useless alpha
     if (texture_color.a < 0.1) {
         discard;
     }
-    
+	
 	frag_color = texture_color * o_color;
 }
