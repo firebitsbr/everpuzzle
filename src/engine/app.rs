@@ -13,13 +13,16 @@ use winit::{
 };
 
 // size_of's
-const FLOAT_SIZE: u64 = 4;
+const FLOAT_SIZE: usize = 4;
 const PROJECTION_LEN: usize = 16; // 16 floats?
-pub const PROJECTION_SIZE: u64 = PROJECTION_LEN as u64 * FLOAT_SIZE; // 16 * 4bytes
+pub const PROJECTION_SIZE: u64 = (PROJECTION_LEN * FLOAT_SIZE) as u64;
 const GRID_LEN: usize = GRID_TOTAL;
-const GRID_SIZE: u64 = GRID_LEN as u64 * (8 * FLOAT_SIZE); // GRID_TOTAL * (2v2 * 4bytes) * 2
-const SPRITE_SIZE: u64 = std::mem::size_of::<Sprite>() as u64; // GRID_TOTAL * (2v2 * 4bytes) * 2
-const TEXT_SIZE: u64 = std::mem::size_of::<Text>() as u64;
+const GRID_BYTE_SIZE: u64 = (8 * FLOAT_SIZE) as u64;
+const GRID_SIZE: u64 = GRID_LEN as u64 * GRID_BYTE_SIZE;
+const SPRITE_BYTE_SIZE: u64 = std::mem::size_of::<Sprite>() as u64;
+const SPRITE_SIZE: u64 = SPRITE_LEN as u64 * SPRITE_BYTE_SIZE;
+const TEXT_BYTE_SIZE: u64 = std::mem::size_of::<Text>() as u64;
+const TEXT_SIZE: u64 = TEXT_LEN as u64 * TEXT_BYTE_SIZE;
 
 // wgpu consts
 const TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -29,6 +32,7 @@ pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 const FRAME_AMOUNT: f64 = 120.;
 const FPS: u64 = (1. / FRAME_AMOUNT * 1000.) as u64;
 
+// helper for recreating a depth texture
 fn create_depth_texture(
     device: &wgpu::Device,
     swapchain_desc: &wgpu::SwapChainDescriptor,
@@ -39,6 +43,69 @@ fn create_depth_texture(
         ..swapchain_desc.to_texture_desc()
     };
     device.create_texture(&desc)
+}
+
+// i hate this but it makes life easier, queue is the only mut so thats why i had to split it up from App
+// issues a copy to a buffer from a generic slice with its size and length, and draws it with the given bind_groupd and render pipeline
+fn copy_and_draw<T: Copy + 'static>(
+    load_op: wgpu::LoadOp, // wether to load or clear the last draw
+    device: &wgpu::Device,
+    queue: &mut wgpu::Queue,
+    depth_texture_view: &wgpu::TextureView,
+    frame: &wgpu::SwapChainOutput<'_>,
+    bind_group: &wgpu::BindGroup,
+    pipeline: &wgpu::RenderPipeline,
+    buffer: &wgpu::Buffer,
+    data: &[T],
+    len: usize,
+    size: usize,
+) {
+    // map ubo data into gpu
+    {
+        let temp_buffer = device
+            .create_buffer_mapped(len, wgpu::BufferUsage::COPY_SRC)
+            .fill_from_slice(data);
+
+        let mut encoder =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+
+        encoder.copy_buffer_to_buffer(&temp_buffer, 0, buffer, 0, (len * size) as u64);
+
+        queue.submit(&[encoder.finish()]);
+    }
+
+    // render call
+    {
+        let mut encoder =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+
+        {
+            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                    attachment: &frame.view,
+                    resolve_target: None,
+                    load_op,
+                    store_op: wgpu::StoreOp::Store,
+                    clear_color: wgpu::Color::WHITE,
+                }],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
+                    attachment: &depth_texture_view,
+                    depth_load_op: wgpu::LoadOp::Clear,
+                    depth_store_op: wgpu::StoreOp::Store,
+                    clear_depth: 1.0,
+                    stencil_load_op: wgpu::LoadOp::Clear,
+                    stencil_store_op: wgpu::StoreOp::Store,
+                    clear_stencil: 0,
+                }),
+            });
+
+            rpass.set_pipeline(pipeline);
+            rpass.set_bind_group(0, bind_group, &[]);
+            rpass.draw(0..4, 0..len as u32);
+        }
+
+        queue.submit(&[encoder.finish()]);
+    }
 }
 
 // state of the Application, includes drawing, input, generators
@@ -92,55 +159,19 @@ impl App {
 
     // draws the grid with all v4 info
     pub fn draw_grid(&mut self, data: &[GridBlock], frame: &wgpu::SwapChainOutput<'_>) {
-        // map ubo data into gpu
-        {
-            let temp_buffer = self
-                .device
-                .create_buffer_mapped(GRID_LEN, wgpu::BufferUsage::COPY_SRC)
-                .fill_from_slice(data);
-
-            let mut encoder = self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-            encoder.copy_buffer_to_buffer(&temp_buffer, 0, &self.ubo_grid, 0, GRID_SIZE);
-            self.queue.submit(&[encoder.finish()]);
-        }
-
-        // render call
-        {
-            let mut encoder = self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-
-            {
-                let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                        attachment: &frame.view,
-                        resolve_target: None,
-                        load_op: wgpu::LoadOp::Load,
-                        store_op: wgpu::StoreOp::Store,
-                        clear_color: wgpu::Color::WHITE,
-                    }],
-                    depth_stencil_attachment: Some(
-                        wgpu::RenderPassDepthStencilAttachmentDescriptor {
-                            attachment: &self.depth_texture_view,
-                            depth_load_op: wgpu::LoadOp::Load,
-                            depth_store_op: wgpu::StoreOp::Store,
-                            clear_depth: 1.0,
-                            stencil_load_op: wgpu::LoadOp::Clear,
-                            stencil_store_op: wgpu::StoreOp::Store,
-                            clear_stencil: 0,
-                        },
-                    ),
-                });
-
-                rpass.set_pipeline(&self.grid_pipeline);
-                rpass.set_bind_group(0, &self.grid_group, &[]);
-                rpass.draw(0..4, 0..GRID_LEN as u32);
-            }
-
-            self.queue.submit(&[encoder.finish()]);
-        }
+        copy_and_draw(
+            wgpu::LoadOp::Clear,
+            &self.device,
+            &mut self.queue,
+            &self.depth_texture_view,
+            frame,
+            &self.grid_group,
+            &self.grid_pipeline,
+            &self.ubo_grid,
+            data,
+            GRID_LEN,
+            GRID_SIZE as usize,
+        );
     }
 
     // pushes a sprite to the anonymous sprites
@@ -150,66 +181,26 @@ impl App {
 
     // draws all acquired sprites and clears the sprites again
     fn draw_sprites(&mut self, frame: &wgpu::SwapChainOutput<'_>) {
+        let len = self.sprites.len();
+
         // dont draw anything if sprites havent been set
-        if self.sprites.len() == 0 {
+        if len == 0 {
             return;
         }
 
-        // map ubo data into gpu
-        {
-            let temp_buffer = self
-                .device
-                .create_buffer_mapped(self.sprites.len(), wgpu::BufferUsage::COPY_SRC)
-                .fill_from_slice(&self.sprites);
-
-            let mut encoder = self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-            encoder.copy_buffer_to_buffer(
-                &temp_buffer,
-                0,
-                &self.sbo_sprite,
-                0,
-                self.sprites.len() as u64 * SPRITE_SIZE as u64,
-            );
-            self.queue.submit(&[encoder.finish()]);
-        }
-
-        // render call
-        {
-            let mut encoder = self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-
-            {
-                let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                        attachment: &frame.view,
-                        resolve_target: None,
-                        load_op: wgpu::LoadOp::Clear,
-                        store_op: wgpu::StoreOp::Store,
-                        clear_color: wgpu::Color::WHITE,
-                    }],
-                    depth_stencil_attachment: Some(
-                        wgpu::RenderPassDepthStencilAttachmentDescriptor {
-                            attachment: &self.depth_texture_view,
-                            depth_load_op: wgpu::LoadOp::Clear,
-                            depth_store_op: wgpu::StoreOp::Store,
-                            clear_depth: 1.0,
-                            stencil_load_op: wgpu::LoadOp::Clear,
-                            stencil_store_op: wgpu::StoreOp::Store,
-                            clear_stencil: 0,
-                        },
-                    ),
-                });
-
-                rpass.set_pipeline(&self.sprite_pipeline);
-                rpass.set_bind_group(0, &self.sprite_group, &[]);
-                rpass.draw(0..4, 0..self.sprites.len() as u32);
-            }
-
-            self.queue.submit(&[encoder.finish()]);
-        }
+        copy_and_draw(
+            wgpu::LoadOp::Load,
+            &self.device,
+            &mut self.queue,
+            &self.depth_texture_view,
+            frame,
+            &self.sprite_group,
+            &self.sprite_pipeline,
+            &self.sbo_sprite,
+            &self.sprites,
+            len,
+            SPRITE_SIZE as usize,
+        );
 
         self.sprites.clear();
     }
@@ -255,13 +246,7 @@ impl App {
             let mut encoder = self
                 .device
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-            encoder.copy_buffer_to_buffer(
-                &temp_buffer,
-                0,
-                &self.sbo_text,
-                0,
-                self.texts.len() as u64 * TEXT_SIZE as u64,
-            );
+            encoder.copy_buffer_to_buffer(&temp_buffer, 0, &self.sbo_text, 0, TEXT_SIZE as u64);
             self.queue.submit(&[encoder.finish()]);
         }
 
@@ -546,10 +531,8 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 
     // create bind_groups and pipelines per shader / ubo / sbo
     let (grid_group, grid_pipeline) = shader_info.uniform("grid", &ubo_grid, GRID_SIZE);
-    let (sprite_group, sprite_pipeline) =
-        shader_info.storage("sprite", &sbo_sprite, SPRITE_LEN as u64 * SPRITE_SIZE);
-    let (text_group, text_pipeline) =
-        shader_info.storage("text", &sbo_text, TEXT_LEN as u64 * TEXT_SIZE);
+    let (sprite_group, sprite_pipeline) = shader_info.storage("sprite", &sbo_sprite, SPRITE_SIZE);
+    let (text_group, text_pipeline) = shader_info.storage("text", &sbo_text, TEXT_SIZE);
 
     let mut app = App {
         device: device,
@@ -718,10 +701,10 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             let _delta = fixedstep.render_delta();
 
             let frame = swap_chain.get_next_texture();
+            grid.draw(&mut app, &frame);
             cursor.draw(&mut app);
             app.draw_sprites(&frame);
-            app.draw_texts(&frame);
-            grid.draw(&mut app, &frame);
+            //app.draw_texts(&frame);
         }
 
         std::thread::sleep(std::time::Duration::from_millis(FPS));
