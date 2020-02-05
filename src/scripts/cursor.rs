@@ -94,5 +94,6 @@ impl Cursor {
     pub fn draw(&mut self, app: &mut App) {
         self.sprite.position = ATLAS_TILE * self.position;
         app.push_sprite(self.sprite);
+        //app.push_string("hello", self.sprite.position, false);
     }
 }

@@ -15,14 +15,15 @@ use winit::{
 // size_of's
 const FLOAT_SIZE: u64 = 4;
 const PROJECTION_LEN: usize = 16; // 16 floats?
-const PROJECTION_SIZE: u64 = PROJECTION_LEN as u64 * FLOAT_SIZE; // 16 * 4bytes
+pub const PROJECTION_SIZE: u64 = PROJECTION_LEN as u64 * FLOAT_SIZE; // 16 * 4bytes
 const GRID_LEN: usize = GRID_TOTAL;
 const GRID_SIZE: u64 = GRID_LEN as u64 * (8 * FLOAT_SIZE); // GRID_TOTAL * (2v2 * 4bytes) * 2
-const SPRITE_SIZE: usize = std::mem::size_of::<Sprite>(); // GRID_TOTAL * (2v2 * 4bytes) * 2
+const SPRITE_SIZE: u64 = std::mem::size_of::<Sprite>() as u64; // GRID_TOTAL * (2v2 * 4bytes) * 2
+const TEXT_SIZE: u64 = std::mem::size_of::<Text>() as u64;
 
 // wgpu consts
 const TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
-const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
 // TODO(Skytrias): set to monitor framerate
 const FRAME_AMOUNT: f64 = 120.;
@@ -47,17 +48,21 @@ pub struct App {
     ubo_projection: wgpu::Buffer,
     ubo_grid: wgpu::Buffer,
     sbo_sprite: wgpu::Buffer,
-    //ubo_text: u32,
+    sbo_text: wgpu::Buffer,
+
     grid_group: wgpu::BindGroup,
     grid_pipeline: wgpu::RenderPipeline,
     sprite_group: wgpu::BindGroup,
     sprite_pipeline: wgpu::RenderPipeline,
+    text_group: wgpu::BindGroup,
+    text_pipeline: wgpu::RenderPipeline,
     queue: wgpu::Queue,
     swapchain_desc: wgpu::SwapChainDescriptor,
     depth_texture_view: wgpu::TextureView,
 
     key_downs: HashMap<VirtualKeyCode, u32>,
     sprites: Vec<Sprite>,
+    texts: Vec<Text>,
 
     pub mouse: Mouse,
     pub gen: oorandom::Rand32,
@@ -206,49 +211,100 @@ impl App {
             self.queue.submit(&[encoder.finish()]);
         }
 
-        self.sprites = Vec::with_capacity(SPRITE_AMOUNT);
+        self.sprites.clear();
     }
 
-    /*
-    // draws any text at the position specified, each character can have a different position if wanted
-    pub fn draw_string(&self, text: &'static str, position: V2, centered: bool) {
-        unsafe {
-            gl::UseProgram(self.shaders["text"]);
-        }
-
-        let mut data = vec![V4::zero(); TEXT_AMOUNT];
-
-        // null data
-        for num in &mut data {
-            num.x = -1.0;
-        }
+    // TODO(Skytrias): optimize
+    // pushes a string text to the anonymous sprites
+    pub fn push_string(&mut self, some_string: &'static str, position: V2, centered: bool) {
+        let mut text = Text {
+            position,
+            centered: if centered { 1. } else { 0. },
+            ..Default::default()
+        };
 
         // set data to digits
-        let mut length = 0.0;
-        for (i, r) in text.chars().enumerate() {
+        for (i, r) in some_string.chars().enumerate() {
             if r != ' ' {
                 let value = r.to_digit(35);
 
                 if let Some(num) = value {
-                    data[i].x = num as f32 - 10.0;
+                    text.hframe[i] = num as f32 - 10.0;
                 }
 
-                data[i].y = position.x;
-                data[i].z = position.y;
-                length += 1.0;
+                text.length += 1.0;
             }
         }
 
-        data[0].w = ATLAS_ALPHABET; // atlas vframe
-        data[1].w = length;
-        data[2].w = if centered { 1.0 } else { 0.0 };
+        self.texts.push(text);
+    }
 
-        update_ubo(self.ubo_text, &data[..], 3);
-
-        unsafe {
-            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, TEXT_AMOUNT as i32);
+    // draws any text at the position specified, each character can have a different position if wanted
+    pub fn draw_texts(&mut self, frame: &wgpu::SwapChainOutput<'_>) {
+        if self.texts.len() == 0 {
+            return;
         }
-    }*/
+
+        // map ubo data into gpu
+        {
+            let temp_buffer = self
+                .device
+                .create_buffer_mapped(self.texts.len(), wgpu::BufferUsage::COPY_SRC)
+                .fill_from_slice(&self.texts);
+
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+            encoder.copy_buffer_to_buffer(
+                &temp_buffer,
+                0,
+                &self.sbo_text,
+                0,
+                self.texts.len() as u64 * TEXT_SIZE as u64,
+            );
+            self.queue.submit(&[encoder.finish()]);
+        }
+
+        //println!("{:?}", self.texts[0]);
+
+        // render call
+        {
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+
+            {
+                let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                        attachment: &frame.view,
+                        resolve_target: None,
+                        load_op: wgpu::LoadOp::Load,
+                        store_op: wgpu::StoreOp::Store,
+                        clear_color: wgpu::Color::WHITE,
+                    }],
+                    depth_stencil_attachment: Some(
+                        wgpu::RenderPassDepthStencilAttachmentDescriptor {
+                            attachment: &self.depth_texture_view,
+                            depth_load_op: wgpu::LoadOp::Load,
+                            depth_store_op: wgpu::StoreOp::Store,
+                            clear_depth: 1.0,
+                            stencil_load_op: wgpu::LoadOp::Clear,
+                            stencil_store_op: wgpu::StoreOp::Store,
+                            clear_stencil: 0,
+                        },
+                    ),
+                });
+
+                rpass.set_pipeline(&self.text_pipeline);
+                rpass.set_bind_group(0, &self.text_group, &[]);
+                rpass.draw(0..4, 0..self.texts.len() as u32);
+            }
+
+            self.queue.submit(&[encoder.finish()]);
+        }
+
+        self.texts.clear();
+    }
 
     // draws a number at a specified position
     /*
@@ -299,12 +355,6 @@ impl App {
         }
     }
     */
-}
-
-// opens a shader from a file lives next to src directory
-fn load_shader(device: &wgpu::Device, name: &'static str) -> wgpu::ShaderModule {
-    let file = std::fs::File::open(name).expect("FS: file open failed");
-    device.create_shader_module(&wgpu::read_spirv(file).unwrap())
 }
 
 // main loop of the game
@@ -363,25 +413,37 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 
     // TODO(Skytrias): not do empty fill?
     // empty fill to the grid
-    let (sbo_sprite, init_sprite_size) = {
-        let mut sprites = Vec::new();
-        sprites.push(Sprite {
-            color: RED,
-            ..Default::default()
-        });
+    let sbo_sprite = {
+        let sprites = [Sprite::default(); SPRITE_LEN];
 
         let sbo = device
             .create_buffer_mapped(
-                sprites.len(),
+                SPRITE_LEN,
                 wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::COPY_DST,
             )
             .fill_from_slice(&sprites);
 
-        (sbo, sprites.len() * SPRITE_SIZE)
+        sbo
+    };
+
+    // TODO(Skytrias): not do empty fill?
+    // empty fill to the grid
+    let sbo_text = {
+        let texts = [Text::default(); TEXT_LEN];
+
+        let sbo = device
+            .create_buffer_mapped(
+                TEXT_LEN,
+                wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::COPY_DST,
+            )
+            .fill_from_slice(&texts);
+
+        sbo
     };
 
     // load our single texture atlas into ubo
     let texture_view = {
+        // load the texture and its info
         let data = std::fs::read("textures/atlas.png").expect("Failed to open PNG");
         let data = std::io::Cursor::new(data);
         let decoder = png_pong::FrameDecoder::<_, pix::Rgba8>::new(data);
@@ -473,230 +535,21 @@ pub fn run(width: f32, height: f32, title: &'static str) {
     let mut depth_texture = create_depth_texture(&device, &swapchain_desc);
     let depth_texture_view = depth_texture.create_default_view();
 
-    // order of shader
-    let (grid_group, grid_pipeline) = {
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            bindings: &[
-                wgpu::BindGroupLayoutBinding {
-                    binding: 0,
-                    visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::UniformBuffer { dynamic: false },
-                },
-                wgpu::BindGroupLayoutBinding {
-                    binding: 1,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::SampledTexture {
-                        multisampled: false,
-                        dimension: wgpu::TextureViewDimension::D2,
-                    },
-                },
-                wgpu::BindGroupLayoutBinding {
-                    binding: 2,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler,
-                },
-                wgpu::BindGroupLayoutBinding {
-                    binding: 3,
-                    visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        // NOTE(Skytrias): use non dynamic?
-                        dynamic: false,
-                    },
-                },
-            ],
-        });
-
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            bindings: &[
-                wgpu::Binding {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &ubo_projection,
-                        range: 0..PROJECTION_SIZE,
-                    },
-                },
-                wgpu::Binding {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&texture_view),
-                },
-                wgpu::Binding {
-                    binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
-                },
-                wgpu::Binding {
-                    binding: 3,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &ubo_grid,
-                        range: 0..GRID_SIZE,
-                    },
-                },
-            ],
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            bind_group_layouts: &[&bind_group_layout],
-        });
-
-        // shaders
-        let vs_module = load_shader(&device, "shaders/grid.vert.spv");
-        let fs_module = load_shader(&device, "shaders/grid.frag.spv");
-
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            layout: &pipeline_layout,
-            vertex_stage: wgpu::ProgrammableStageDescriptor {
-                module: &vs_module,
-                entry_point: "main",
-            },
-            fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
-                module: &fs_module,
-                entry_point: "main",
-            }),
-            rasterization_state: Some(wgpu::RasterizationStateDescriptor {
-                front_face: wgpu::FrontFace::Cw,
-                cull_mode: wgpu::CullMode::None,
-                depth_bias: 0,
-                depth_bias_slope_scale: 0.0,
-                depth_bias_clamp: 0.0,
-            }),
-            primitive_topology: wgpu::PrimitiveTopology::TriangleStrip,
-            color_states: &[wgpu::ColorStateDescriptor {
-                format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                color_blend: wgpu::BlendDescriptor::REPLACE,
-                alpha_blend: wgpu::BlendDescriptor::REPLACE,
-                write_mask: wgpu::ColorWrite::ALL,
-            }],
-            depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
-                format: DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil_front: wgpu::StencilStateFaceDescriptor::IGNORE,
-                stencil_back: wgpu::StencilStateFaceDescriptor::IGNORE,
-                stencil_read_mask: 0,
-                stencil_write_mask: 0,
-            }),
-            index_format: wgpu::IndexFormat::Uint16,
-            vertex_buffers: &[],
-            sample_count: 1,
-            sample_mask: !0,
-            alpha_to_coverage_enabled: false,
-        });
-
-        (bind_group, render_pipeline)
+    // shader info for easier uniform / storage calls
+    // NOTE(Skytrias): shouldnt these references go out of scope before app is initialized?
+    let shader_info = ShaderInfo {
+        device: &device,
+        ubo_projection: &ubo_projection,
+        texture_view: &texture_view,
+        sampler: &sampler,
     };
 
-    // order of shader
-    let (sprite_group, sprite_pipeline) = {
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            bindings: &[
-                wgpu::BindGroupLayoutBinding {
-                    binding: 0,
-                    visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::UniformBuffer { dynamic: false },
-                },
-                wgpu::BindGroupLayoutBinding {
-                    binding: 1,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::SampledTexture {
-                        multisampled: false,
-                        dimension: wgpu::TextureViewDimension::D2,
-                    },
-                },
-                wgpu::BindGroupLayoutBinding {
-                    binding: 2,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler,
-                },
-                wgpu::BindGroupLayoutBinding {
-                    binding: 3,
-                    visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::StorageBuffer {
-                        // NOTE(Skytrias): use non dynamic?
-                        dynamic: false,
-                        readonly: false,
-                    },
-                },
-            ],
-        });
-
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            bindings: &[
-                wgpu::Binding {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &ubo_projection,
-                        range: 0..PROJECTION_SIZE,
-                    },
-                },
-                wgpu::Binding {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&texture_view),
-                },
-                wgpu::Binding {
-                    binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
-                },
-                wgpu::Binding {
-                    binding: 3,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &sbo_sprite,
-                        range: 0..init_sprite_size as u64,
-                    },
-                },
-            ],
-        });
-
-        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            bind_group_layouts: &[&bind_group_layout],
-        });
-
-        // shaders
-        let vs_module = load_shader(&device, "shaders/sprite.vert.spv");
-        let fs_module = load_shader(&device, "shaders/sprite.frag.spv");
-
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            layout: &pipeline_layout,
-            vertex_stage: wgpu::ProgrammableStageDescriptor {
-                module: &vs_module,
-                entry_point: "main",
-            },
-            fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
-                module: &fs_module,
-                entry_point: "main",
-            }),
-            rasterization_state: Some(wgpu::RasterizationStateDescriptor {
-                front_face: wgpu::FrontFace::Cw,
-                cull_mode: wgpu::CullMode::None,
-                depth_bias: 0,
-                depth_bias_slope_scale: 0.0,
-                depth_bias_clamp: 0.0,
-            }),
-            primitive_topology: wgpu::PrimitiveTopology::TriangleStrip,
-            color_states: &[wgpu::ColorStateDescriptor {
-                format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                color_blend: wgpu::BlendDescriptor::REPLACE,
-                alpha_blend: wgpu::BlendDescriptor::REPLACE,
-                write_mask: wgpu::ColorWrite::ALL,
-            }],
-            depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
-                format: DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil_front: wgpu::StencilStateFaceDescriptor::IGNORE,
-                stencil_back: wgpu::StencilStateFaceDescriptor::IGNORE,
-                stencil_read_mask: 0,
-                stencil_write_mask: 0,
-            }),
-            index_format: wgpu::IndexFormat::Uint16,
-            vertex_buffers: &[],
-            sample_count: 1,
-            sample_mask: !0,
-            alpha_to_coverage_enabled: false,
-        });
-
-        (bind_group, render_pipeline)
-    };
+    // create bind_groups and pipelines per shader / ubo / sbo
+    let (grid_group, grid_pipeline) = shader_info.uniform("grid", &ubo_grid, GRID_SIZE);
+    let (sprite_group, sprite_pipeline) =
+        shader_info.storage("sprite", &sbo_sprite, SPRITE_LEN as u64 * SPRITE_SIZE);
+    let (text_group, text_pipeline) =
+        shader_info.storage("text", &sbo_text, TEXT_LEN as u64 * TEXT_SIZE);
 
     let mut app = App {
         device: device,
@@ -704,17 +557,21 @@ pub fn run(width: f32, height: f32, title: &'static str) {
         ubo_projection,
         ubo_grid,
         sbo_sprite,
-        //ubo_text,
+        sbo_text,
+
         grid_group,
         grid_pipeline,
         sprite_group,
         sprite_pipeline,
+        text_group,
+        text_pipeline,
         queue,
         swapchain_desc,
         depth_texture_view,
 
         key_downs: HashMap::new(),
-        sprites: Vec::with_capacity(SPRITE_AMOUNT),
+        sprites: Vec::new(),
+        texts: Vec::new(),
 
         mouse: Default::default(),
         gen: oorandom::Rand32::new(0),
@@ -863,6 +720,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             let frame = swap_chain.get_next_texture();
             cursor.draw(&mut app);
             app.draw_sprites(&frame);
+            app.draw_texts(&frame);
             grid.draw(&mut app, &frame);
         }
 

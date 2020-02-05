@@ -53,10 +53,8 @@ pub const GRID_WIDTH: usize = 6;
 pub const GRID_HEIGHT: usize = 12;
 pub const GRID_TOTAL: usize = GRID_WIDTH * GRID_HEIGHT;
 
-// how many sprites can be drawn each frame
-pub const SPRITE_AMOUNT: usize = 100;
-// how many characters a drawn text can have
-pub const TEXT_AMOUNT: usize = 20;
+pub const SPRITE_LEN: usize = 50;
+pub const TEXT_LEN: usize = 50;
 
 // generic sprite
 #[derive(Copy, Clone)]
@@ -93,6 +91,30 @@ impl Default for Sprite {
             centered: 0.,
             temp1: 0.,
             temp2: 0.,
+        }
+    }
+}
+
+// amount of characters a text can have
+const TEXT_AMOUNT: usize = 20;
+
+#[derive(Copy, Clone, Debug)]
+pub struct Text {
+    pub vframe: f32,
+    pub length: f32,
+    pub centered: f32,
+    pub position: V2,
+    pub hframe: [f32; TEXT_AMOUNT], // use u8 in shaders with extension?
+}
+
+impl Default for Text {
+    fn default() -> Self {
+        Self {
+            vframe: ATLAS_ALPHABET,
+            length: 1.,
+            centered: 0.,
+            position: v2(0., 0.),
+            hframe: [-1.; TEXT_AMOUNT],
         }
     }
 }
