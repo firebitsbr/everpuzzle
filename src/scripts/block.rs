@@ -4,7 +4,7 @@ use BlockStates::*;
 
 const HANG_TIME: u32 = 20;
 const SWAP_TIME: u32 = 5;
-const CLEAR_TIME: u32 = 100;
+const CLEAR_TIME: u32 = 50;
 
 #[derive(Copy, Clone, Debug)]
 pub enum SwapDirection {
@@ -32,8 +32,8 @@ pub enum BlockStates {
 }
 
 pub struct Block {
-    pub hframe: f32,
-    pub vframe: f32,
+    pub hframe: u32,
+    pub vframe: u32,
     pub state: BlockStates,
     pub offset: V2,
     pub scale: f32,
@@ -146,8 +146,8 @@ impl BlockStates {
 impl Default for Block {
     fn default() -> Self {
         Self {
-            hframe: 0.,
-            vframe: 2.,
+            hframe: 0,
+            vframe: 2,
             state: Idle,
             offset: V2::zero(),
             scale: 1.,
@@ -158,7 +158,7 @@ impl Default for Block {
 impl Block {
     pub fn random(app: &mut App) -> Self {
         Self {
-            vframe: (app.rand_int(5) + 2) as f32,
+            vframe: (app.rand_int(5) + 2) as u32,
             ..Default::default()
         }
     }
@@ -197,8 +197,8 @@ impl Block {
 
             Clear { counter, finished } => {
                 if *counter < CLEAR_TIME {
-                    self.scale = (*counter as f32) / (CLEAR_TIME as f32);
-                    self.hframe = 1.;
+                    self.scale = 1. - (*counter as f32) / (CLEAR_TIME as f32);
+                    self.hframe = 1;
 
                     *counter += 1;
                 } else {

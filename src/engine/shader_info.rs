@@ -110,7 +110,7 @@ impl<'a> ShaderInfo<'a> {
                         },
                         wgpu::BindGroupLayoutBinding {
                             binding: 3,
-                            visibility: wgpu::ShaderStage::VERTEX,
+                            visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
                             ty,
                         },
                     ],

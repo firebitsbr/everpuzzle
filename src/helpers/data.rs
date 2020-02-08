@@ -95,26 +95,54 @@ impl Default for Sprite {
     }
 }
 
-// amount of characters a text can have
-const TEXT_AMOUNT: usize = 20;
+impl Sprite {
+    pub fn empty() -> Self {
+        Self {
+            visible: 0.,
+            ..Default::default()
+        }
+    }
+}
 
-#[derive(Copy, Clone, Debug)]
+// differentiate between a value or a string being sent to push_text
+pub enum TextVariant {
+    Value(f32),
+    Characters(&'static str),
+}
+
+impl From<f32> for TextVariant {
+    fn from(value: f32) -> Self {
+        TextVariant::Value(value)
+    }
+}
+
+impl From<u32> for TextVariant {
+    fn from(value: u32) -> Self {
+        TextVariant::Value(value as f32)
+    }
+}
+
+impl From<&'static str> for TextVariant {
+    fn from(chars: &'static str) -> Self {
+        TextVariant::Characters(chars)
+    }
+}
+
+// data sent via push_text, optional values so you dont have to fill all
 pub struct Text {
-    pub vframe: f32,
-    pub length: f32,
-    pub centered: f32,
+    pub variant: TextVariant,
     pub position: V2,
-    pub hframe: [f32; TEXT_AMOUNT], // use u8 in shaders with extension?
+    pub dimensions: V2,
+    pub centered: bool,
 }
 
 impl Default for Text {
     fn default() -> Self {
         Self {
-            vframe: ATLAS_ALPHABET,
-            length: 1.,
-            centered: 0.,
-            position: v2(0., 0.),
-            hframe: [-1.; TEXT_AMOUNT],
+            variant: TextVariant::Value(0.),
+            position: V2::zero(),
+            dimensions: V2::both(20.),
+            centered: false,
         }
     }
 }

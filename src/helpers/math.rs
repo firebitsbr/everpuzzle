@@ -67,6 +67,11 @@ impl V2 {
     pub fn one() -> V2 {
         v2(1., 1.)
     }
+
+    #[inline]
+    pub fn both(xy: f32) -> V2 {
+        v2(xy, xy)
+    }
 }
 
 impl fmt::Display for V2 {

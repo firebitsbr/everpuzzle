@@ -13,35 +13,35 @@ pub enum Components {
 
 impl Components {
     // returns 1 if the component is currently visible, used for drawing
-    pub fn visible(&self) -> f32 {
+    pub fn visible(&self) -> i32 {
         match self {
-            Empty => -1.,
-            _ => 1.,
+            Empty => -1,
+            _ => 1,
         }
     }
 
     // the vframe of the component, used for drawing
-    pub fn hframe(&self) -> f32 {
+    pub fn hframe(&self) -> u32 {
         match self {
             Normal(b) => b.hframe,
             GarbageParent(g) => g.hframe,
 
             // TODO(Skytrias): depends on the parent!
             //GarbageChild(_) => 0.,
-            _ => 0.,
+            _ => 0,
         }
     }
 
     // the vframe of the component, used for drawing
-    pub fn vframe(&self) -> f32 {
+    pub fn vframe(&self) -> u32 {
         match self {
             Normal(b) => b.vframe,
             GarbageParent(g) => g.vframe,
 
             // TODO(Skytrias): depends on the parent!
-            GarbageChild(_) => 10.,
+            GarbageChild(_) => 10,
 
-            _ => 0.,
+            _ => 0,
         }
     }
 
@@ -131,6 +131,19 @@ impl Components {
         match self {
             Empty => true,
             _ => false,
+        }
+    }
+
+    // data used to send to gpu
+    pub fn to_grid_block(&self) -> GridBlock {
+        GridBlock {
+            hframe: self.hframe(),
+            vframe: self.vframe(),
+            visible: self.visible(),
+            scale: self.scale(),
+            x_offset: self.x_offset(),
+            y_offset: self.y_offset(),
+            ..Default::default()
         }
     }
 }

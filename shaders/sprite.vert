@@ -13,10 +13,16 @@ layout(set = 0, binding = 0) uniform Global {
 
 struct Primitive {
 	vec4 color;
-	vec4 pos_and_dim;
-	vec4 offset_and_scale;
-	vec4 additional;
-	vec4 additional2;
+	vec2 position;
+	vec2 dimensions;
+	vec2 offset;
+	vec2 scale;
+	float rotation;
+	float hframe;
+	float vframe;
+	float visible;
+	float depth;
+	float centered;
 } primitive;
 
 // TODO(Skytrias): add z 
@@ -26,23 +32,28 @@ layout(set = 0, binding = 3) buffer PrimitiveData {
 
 layout(location = 0) out vec2 o_uv;
 layout(location = 1) out vec4 o_color;
+layout(location = 2) out float o_visible;
 
 const float TILE_SIZE = 32.;
 
 void main() {
 	// check if primitive is even visible
-	if (data[gl_InstanceIndex].additional.w == 0.) {
+	/*
+	if (data[gl_InstanceIndex].visible == 0.) {
 		return;
 	}
+	*/
 	
-    vec2 position = data[gl_InstanceIndex].pos_and_dim.xy;
-	vec2 dimensions = data[gl_InstanceIndex].pos_and_dim.zw;
-	vec2 offset = data[gl_InstanceIndex].offset_and_scale.xy;
-	vec2 scale = data[gl_InstanceIndex].offset_and_scale.zw;
-	float rotation = data[gl_InstanceIndex].additional.x;
-	float hframe = data[gl_InstanceIndex].additional.y;
-	float vframe = data[gl_InstanceIndex].additional.z;
-	float depth = data[gl_InstanceIndex].additional2.x;
+	o_visible = data[gl_InstanceIndex].visible;
+	
+    vec2 position = data[gl_InstanceIndex].position;
+	vec2 dimensions = data[gl_InstanceIndex].dimensions;
+	vec2 offset = data[gl_InstanceIndex].offset;
+	vec2 scale = data[gl_InstanceIndex].scale;
+	float rotation = data[gl_InstanceIndex].rotation;
+	float hframe = data[gl_InstanceIndex].hframe;
+	float vframe = data[gl_InstanceIndex].vframe;
+	float depth = data[gl_InstanceIndex].depth;
 	//float centered = data[gl_InstanceIndex].additional2.x;
 	
 	if (rotation == 0.) {

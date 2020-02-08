@@ -7,8 +7,29 @@ use std::ops::{Index, IndexMut};
 // like shader
 #[derive(Copy, Clone, Debug)]
 pub struct GridBlock {
-    pub first: V4,
-    pub second: V4,
+    pub hframe: u32,
+    pub vframe: u32,
+    pub visible: i32,
+    pub scale: f32,
+    pub x_offset: f32,
+    pub y_offset: f32,
+    pub temp1: f32,
+    pub temp2: f32,
+}
+
+impl Default for GridBlock {
+    fn default() -> Self {
+        Self {
+            hframe: 0,
+            vframe: 0,
+            visible: -1,
+            scale: 1.,
+            x_offset: 0.,
+            y_offset: 0.,
+            temp1: 0.,
+            temp2: 0.,
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -141,7 +162,6 @@ impl Grid {
                     if let Some(s) = self.block_state(ib) {
                         if s.clear_started() {
                             clear_found = true;
-                            println!("found!");
                             break;
                         }
                     }
@@ -307,8 +327,8 @@ impl Grid {
                 .map(|b| b.vframe);
 
             if let Some(vframe) = frame {
-                self.flood_check(x, y, vframe as f32, FloodDirection::Horizontal);
-                self.flood_check(x, y, vframe as f32, FloodDirection::Vertical);
+                self.flood_check(x, y, vframe, FloodDirection::Horizontal);
+                self.flood_check(x, y, vframe, FloodDirection::Vertical);
 
                 if self.flood_horizontal_count > 2 {
                     // TODO(Skytrias): bad to clone!
@@ -353,7 +373,7 @@ impl Grid {
         }
     }
 
-    fn flood_check(&mut self, x: usize, y: usize, vframe: f32, direction: FloodDirection) {
+    fn flood_check(&mut self, x: usize, y: usize, vframe: u32, direction: FloodDirection) {
         if let Some(index) = (x, y).to_index() {
             // dont allow empty components
             match self[index] {
@@ -413,14 +433,8 @@ impl Grid {
         assert!(self.components.len() != 0);
 
         // gather info
-        let data: Vec<GridBlock> = self
-            .components
-            .iter()
-            .map(|c| GridBlock {
-                first: v4(c.hframe(), c.vframe(), c.visible(), 1.),
-                second: v4(c.x_offset(), c.y_offset(), 0., 0.),
-            })
-            .collect();
+        // TODO(Skytrias): convert to gridblock
+        let data: Vec<GridBlock> = self.components.iter().map(|c| c.to_grid_block()).collect();
 
         app.draw_grid(&data, frame);
     }

@@ -76,8 +76,8 @@ pub struct Garbage {
     pub count: usize, // len of children, should stay the same
     pub is_2d: bool,  // wether the garbage has more than 6 children
 
-    pub hframe: f32,
-    pub vframe: f32,
+    pub hframe: u32,
+    pub vframe: u32,
     pub state: GarbageStates,
     pub offset: V2,
 }
@@ -87,8 +87,8 @@ impl Default for Garbage {
         Self {
             children: Vec::new(),
             count: 0,
-            hframe: 0.,
-            vframe: 10.,
+            hframe: 0,
+            vframe: 10,
             state: Idle,
             offset: V2::zero(),
             is_2d: false,
@@ -151,6 +151,7 @@ impl Garbage {
 
             Clear { counter, finished } => {
                 if *counter < CLEAR_TIME {
+                    self.hframe = 1;
                     *counter += 1;
                 } else {
                     *finished = true;

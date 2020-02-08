@@ -17,12 +17,12 @@ const FLOAT_SIZE: usize = 4;
 const PROJECTION_LEN: usize = 16; // 16 floats?
 pub const PROJECTION_SIZE: u64 = (PROJECTION_LEN * FLOAT_SIZE) as u64;
 const GRID_LEN: usize = GRID_TOTAL;
-const GRID_BYTE_SIZE: u64 = (8 * FLOAT_SIZE) as u64;
+const GRID_BYTE_SIZE: u64 = std::mem::size_of::<GridBlock>() as u64;
 const GRID_SIZE: u64 = GRID_LEN as u64 * GRID_BYTE_SIZE;
 const SPRITE_BYTE_SIZE: u64 = std::mem::size_of::<Sprite>() as u64;
 const SPRITE_SIZE: u64 = SPRITE_LEN as u64 * SPRITE_BYTE_SIZE;
-const TEXT_BYTE_SIZE: u64 = std::mem::size_of::<Text>() as u64;
-const TEXT_SIZE: u64 = TEXT_LEN as u64 * TEXT_BYTE_SIZE;
+const TEXT_BYTE_SIZE: u64 = std::mem::size_of::<TextData>() as u64;
+const TEXT_SIZE: u64 = TEXT_BYTE_SIZE;
 
 // wgpu consts
 const TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -31,6 +31,9 @@ pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 // TODO(Skytrias): set to monitor framerate
 const FRAME_AMOUNT: f64 = 120.;
 const FPS: u64 = (1. / FRAME_AMOUNT * 1000.) as u64;
+
+const TEXT_CHARACTERS: usize = 20;
+type TextData = [V4; TEXT_CHARACTERS];
 
 // helper for recreating a depth texture
 fn create_depth_texture(
@@ -69,7 +72,7 @@ fn copy_and_draw<T: Copy + 'static>(
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
 
-        encoder.copy_buffer_to_buffer(&temp_buffer, 0, buffer, 0, (len * size) as u64);
+        encoder.copy_buffer_to_buffer(&temp_buffer, 0, buffer, 0, size as u64);
 
         queue.submit(&[encoder.finish()]);
     }
@@ -129,7 +132,7 @@ pub struct App {
 
     key_downs: HashMap<VirtualKeyCode, u32>,
     sprites: Vec<Sprite>,
-    texts: Vec<Text>,
+    texts: Vec<TextData>,
 
     pub mouse: Mouse,
     pub gen: oorandom::Rand32,
@@ -174,9 +177,12 @@ impl App {
         );
     }
 
+    // TODO(Skytrias): remove sprite.visible?
     // pushes a sprite to the anonymous sprites
     pub fn push_sprite(&mut self, sprite: Sprite) {
-        self.sprites.push(sprite);
+        if self.sprites.len() < SPRITE_LEN && sprite.visible == 1. {
+            self.sprites.push(sprite);
+        }
     }
 
     // draws all acquired sprites and clears the sprites again
@@ -207,139 +213,92 @@ impl App {
 
     // TODO(Skytrias): optimize
     // pushes a string text to the anonymous sprites
-    pub fn push_string(&mut self, some_string: &'static str, position: V2, centered: bool) {
-        let mut text = Text {
-            position,
-            centered: if centered { 1. } else { 0. },
-            ..Default::default()
-        };
+    pub fn push_text(&mut self, text: Text) {
+        if self.texts.len() > TEXT_LEN {
+            return;
+        }
 
-        // set data to digits
-        for (i, r) in some_string.chars().enumerate() {
-            if r != ' ' {
-                let value = r.to_digit(35);
+        let mut data = [v4(-1., 0., 0., 0.); TEXT_CHARACTERS];
 
-                if let Some(num) = value {
-                    text.hframe[i] = num as f32 - 10.0;
+        match text.variant {
+            TextVariant::Value(value) => {
+                let mut length = 0;
+                if value == 0.0 {
+                    data[0].x = 0.0;
+                    data[0].y = text.position.x;
+                    data[0].z = text.position.y;
+                    length += 1;
+                } else {
+                    let mut count = value as u32;
+                    while count != 0 && length < TEXT_CHARACTERS {
+                        data[length].x = (count % 10) as f32;
+                        data[length].y = text.position.x;
+                        data[length].z = text.position.y;
+                        count /= 10;
+                        length += 1;
+                    }
                 }
 
-                text.length += 1.0;
+                data[0].w = ATLAS_NUMBERS; // atlas vframe
+                data[1].w = length as f32;
+            }
+
+            TextVariant::Characters(chars) => {
+                // set data to digits
+                for (i, r) in chars.chars().enumerate() {
+                    if r != ' ' {
+                        let value = r.to_digit(35);
+
+                        if let Some(num) = value {
+                            data[i].x = num as f32 - 10.0;
+                        }
+
+                        // add to length
+                        data[1].w += 1.0;
+                    }
+
+                    // add position per index
+                    data[i].y = text.position.x;
+                    data[i].z = text.position.y;
+                }
+
+                data[0].w = ATLAS_ALPHABET;
             }
         }
 
-        self.texts.push(text);
+        data[2].w = if text.centered { 1. } else { 0. };
+        data[3].w = text.dimensions.x;
+        data[4].w = text.dimensions.y;
+
+        self.texts.push(data);
     }
 
     // draws any text at the position specified, each character can have a different position if wanted
     pub fn draw_texts(&mut self, frame: &wgpu::SwapChainOutput<'_>) {
-        if self.texts.len() == 0 {
+        let len = self.texts.len();
+
+        if len == 0 {
             return;
         }
 
-        // map ubo data into gpu
-        {
-            let temp_buffer = self
-                .device
-                .create_buffer_mapped(self.texts.len(), wgpu::BufferUsage::COPY_SRC)
-                .fill_from_slice(&self.texts);
-
-            let mut encoder = self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-            encoder.copy_buffer_to_buffer(&temp_buffer, 0, &self.sbo_text, 0, TEXT_SIZE as u64);
-            self.queue.submit(&[encoder.finish()]);
-        }
-
-        //println!("{:?}", self.texts[0]);
-
-        // render call
-        {
-            let mut encoder = self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-
-            {
-                let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                        attachment: &frame.view,
-                        resolve_target: None,
-                        load_op: wgpu::LoadOp::Load,
-                        store_op: wgpu::StoreOp::Store,
-                        clear_color: wgpu::Color::WHITE,
-                    }],
-                    depth_stencil_attachment: Some(
-                        wgpu::RenderPassDepthStencilAttachmentDescriptor {
-                            attachment: &self.depth_texture_view,
-                            depth_load_op: wgpu::LoadOp::Load,
-                            depth_store_op: wgpu::StoreOp::Store,
-                            clear_depth: 1.0,
-                            stencil_load_op: wgpu::LoadOp::Clear,
-                            stencil_store_op: wgpu::StoreOp::Store,
-                            clear_stencil: 0,
-                        },
-                    ),
-                });
-
-                rpass.set_pipeline(&self.text_pipeline);
-                rpass.set_bind_group(0, &self.text_group, &[]);
-                rpass.draw(0..4, 0..self.texts.len() as u32);
-            }
-
-            self.queue.submit(&[encoder.finish()]);
+        for text in self.texts.iter() {
+            copy_and_draw(
+                wgpu::LoadOp::Load,
+                &self.device,
+                &mut self.queue,
+                &self.depth_texture_view,
+                frame,
+                &self.text_group,
+                &self.text_pipeline,
+                &self.sbo_text,
+                text,
+                TEXT_CHARACTERS,
+                TEXT_SIZE as usize,
+            );
         }
 
         self.texts.clear();
     }
-
-    // draws a number at a specified position
-    /*
-    pub fn draw_number(
-                       &self,
-                       value: f32,
-                       position: V2,
-                       //centered: bool,
-                       ) {
-        unsafe {
-            gl::UseProgram(self.shaders["text"]);
-        }
-
-        let mut data = vec![V4::zero(); TEXT_AMOUNT];
-
-        // null data
-        for num in &mut data {
-            num.x = -1.0;
-        }
-
-        // set data to digits
-        let mut length = 0;
-        // manual 0 add
-        if value == 0.0 {
-            data[length].x = 0.0;
-            data[length].y = position.x;
-            data[length].z = position.y;
-            length += 1;
-        } else {
-            let mut count = value as u32;
-            while count != 0 && length < TEXT_AMOUNT {
-                data[length].x = (count % 10) as f32;
-                data[length].y = position.x;
-                data[length].z = position.y;
-                count /= 10;
-                length += 1;
-            }
-        }
-
-        data[0].w = ATLAS_NUMBERS; // atlas vframe
-        data[1].w = length as f32;
-        //data[2].w = if centered { 1.0 } else { 0.0 };
-
-        update_ubo(self.ubo_text, &data[..], 3);
-
-        unsafe {
-            gl::DrawArraysInstanced(gl::TRIANGLE_STRIP, 0, 4, TEXT_AMOUNT as i32);
-        }
-    }
-    */
 }
 
 // main loop of the game
@@ -384,10 +343,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
     // TODO(Skytrias): not do empty fill?
     // empty fill to the grid
     let ubo_grid = {
-        let data = [GridBlock {
-            first: V4::one(),
-            second: V4::one(),
-        }; GRID_LEN];
+        let data = [GridBlock::default(); GRID_LEN];
         device
             .create_buffer_mapped(
                 GRID_LEN,
@@ -396,34 +352,30 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             .fill_from_slice(&data)
     };
 
-    // TODO(Skytrias): not do empty fill?
-    // empty fill to the grid
     let sbo_sprite = {
-        let sprites = [Sprite::default(); SPRITE_LEN];
+        // TODO(Skytrias): not do empty fill?
+        // empty fill to the grid
+        let temp_sprites = [Sprite::empty(); SPRITE_LEN];
 
-        let sbo = device
+        device
             .create_buffer_mapped(
                 SPRITE_LEN,
                 wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::COPY_DST,
             )
-            .fill_from_slice(&sprites);
-
-        sbo
+            .fill_from_slice(&temp_sprites)
     };
 
     // TODO(Skytrias): not do empty fill?
     // empty fill to the grid
     let sbo_text = {
-        let texts = [Text::default(); TEXT_LEN];
+        let texts = [V4::zero(); TEXT_CHARACTERS];
 
-        let sbo = device
+        device
             .create_buffer_mapped(
-                TEXT_LEN,
+                TEXT_CHARACTERS,
                 wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::COPY_DST,
             )
-            .fill_from_slice(&texts);
-
-        sbo
+            .fill_from_slice(&texts)
     };
 
     // load our single texture atlas into ubo
@@ -620,33 +572,36 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 
                 Event::WindowEvent { event, .. } => match event {
                     WindowEvent::Resized(size) => {
-                        // recreate swapchain
-                        app.swapchain_desc.width = size.width;
-                        app.swapchain_desc.height = size.height;
-                        swap_chain = app.device.create_swap_chain(&surface, &app.swapchain_desc);
+                        if size.width != 0 && size.height != 0 {
+                            // recreate swapchain
+                            app.swapchain_desc.width = size.width;
+                            app.swapchain_desc.height = size.height;
+                            swap_chain =
+                                app.device.create_swap_chain(&surface, &app.swapchain_desc);
 
-                        depth_texture = create_depth_texture(&app.device, &app.swapchain_desc);
-                        app.depth_texture_view = depth_texture.create_default_view();
+                            depth_texture = create_depth_texture(&app.device, &app.swapchain_desc);
+                            app.depth_texture_view = depth_texture.create_default_view();
 
-                        // upload new projection
-                        let projection =
-                            ortho(0., size.width as f32, size.height as f32, 0., -1., 1.);
-                        let temp_buffer = app
-                            .device
-                            .create_buffer_mapped(PROJECTION_LEN, wgpu::BufferUsage::COPY_SRC)
-                            .fill_from_slice(&projection);
+                            // upload new projection
+                            let projection =
+                                ortho(0., size.width as f32, size.height as f32, 0., -1., 1.);
+                            let temp_buffer = app
+                                .device
+                                .create_buffer_mapped(PROJECTION_LEN, wgpu::BufferUsage::COPY_SRC)
+                                .fill_from_slice(&projection);
 
-                        let mut init_encoder = app
-                            .device
-                            .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-                        init_encoder.copy_buffer_to_buffer(
-                            &temp_buffer,
-                            0,
-                            &app.ubo_projection,
-                            0,
-                            PROJECTION_SIZE,
-                        );
-                        init_encoder.finish();
+                            let mut init_encoder = app.device.create_command_encoder(
+                                &wgpu::CommandEncoderDescriptor { todo: 0 },
+                            );
+                            init_encoder.copy_buffer_to_buffer(
+                                &temp_buffer,
+                                0,
+                                &app.ubo_projection,
+                                0,
+                                PROJECTION_SIZE,
+                            );
+                            init_encoder.finish();
+                        }
                     }
 
                     WindowEvent::CloseRequested => {
@@ -704,7 +659,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             grid.draw(&mut app, &frame);
             cursor.draw(&mut app);
             app.draw_sprites(&frame);
-            //app.draw_texts(&frame);
+            app.draw_texts(&frame);
         }
 
         std::thread::sleep(std::time::Duration::from_millis(FPS));
