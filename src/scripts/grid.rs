@@ -286,6 +286,19 @@ impl Grid {
 				}
 		}
 		
+		for (x, y, i) in iter_yx_rev() {
+			// garbage hang startup
+			if self.garbage(i).is_some() {
+				if let Some(counter) = self.garbage_can_hang(i) {
+					if let Some(state) = self.garbage_state_mut(i) {
+						if state.is_idle() {
+							state.to_hang(counter);
+						}
+					}
+				}
+			}
+		}
+		
 		// hang startup
 		for (x, y, i) in iter_yx_rev() {
 			// block hang startup, only allow idle
@@ -330,37 +343,17 @@ impl Grid {
 					}
 				}
 				}
-				
-			// garbage hang startup
-			if self.garbage(i).is_some() {
-				if let Some(counter) = self.garbage_can_hang(i) {
-					if let Some(state) = self.garbage_state_mut(i) {
-						if state.is_idle() {
-							state.to_hang(counter);
-						}
-					}
-				}
-			}
 		}
 		
 		// 2 types of hang have to happen in the same yx_rev loop
 		for (x, y, i) in iter_yx_rev() {
 				// block hang finish
-				{
-				let mut hang_finished = true;
+				if self.block_state(i).filter(|s| s.hang_finished()).is_some() {
+				let index_below = (x, y + 1).to_index();
 				
-				if let Some(state) = self.block_state(i) {
-					if !state.hang_finished() {
-						hang_finished = false;
-					}
-				} else {
-					hang_finished = false;
-				}
-				
-				if hang_finished {
-					let index_below = (x, y + 1).to_index();
-					
-					if let Some(ib) = index_below {
+				// below in range && below still empty
+				if let Some(ib) = index_below {
+					if self[ib].is_empty() {
 						self.components.swap(i, ib);
 						
 						let index_below_below = (x, y + 2).to_index();
