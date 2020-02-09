@@ -31,9 +31,9 @@ impl Cursor {
         let right = app.key_down_frames(VirtualKeyCode::Right);
         let up = app.key_down_frames(VirtualKeyCode::Up);
         let down = app.key_down_frames(VirtualKeyCode::Down);
-		
+
         // movement dependant on how long a key down has been held for in frames
-		
+
         if self.position.x > 0. {
             if let Some(frame) = left {
                 if frame == 1 || frame > FRAME_LIMIT {
@@ -41,7 +41,7 @@ impl Cursor {
                 }
             }
         }
-		
+
         if self.position.x < (GRID_WIDTH - 2) as f32 {
             if let Some(frame) = right {
                 if frame == 1 || frame > FRAME_LIMIT {
@@ -49,7 +49,7 @@ impl Cursor {
                 }
             }
         }
-		
+
         if self.position.y > 0. {
             if let Some(frame) = up {
                 if frame == 1 || frame > FRAME_LIMIT {
@@ -57,7 +57,7 @@ impl Cursor {
                 }
             }
         }
-		
+
         if self.position.y < (GRID_HEIGHT - 1) as f32 {
             if let Some(frame) = down {
                 if frame == 1 || frame > FRAME_LIMIT {
@@ -65,24 +65,24 @@ impl Cursor {
                 }
             }
         }
-		
+
         if app.key_pressed(VirtualKeyCode::S) {
             // safe for no_bounds since the cursor is limited to the grid indexes
             let i = self.position.raw();
-			
+
             // look for valid state or check if the spot is empty
             // TODO(Skytrias): make grid.block_real() -> bool?
             let left_state = grid.block_state(i).filter(|s| s.is_real()).is_some();
             let left_empty = grid.block(i).is_none();
             let right_state = grid.block_state(i + 1).filter(|s| s.is_real()).is_some();
             let right_empty = grid.block(i + 1).is_none();
-			
+
             if let Some(state) = grid.block_state_mut(i) {
                 if left_state && (right_state || right_empty) {
                     state.to_swap(SwapDirection::Right);
                 }
             }
-			
+
             if let Some(state) = grid.block_state_mut(i + 1) {
                 if right_state && (left_state || left_empty) {
                     state.to_swap(SwapDirection::Left);
@@ -90,23 +90,23 @@ impl Cursor {
             }
         }
     }
-	
+
     pub fn draw(&mut self, app: &mut App) {
         self.sprite.position = ATLAS_TILE * self.position + v2(100., 50.);
         app.push_sprite(self.sprite);
-		
+
         app.push_text(Text {
-						  variant: self.sprite.position.x.into(),
-						  position: self.sprite.position,
-						  dimensions: V2::both(15.),
-						  ..Default::default()
-					  });
-		
+            variant: self.sprite.position.x.into(),
+            position: self.sprite.position,
+            dimensions: V2::both(15.),
+            ..Default::default()
+        });
+
         app.push_text(Text {
-						  variant: self.sprite.position.y.into(),
-						  position: self.sprite.position + v2(0., 15.),
-						  dimensions: V2::both(15.),
-						  ..Default::default()
-					  });
+            variant: self.sprite.position.y.into(),
+            position: self.sprite.position + v2(0., 15.),
+            dimensions: V2::both(15.),
+            ..Default::default()
+        });
     }
 }

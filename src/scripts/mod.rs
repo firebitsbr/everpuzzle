@@ -12,3 +12,6 @@ pub use self::block::*;
 
 mod garbage;
 pub use self::garbage::*;
+
+mod gridable;
+pub use self::gridable::*;

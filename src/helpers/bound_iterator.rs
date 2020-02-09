@@ -30,87 +30,87 @@ impl Default for BoundIterator {
 
 impl Iterator for BoundIterator {
     type Item = (usize, usize, usize);
-	
+
     fn next(&mut self) -> Option<Self::Item> {
         match self.flow {
             IteratorFlow::XY => {
                 if self.steps == GRID_TOTAL {
                     return None;
                 }
-				
+
                 self.steps += 1;
-				
+
                 let i = self.steps - 1;
                 let x = self.x;
                 let y = self.y;
-				
+
                 if self.x < GRID_WIDTH - 1 {
                     self.x += 1;
                 } else {
                     self.y += 1;
                     self.x = 0;
                 }
-				
+
                 Some((x, y, i))
             }
-			
+
             IteratorFlow::YXReverse => {
                 if self.steps == GRID_TOTAL {
                     //println!("------------------------------- stopped");
                     return None;
                 }
-				
+
                 self.steps += 1;
-				
+
                 let x = self.x;
                 let y = self.y;
                 let i = y * GRID_WIDTH + x;
-				
+
                 if self.y != 0 {
                     self.y -= 1;
-					//println!("c {}    x {}    y {}    i {}", self.steps - 1, x, y, i);
+                //println!("c {}    x {}    y {}    i {}", self.steps - 1, x, y, i);
                 } else {
                     //println!("c {}    x {}    y {}    i {}", self.steps - 1, x, y, i);
                     //println!("--------------------");
-					
+
                     // let last self.y != 0 go through
                     if self.x != 0 {
                         self.x -= 1;
                     }
-					
+
                     self.y = GRID_HEIGHT - 1;
                 }
-				
+
                 Some((x, y, i))
             }
-			
+
             IteratorFlow::XYReverse => {
                 if self.steps == GRID_TOTAL {
                     //println!("------------------------------- stopped");
                     return None;
                 }
-				
+
                 self.steps += 1;
-				
+
                 let x = self.x;
                 let y = self.y;
                 let i = y * GRID_WIDTH + x;
-				
+
                 if self.y != GRID_HEIGHT {
                     self.y += 1;
-					//println!("c {}    x {}    y {}    i {}", self.steps - 1, x, y, i);
+                //println!("c {}    x {}    y {}    i {}", self.steps - 1, x, y, i);
                 } else {
                     //println!("c {}    x {}    y {}    i {}", self.steps - 1, x, y, i);
                     //println!("--------------------");
-					
+
                     // let last self.y != 0 go through
                     if self.x != GRID_WIDTH {
                         self.x += 1;
                     }
-					
+
                     self.y = 0;
                 }
-				
+
                 Some((x, y, i))
             }
         }

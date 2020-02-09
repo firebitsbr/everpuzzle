@@ -60,6 +60,7 @@ pub const GRID_TOTAL: usize = GRID_WIDTH * GRID_HEIGHT;
 pub const SPRITE_LEN: usize = 50;
 pub const TEXT_LEN: usize = 50;
 
+// TODO(Skytrias): consider removing visible, since we just dont push it to push_sprite
 // generic sprite
 #[derive(Copy, Clone)]
 pub struct Sprite {

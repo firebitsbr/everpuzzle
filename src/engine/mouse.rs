@@ -37,13 +37,13 @@ impl Mouse {
     // updates the mouse each frame for presses based on old events
     pub fn update_frame(&mut self) {
         self.left_pressed = if self.left_down {
-            self.last_left_down == false
+            !self.last_left_down
         } else {
             false
         };
         self.last_left_down = self.left_down;
         self.right_pressed = if self.right_down {
-            self.last_right_down == false
+            !self.last_right_down
         } else {
             false
         };
