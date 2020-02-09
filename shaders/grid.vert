@@ -29,6 +29,7 @@ layout(set = 0, binding = 3) uniform GridData {
 
 layout(location = 0) out vec2 o_uv;
 
+const vec2 grid_offset = vec2(100., 50.);
 const float WIDTH = 6;
 const float TILE_SIZE = 32.;
 
@@ -50,7 +51,7 @@ void main() {
 	float vframe = data[gl_InstanceIndex].vframe;
 	float scale = data[gl_InstanceIndex].scale;
 	
-	vec2 offset = vec2(data[gl_InstanceIndex].x_offset, data[gl_InstanceIndex].y_offset);
+	vec2 offset = vec2(data[gl_InstanceIndex].x_offset, data[gl_InstanceIndex].y_offset) + grid_offset;
 	
 	vec2 vertice = rect_pos[gl_VertexIndex] - 0.5;
     vec2 position = vec2(mod_i(gl_InstanceIndex, WIDTH), floor((gl_InstanceIndex) / WIDTH)); 

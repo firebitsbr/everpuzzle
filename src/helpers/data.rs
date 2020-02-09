@@ -1,5 +1,8 @@
 use crate::helpers::math::*;
 
+// block and garbage hang time
+pub const HANG_TIME: u32 = 20;
+
 // colors
 pub const WHITE: V4 = V4 {
     x: 1.,
@@ -47,6 +50,7 @@ pub const ATLAS_FILL: f32 = 0.;
 pub const ATLAS_NUMBERS: f32 = 8.;
 pub const ATLAS_ALPHABET: f32 = 9.;
 pub const ATLAS_CURSOR: f32 = 1.;
+pub const ATLAS_GARBAGE: f32 = 10.;
 
 // grid specific
 pub const GRID_WIDTH: usize = 6;
