@@ -26,7 +26,7 @@ impl Components {
             _ => 1,
         }
     }
-
+	
     // the vframe of the component, used for drawing
     pub fn hframe(&self) -> u32 {
         match self {
@@ -35,20 +35,20 @@ impl Components {
             _ => 0,
         }
     }
-
+	
     // the vframe of the component, used for drawing
     pub fn vframe(&self) -> u32 {
         match self {
             Normal(b) => b.vframe,
             GarbageParent(g) => g.vframe,
-
+			
             // TODO(Skytrias): depends on the parent!
             GarbageChild(_) => ATLAS_GARBAGE as u32,
-
+			
             _ => 0,
         }
     }
-
+	
     // returns the x_offset in the grid, used for drawing
     pub fn x_offset(&self) -> f32 {
         match self {
@@ -56,7 +56,7 @@ impl Components {
             _ => 0.,
         }
     }
-
+	
     // returns the x_offset in the grid, used for drawing
     pub fn y_offset(&self) -> f32 {
         match self {
@@ -64,7 +64,7 @@ impl Components {
             _ => 0.,
         }
     }
-
+	
     // returns the scale in the grid, used for drawing
     pub fn scale(&self) -> f32 {
         match self {
@@ -74,7 +74,7 @@ impl Components {
             _ => 0.,
         }
     }
-
+	
     // call updates on the component
     pub fn update(&mut self) {
         match self {
@@ -83,7 +83,7 @@ impl Components {
             _ => {}
         }
     }
-
+	
     // call reset on any component
     pub fn reset(&mut self) {
         match self {
@@ -92,7 +92,7 @@ impl Components {
             _ => {}
         }
     }
-
+	
     // returns true if component is a placeholder
     pub fn is_placeholder(&self) -> bool {
         match self {
@@ -100,7 +100,7 @@ impl Components {
             _ => false,
         }
     }
-
+	
     // returns true if component is a garbage parent
     pub fn is_garbage(&self) -> bool {
         match self {
@@ -108,7 +108,7 @@ impl Components {
             _ => false,
         }
     }
-
+	
     // returns true if component is a garbage child
     pub fn is_garbage_child(&self) -> bool {
         match self {
@@ -116,7 +116,7 @@ impl Components {
             _ => false,
         }
     }
-
+	
     // returns true if the component is something real,
     pub fn is_some(&self) -> bool {
         match self {
@@ -125,12 +125,12 @@ impl Components {
             _ => true,
         }
     }
-
+	
     // returns true if the component is nothing
     pub fn is_none(&self) -> bool {
         !self.is_some()
     }
-
+	
     // returns true if the component is empty
     pub fn is_empty(&self) -> bool {
         match self {
@@ -138,7 +138,7 @@ impl Components {
             _ => false,
         }
     }
-
+	
     pub fn clear_started(&self) -> bool {
         match self {
             Normal(b) => b.state.clear_started(),
@@ -146,7 +146,7 @@ impl Components {
             _ => false,
         }
     }
-
+	
     // data used to send to gpu
     pub fn to_grid_block(&self) -> GridBlock {
         GridBlock {

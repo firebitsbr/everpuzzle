@@ -13,5 +13,8 @@ fixedstep = "0.3.0"
 oorandom = "11.1.0"
 num-traits = "0.2.11"
 
+[profile.dev] 
+debug = 1 
+
 [profile.release]
 debug = true
