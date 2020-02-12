@@ -543,10 +543,14 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 				println!("{}", offset);
 				grid.gen_1d_garbage(3, offset);
             }
+				
+			cursor.update(&app, &mut grid);
 			
-            grid.update(&mut app);
-            cursor.update(&app, &mut grid);
-			
+            if app.key_pressed(VirtualKeyCode::D) {
+				grid.update(&mut app);
+				app.frame_counter += 1;
+			}
+				
             // clearing
             {
                 // increase the frame times on the keys
@@ -659,17 +663,14 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             cursor.draw(&mut app);
             app.draw_sprites(&frame);
 			
-            /*
-            app.push_text(Text {
-               variant: app.frame_counter.into(),
-               position: v2(200., 100.),
-               dimensions: V2::both(50.),
-               ..Default::default()
-               });
-            */
+			   app.push_text(Text {
+							  variant: app.frame_counter.into(),
+							  position: v2(10., 10.),
+							  dimensions: V2::both(25.),
+							  ..Default::default()
+						  });
 			
             app.draw_texts(&frame);
-            //app.frame_counter += 1;
         }
 		
         std::thread::sleep(std::time::Duration::from_millis(FPS));

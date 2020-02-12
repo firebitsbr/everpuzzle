@@ -314,64 +314,64 @@ impl Grid {
 		  }
 	}
 	
-	// detects wether the block can currently hang, switches the state to hang with below counter
 	/*
+	// detects wether the block can currently hang, switches the state to hang with below counter
 	pub fn block_garbage_detect_hang(&mut self) {
 	   for (x, y, i) in iter_yx_rev() {
-		 // garbage hang if in idle and every child can hang
-		 if self.garbage(i).is_some() {
-		   if self.garbage_state(i).filter(|s| s.is_idle()).is_none() {
-			 continue;
-		   }
-		   
-		   if let Some(counter) = self.garbage_can_hang(i) {
-			 if let Some(state) = self.garbage_state_mut(i) {
-				state.to_hang(counter);
-			 }
-		   }
-		 }
+	   // garbage hang if in idle and every child can hang
+	   if self.garbage(i).is_some() {
+	   if self.garbage_state(i).filter(|s| s.is_idle()).is_none() {
+	   continue;
+	   }
+	   
+	   if let Some(counter) = self.garbage_can_hang(i) {
+	   if let Some(state) = self.garbage_state_mut(i) {
+	   state.to_hang(counter);
+	   }
+	   }
+	   }
 	   }
 	   
 	   for (x, y, i) in iter_yx_rev() {
-		   // block hang startup, only allow idle
-		   if self.block_state(i).filter(|s| s.is_idle()).is_some() {
-		   if let Some(ib) = (x, y + 1).to_index() {
-			 let below_empty = self[ib].is_empty();
-			 let below_block_state = *self.block_state(ib).unwrap_or(&BlockStates::Idle);
-			 
-			 // look for garbage child parent or the parent itself
-			 let below_garbage_state: GarbageStates = {
-				let mut parent_index = None;
-				if let Components::GarbageChild(index) = self.components[ib] {
-				  parent_index = Some(index);
-				}
-				
-				if let Some(index) = parent_index {
-				  *self.garbage_state(index).unwrap_or(&GarbageStates::Idle)
-				} else {
-				  *self.garbage_state(ib).unwrap_or(&GarbageStates::Idle)
-				}
-			 };
-			 
-			 if let Some(state) = self.block_state_mut(i) {
-				if below_empty {
-				  if state.is_idle() {
-					state.to_hang(0);
-				  }
-				} else {
-				  if below_block_state.is_hang() {
-					*state = below_block_state;
-				  }
-				  
-				  if below_garbage_state.is_hang() {
-					if let GarbageStates::Hang { counter, .. } = below_garbage_state {
-					  state.to_hang(counter);
-					}
-				  }
-				}
-			 }
-		   }
-		   }
+	   // block hang startup, only allow idle
+	   if self.block_state(i).filter(|s| s.is_idle()).is_some() {
+	   if let Some(ib) = (x, y + 1).to_index() {
+	   let below_empty = self[ib].is_empty();
+	   let below_block_state = *self.block_state(ib).unwrap_or(&BlockStates::Idle);
+	   
+	   // look for garbage child parent or the parent itself
+	   let below_garbage_state: GarbageStates = {
+	   let mut parent_index = None;
+	   if let Components::GarbageChild(index) = self.components[ib] {
+	   parent_index = Some(index);
+	   }
+	   
+	   if let Some(index) = parent_index {
+	   *self.garbage_state(index).unwrap_or(&GarbageStates::Idle)
+	   } else {
+	   *self.garbage_state(ib).unwrap_or(&GarbageStates::Idle)
+	   }
+	   };
+	   
+	   if let Some(state) = self.block_state_mut(i) {
+	   if below_empty {
+	   if state.is_idle() {
+	   state.to_hang(0);
+	   }
+	   } else {
+	   if below_block_state.is_hang() {
+	   *state = below_block_state;
+	   }
+	   
+	   if below_garbage_state.is_hang() {
+	   if let GarbageStates::Hang { counter, .. } = below_garbage_state {
+	   state.to_hang(counter);
+	   }
+	   }
+	   }
+	   }
+	   }
+	   }
 	   }
 	}
 	
@@ -381,87 +381,87 @@ impl Grid {
 	   // get all parent related info for hang before hand, make it easy to access via hashmap
 	   let mut parent_map = HashMap::new();
 	   for i in 0..GRID_TOTAL {
-		 if let Some(g) = self.garbage(i) {
-		   parent_map.insert(i, (self.garbage_can_hang(i).is_some(), g.state.hang_finished()));
-		 }
+	   if let Some(g) = self.garbage(i) {
+	   parent_map.insert(i, (self.garbage_can_hang(i).is_some(), g.state.hang_finished()));
+	   }
 	   }
 	   
 	   for (x, y, i) in iter_yx_rev() {
-		 // block hang finish
-		 if self.block_state(i).filter(|s| s.hang_finished()).is_some() {
-		   // below in range && below still empty
-		   if let Some(ib) = (x, y + 1).to_index() {
-			 if self[ib].is_empty() {
-				self.components.swap(i, ib);
-				
-				let index_below_below = (x, y + 2).to_index();
-				
-				// stop hanging if below below is not empty
-				if let Some(ibb) = index_below_below {
-				  if !self[ibb].is_empty() {
-					self[i].reset();
-					self[ib].reset();
-				  }
-				}
-			 }
-		   }
-		 }
-		 
-		 // garbage hang
-		 {
-		   let mut fell = false;
-		   match &mut self.components[i.raw()] {
-			 // swap child itself
-			 Components::GarbageChild(parent_index) => {
-				if let Some((can_hang, hang_finished)) = parent_map.get(parent_index) {
-				  if *hang_finished && *can_hang {
-					if let Some(ib) = (i + GRID_WIDTH).to_index() {
-					  if self[ib].is_empty() {
-						 *parent_index += GRID_WIDTH;
-						 fell = true;
-					  }
-					}
-				  }
-				}
-			 }
-			 
-			 // swap parent and its child indexes
-			 Components::GarbageParent(g) => {
-				if let Some((can_hang, hang_finished)) = parent_map.get(&i) {
-				  if *hang_finished {
-					if *can_hang {
-					  if let Some(ib) = (i + GRID_WIDTH).to_index() {
-						 if self[ib].is_empty() {
-						   for index in g.children.iter_mut() {
-							 *index += GRID_WIDTH;
-						   }
-						   
-						   fell = true;
-						 } else {
-						   g.state = GarbageStates::Idle;
-						 }
-					  } else {
-						 // NOTE(Skytrias): bottom?
-						 g.state = GarbageStates::Idle;
-					  }
-					} else {
-					  g.state = GarbageStates::Idle;
-					}
-				  }
-				}
-			 }
-			 
-			 _ => {}
-		   }
-		   
-		   // delayed swap cuz borrow
-		   if fell {
-			 if let Some(ib) = (i + GRID_WIDTH).to_index() {
-				self.components.swap(i, ib);
-			 }
-		   }
-		 }
-		}
+	   // block hang finish
+	   if self.block_state(i).filter(|s| s.hang_finished()).is_some() {
+	   // below in range && below still empty
+	   if let Some(ib) = (x, y + 1).to_index() {
+	   if self[ib].is_empty() {
+	   self.components.swap(i, ib);
+	   
+	   let index_below_below = (x, y + 2).to_index();
+	   
+	   // stop hanging if below below is not empty
+	   if let Some(ibb) = index_below_below {
+	   if !self[ibb].is_empty() {
+	   self[i].reset();
+	   self[ib].reset();
+	   }
+	   }
+	   }
+	   }
+	   }
+	   
+	   // garbage hang
+	   {
+	   let mut fell = false;
+	   match &mut self.components[i.raw()] {
+	   // swap child itself
+	   Components::GarbageChild(parent_index) => {
+	   if let Some((can_hang, hang_finished)) = parent_map.get(parent_index) {
+	   if *hang_finished && *can_hang {
+	   if let Some(ib) = (i + GRID_WIDTH).to_index() {
+	   if self[ib].is_empty() {
+	   *parent_index += GRID_WIDTH;
+	   fell = true;
+	   }
+	   }
+	   }
+	   }
+	   }
+	   
+	   // swap parent and its child indexes
+	   Components::GarbageParent(g) => {
+	   if let Some((can_hang, hang_finished)) = parent_map.get(&i) {
+	   if *hang_finished {
+	   if *can_hang {
+	   if let Some(ib) = (i + GRID_WIDTH).to_index() {
+	   if self[ib].is_empty() {
+	   for index in g.children.iter_mut() {
+	   *index += GRID_WIDTH;
+	   }
+	   
+	   fell = true;
+	   } else {
+	   g.state = GarbageStates::Idle;
+	   }
+	   } else {
+	   // NOTE(Skytrias): bottom?
+	   g.state = GarbageStates::Idle;
+	   }
+	   } else {
+	   g.state = GarbageStates::Idle;
+	   }
+	   }
+	   }
+	   }
+	   
+	   _ => {}
+	   }
+	   
+	   // delayed swap cuz borrow
+	   if fell {
+	   if let Some(ib) = (i + GRID_WIDTH).to_index() {
+	   self.components.swap(i, ib);
+	   }
+	   }
+	   }
+	   }
 	}
 	*/
 	
@@ -527,20 +527,205 @@ impl Grid {
 		}
 	}
 	
-	pub fn update(&mut self, app: &mut App) {
+	pub fn update(&mut self, _app: &mut App) {
 		assert!(!self.components.is_empty());
 		
 		// NOTE(Skytrias): resolves might need to happen before detects, so there is 1 frame delay?
-		self.garbage_detect_clears();
-		self.garbage_resolve_clears(app);
+		//self.garbage_detect_clears();
+		//self.garbage_resolve_clears(app);
 		self.block_resolve_swap();
 		self.block_detect_bottom();
 		
-		//self.block_garbage_detect_hang();
-		//self.block_garbage_resolve_hang();
+		// hang detection 
+		{
+			for (_, _, i) in iter_xy() {
+				// block hang detection
+				if self.block_state(i).filter(|s| s.is_idle()).is_some() {
+					if let Some(ib) = (i + GRID_WIDTH).to_index() {
+						if self[ib].is_empty() {
+							if let Some(state) = self.block_state_mut(i) {
+								state.to_hang(0);
+							}
+						}
+					}
+				}
+				
+				// garbage hang detection
+				if self.garbage_state(i).filter(|s| s.is_idle()).is_some() {
+					let can_hang = {
+						if let Some(g) = self.garbage(i) {
+							g.lowest_empty(self)
+						} else {
+							// NOTE(Skytrias): might have to be true
+							false
+						}
+					};
+					
+					if can_hang {
+						if let Some(g) = self.garbage_mut(i) {
+							g.state.to_hang(0);
+						}
+					}
+				}
+			}
+		}
 		
-		self.block_detect_clear();
-		self.block_resolve_clear();
+		// block hang finish, set all above finished block to fall state 
+		{
+			let mut above_fall = false;
+			// look for block and empty below
+			for (_, _, i) in iter_yx_rev() {
+				// TODO(Skytrias): check for if below empty again? since a few frames passed
+				if let Some(state) = self.block_state_mut(i) {
+					match state {
+						// any hang finished, set to fall and let other normal blocks above it fall too
+						BlockStates::Hang { finished, .. } => {
+							if *finished {
+								state.to_fall();
+								above_fall = true;
+							}
+						}
+						
+						// fall too if below was hang finished
+						BlockStates::Idle => {
+							if above_fall {
+								state.to_fall();
+							}
+						}
+						
+						// NOTE(Skytrias): INCLUDES GARBAGE
+						// short circuit the fall loop
+						_ => {
+							above_fall = false;
+						}
+					}
+				}
+				}
+		}
+		
+		// garbage hang finish, set all above finished block to fall state 
+		{
+			let mut above_fall = false;
+			// look for block and empty below
+			for (_, _, i) in iter_yx_rev() {
+				let opt_parent_index = {
+					match &self[i] {
+						Components::GarbageParent(_) => Some(i),
+						Components::GarbageChild(new_i) => Some(*new_i),
+						_ => None
+					}
+				};
+				
+				if let Some(parent_index) = opt_parent_index {
+					if let Some(mut state) = self.garbage_state_mut(parent_index) {
+						match &mut state {
+							GarbageStates::Hang { finished, .. } => {
+								if *finished {
+									state.to_fall();
+									println!("{}, set set parent to fall", parent_index);
+									above_fall = true;
+								}
+							} 
+							
+							GarbageStates::Idle => {
+								if above_fall {
+									println!("{}, set above garbage to fall", parent_index);
+									state.to_fall();
+								}
+							} 
+							
+							_ => {}
+						}
+					}
+				}
+				
+				match &mut self[i] {
+					Components::Normal(b) => {
+						if b.state.is_idle() && above_fall {
+							b.state.to_fall();
+						}
+					}
+					
+					Components::Empty => {
+						above_fall = false;
+					}
+					
+					_ => {}
+				}
+				}
+		}
+		
+		// fall execution
+		{
+			for (_, _, i) in iter_yx_rev() {
+				// block fall
+				if self.block_state(i).filter(|s| s.is_fall()).is_some() {
+					if let Some(ib) = (i + GRID_WIDTH).to_index() {
+						if self[ib].is_empty() {
+							self.components.swap(i, ib);
+						} else {
+							// reset blocks that were in fall and cant fall anymore
+							if let Some(state) = self.block_state_mut(i) {
+								state.to_idle();
+							}
+						}
+					}
+				}
+				}
+			
+				// garbage fall
+				for (_, _, i) in iter_yx_rev() {
+				if self.garbage_state(i).filter(|s| s.is_fall()).is_some() {
+					continue;
+				}
+				
+				let opt_lowest_empty = {
+					if let Some(g) = self.garbage(i) {
+						Some(g.lowest_empty(self))
+					} else {
+						None
+					}
+				};
+				
+				if let Some(lowest_empty) = opt_lowest_empty {
+					if !lowest_empty {
+						if let Some(state) = self.garbage_state_mut(i) {
+							state.to_idle();
+						}
+					}
+					
+					let mut opt_children = self.garbage(i).map(|g| g.children.clone());
+					
+					if let Some(children) = &mut opt_children {
+						println!("1: {:?}", children);
+						for child_index in children.iter() {
+							if let Some(parent_index) = self.garbage_child_mut(*child_index) {
+								*parent_index += GRID_WIDTH;
+							}
+						}
+						
+						println!("2: {:?}", children);
+						if let Some(g) = self.garbage_mut(i) {
+							children.sort_by(|a, b| b.cmp(a));
+							
+							for child_index in children.iter_mut() {
+								*child_index += GRID_WIDTH;
+							}
+							
+							g.children = children.clone();
+						}
+						
+						println!("3: {:?}", children);
+						for child_index in children.iter() {
+							self.components.swap(*child_index - GRID_WIDTH, *child_index);
+						}
+					}
+				}
+				}
+		}
+		
+		//self.block_detect_clear();
+		//self.block_resolve_clear();
 		
 		// update all components
 		for c in self.components.iter_mut() {
@@ -674,6 +859,13 @@ impl Grid {
 	pub fn garbage_state_mut<I: BoundIndex>(&mut self, index: I) -> Option<&mut GarbageStates> {
 		match &mut self[index] {
 			Components::GarbageParent(g) => Some(&mut g.state),
+			_ => None,
+		}
+	}
+	
+	pub fn garbage_child_mut<I: BoundIndex>(&mut self, index: I) -> Option<&mut usize> {
+		match &mut self[index] {
+			Components::GarbageChild(num) => Some(num),
 			_ => None,
 		}
 	}

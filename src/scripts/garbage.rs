@@ -11,6 +11,7 @@ const CLEAR_TIME: u32 = 100;
 pub enum GarbageStates {
     Idle,
     Hang { counter: u32, finished: bool },
+    Fall,
     Clear { counter: u32, finished: bool },
 }
 
@@ -47,6 +48,14 @@ impl GarbageStates {
         }
     }
 	
+    // returns true if the garbage is hang
+    pub fn is_fall(self) -> bool {
+        match self {
+			Fall => true,
+            _ => false,
+        }
+    }
+	
     // returns true if the garbage is clear
     pub fn is_clear(self) -> bool {
         match self {
@@ -71,6 +80,10 @@ impl GarbageStates {
         }
     }
 	
+    pub fn to_idle(&mut self) {
+        *self = Idle;
+    }
+	
     pub fn to_hang(&mut self, counter: u32) {
         *self = Hang {
             counter,
@@ -83,6 +96,10 @@ impl GarbageStates {
             counter: 0,
             finished: false,
         };
+    }
+	
+    pub fn to_fall(&mut self) {
+        *self = Fall;
     }
 }
 
@@ -152,6 +169,19 @@ impl Garbage {
         }
     }
 	
+	// checks wether the lowest blocks below are all empty
+	pub fn lowest_empty(&self, grid: &Grid) -> bool {
+		let mut can_hang = true;
+		
+		for child_index in self.lowest().iter() {
+				if !grid[child_index + GRID_WIDTH].is_empty() {
+				can_hang = false;
+				}
+		}
+		
+		can_hang
+	}
+	
     // gets the highest children, will always work
     pub fn highest(&self) -> Vec<usize> {
         self.children
@@ -175,7 +205,8 @@ impl Garbage {
             Hang { counter, finished } => {
                 if *counter < HANG_TIME {
                     *counter += 1;
-                } else {
+					self.hframe = 2;
+				} else {
 					self.hframe = 1;
 					*finished = true;
                 }
@@ -189,6 +220,11 @@ impl Garbage {
                     *finished = true;
                 }
             }
-        }
+			
+			Fall =>
+			{
+				self.hframe = 3;
+				}
+		}
     }
 }

@@ -18,7 +18,8 @@ pub enum BlockStates {
         counter: u32,
         finished: bool,
     },
-    Swap {
+    Fall,
+	Swap {
         counter: u32,
         direction: SwapDirection,
         finished: bool,
@@ -151,6 +152,22 @@ impl BlockStates {
             finished: false,
         };
     }
+	
+	pub fn is_fall(self) -> bool {
+		match self {
+			Fall => true,
+			_ => false
+		}
+	}
+	
+    pub fn to_fall(&mut self) {
+        *self = Fall;
+    }
+	
+	pub fn to_idle(&mut self) {
+        *self = Idle;
+    }
+	
 }
 
 impl Default for Block {
