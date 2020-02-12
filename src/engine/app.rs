@@ -514,6 +514,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 	
     let mut cursor = Cursor::default();
     let mut grid = Grid::new(&mut app);
+	let mut garbage_system = GarbageSystem::default();
 	
     let mut quit = false;
     let mut fixedstep = fixedstep::FixedStep::start(FRAME_AMOUNT);
@@ -535,19 +536,20 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 			
             // reload grid on space
             if app.key_pressed(VirtualKeyCode::Return) {
-                grid.gen_2d_garbage(2);
+                grid.gen_2d_garbage(&mut garbage_system, 1);
             }
 			
             if app.key_pressed(VirtualKeyCode::A) {
                 let offset = (app.rand_int(1) * 3) as usize;
 				println!("{}", offset);
-				grid.gen_1d_garbage(3, offset);
+				grid.gen_1d_garbage(&mut garbage_system, 3, offset);
             }
 				
 			cursor.update(&app, &mut grid);
+				grid.update(&mut app, &mut garbage_system);
+			garbage_system.update();
 			
             if app.key_pressed(VirtualKeyCode::D) {
-				grid.update(&mut app);
 				app.frame_counter += 1;
 			}
 				

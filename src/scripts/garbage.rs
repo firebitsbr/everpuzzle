@@ -5,6 +5,26 @@ use GarbageStates::*;
 
 const CLEAR_TIME: u32 = 100;
 
+pub struct GarbageSystem {
+	pub list: Vec<Garbage>,
+}
+
+impl Default for GarbageSystem {
+	fn default() -> Self {
+		Self {
+			list: Vec::new(),
+		}
+	}
+}
+
+impl GarbageSystem {
+	pub fn update(&mut self) {
+		for child in self.list.iter_mut() {
+			child.update();
+		}
+	}
+}
+
 // TODO(Skytrias): check for bottom?
 
 #[derive(Copy, Clone, Debug)]
@@ -111,7 +131,8 @@ pub struct Garbage {
     pub hframe: u32,
     pub vframe: u32,
     pub state: GarbageStates,
-    pub offset: V2,
+    
+	pub offset: V2,
 }
 
 impl Default for Garbage {
@@ -192,39 +213,25 @@ impl Garbage {
             .collect()
     }
 	
-    pub fn reset(&mut self) {
-        self.state = Idle;
-    }
-	
     pub fn update(&mut self) {
         match &mut self.state {
-            Idle => {
-                self.hframe = 1;
-            }
-			
             Hang { counter, finished } => {
                 if *counter < HANG_TIME {
                     *counter += 1;
-					self.hframe = 2;
 				} else {
-					self.hframe = 1;
 					*finished = true;
                 }
             }
 			
             Clear { counter, finished } => {
                 if *counter < CLEAR_TIME {
-                    self.hframe = 1;
                     *counter += 1;
                 } else {
                     *finished = true;
                 }
             }
 			
-			Fall =>
-			{
-				self.hframe = 3;
-				}
+			_ => {}
 		}
     }
 }

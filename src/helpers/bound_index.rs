@@ -1,8 +1,6 @@
 use crate::helpers::*;
 use num_traits::cast::ToPrimitive;
 
-// TODO(Skytrias): add deref for raw?
-
 // attempt at normalizing index usage for the grid vector
 // being able to use usize, V2, or any generic tuple is pretty awesome
 pub trait BoundIndex {

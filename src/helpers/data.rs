@@ -1,7 +1,7 @@
 use crate::helpers::math::*;
 
 // block and garbage hang time
-pub const HANG_TIME: u32 = 1;
+pub const HANG_TIME: u32 = 20;
 
 // colors
 pub const WHITE: V4 = V4 {

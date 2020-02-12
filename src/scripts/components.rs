@@ -13,8 +13,7 @@ pub struct Child {
 pub enum Components {
     Empty,
     Normal(Block),
-    GarbageParent(Garbage),
-    GarbageChild(usize), // index to parent
+    GarbageChild, // index to parent
     Placeholder,         // used to differentiate between empty
 }
 
@@ -31,7 +30,7 @@ impl Components {
     pub fn hframe(&self) -> u32 {
         match self {
             Normal(b) => b.hframe,
-            GarbageParent(g) => g.hframe,
+            GarbageChild => 0,
             _ => 0,
         }
     }
@@ -40,10 +39,7 @@ impl Components {
     pub fn vframe(&self) -> u32 {
         match self {
             Normal(b) => b.vframe,
-            GarbageParent(g) => g.vframe,
-			
-            // TODO(Skytrias): depends on the parent!
-            GarbageChild(_) => ATLAS_GARBAGE as u32,
+            GarbageChild => ATLAS_GARBAGE as u32,
 			
             _ => 0,
         }
@@ -69,8 +65,7 @@ impl Components {
     pub fn scale(&self) -> f32 {
         match self {
             Normal(b) => b.scale,
-            GarbageParent(_) => 1.,
-            GarbageChild(_) => 1.,
+            GarbageChild => 1.,
             _ => 0.,
         }
     }
@@ -79,7 +74,7 @@ impl Components {
     pub fn update(&mut self) {
         match self {
             Normal(b) => b.update(),
-            GarbageParent(g) => g.update(),
+            //GarbageParent(g) => g.update(),
             _ => {}
         }
     }
@@ -88,7 +83,6 @@ impl Components {
     pub fn reset(&mut self) {
         match self {
             Normal(b) => b.reset(),
-            GarbageParent(g) => g.reset(),
             _ => {}
         }
     }
@@ -101,18 +95,10 @@ impl Components {
         }
     }
 	
-    // returns true if component is a garbage parent
-    pub fn is_garbage(&self) -> bool {
-        match self {
-            GarbageParent(_) => true,
-            _ => false,
-        }
-    }
-	
     // returns true if component is a garbage child
     pub fn is_garbage_child(&self) -> bool {
         match self {
-            GarbageChild(_) => true,
+            GarbageChild => true,
             _ => false,
         }
     }
@@ -142,7 +128,6 @@ impl Components {
     pub fn clear_started(&self) -> bool {
         match self {
             Normal(b) => b.state.clear_started(),
-            GarbageParent(g) => g.state.clear_started(),
             _ => false,
         }
     }
