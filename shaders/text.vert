@@ -54,5 +54,5 @@ void main() {
 	// indexes are gone through each instance, choose right sprite of spritesheet
 	vec2 i_uv = vec2(gl_VertexIndex & 1, gl_VertexIndex >> 1);
 	o_uv.x = (hframe + i_uv.x) * (1. / 26.);
-	o_uv.y = (indexes[0].w  + i_uv.y) * (1. / 11.);
+	o_uv.y = (indexes[0].w  + i_uv.y) * (1. / 12.);
 }

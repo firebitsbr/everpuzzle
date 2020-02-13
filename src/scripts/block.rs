@@ -31,6 +31,7 @@ pub enum BlockStates {
         end_time: u32,
 		finished: bool,
     },
+	Spawned, 
 }
 
 pub struct Block {
@@ -183,13 +184,24 @@ impl Default for Block {
 }
 
 impl Block {
-    pub fn random(app: &mut App) -> Self {
+    // creates a new randomized block with a different vframe
+	pub fn random(app: &mut App) -> Self {
         Self {
-            vframe: (app.rand_int(5) + 2) as u32,
+            vframe: (app.rand_int(5) + 3) as u32,
             ..Default::default()
         }
     }
 	
+	// randomizes the block and sets it to spawned, having to turn it to idle manually at some point
+	pub fn random_clear(app: &mut App) -> Self {
+        Self {
+			state: Spawned,
+            vframe: (app.rand_int(5) + 3) as u32,
+            ..Default::default()
+        }
+    }
+	
+	// sets its state to Idle and offset.x back to 0
     pub fn reset(&mut self) {
         self.state = Idle;
         self.offset.x = 0.;
@@ -227,12 +239,13 @@ impl Block {
 					if *counter > *start_time {
 						if (*counter - *start_time) < CLEAR_TIME {
 							self.scale = 1. - ((*counter - *start_time) as f32) / (CLEAR_TIME as f32);
-							self.hframe = 1;
 						} else {
 							self.scale = 0.;
 						}
+						
 					}
 					
+						self.hframe = 1;
                     *counter += 1;
                 } else {
                     *finished = true;

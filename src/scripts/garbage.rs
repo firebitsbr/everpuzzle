@@ -3,7 +3,25 @@ use crate::helpers::*;
 use crate::scripts::*;
 use GarbageStates::*;
 
-const CLEAR_TIME: u32 = 100;
+const CLEAR_TIME: u32 = 20;
+
+pub struct Child {
+	pub counter: u32,
+	pub start_time: u32,
+	pub randomize_at_end: bool,
+	pub scale: f32, 
+}
+
+impl Default for Child {
+	fn default() -> Self {
+		Self {
+			counter: 0,
+			start_time: 0,
+			randomize_at_end: false,
+			scale: 1.,
+		}
+	}
+}
 
 pub struct GarbageSystem {
 	pub list: Vec<Garbage>,
@@ -18,9 +36,9 @@ impl Default for GarbageSystem {
 }
 
 impl GarbageSystem {
-	pub fn update(&mut self) {
-		for child in self.list.iter_mut() {
-			child.update();
+	pub fn update(&mut self, app: &mut App, grid: &mut Grid) {
+		for garbage in self.list.iter_mut() {
+			garbage.update(app, grid);
 		}
 	}
 }
@@ -32,7 +50,7 @@ pub enum GarbageStates {
     Idle,
     Hang { counter: u32, finished: bool },
     Fall,
-    Clear { counter: u32, finished: bool },
+    Clear { counter: u32, end_time: u32, finished: bool },
 }
 
 impl GarbageStates {
@@ -111,11 +129,12 @@ impl GarbageStates {
         };
     }
 	
-    pub fn to_clear(&mut self) {
+    pub fn to_clear(&mut self, children_count: u32) {
         *self = Clear {
             counter: 0,
             finished: false,
-        };
+			end_time: children_count * CLEAR_TIME,
+		};
     }
 	
     pub fn to_fall(&mut self) {
@@ -125,14 +144,10 @@ impl GarbageStates {
 
 pub struct Garbage {
     pub children: Vec<usize>,
-    pub count: usize, // len of children, should stay the same
+    count: usize, // len of children, should stay the same
     pub is_2d: bool,  // wether the garbage has more than 6 children
-	
-    pub hframe: u32,
-    pub vframe: u32,
-    pub state: GarbageStates,
-    
-	pub offset: V2,
+	pub state: GarbageStates,
+	removed_children: Vec<usize>, // list of children removed in clear, have to be idled
 }
 
 impl Default for Garbage {
@@ -140,12 +155,10 @@ impl Default for Garbage {
         Self {
             children: Vec::new(),
             count: 0,
-            hframe: 0,
-            vframe: ATLAS_GARBAGE as u32,
             state: Idle,
-            offset: V2::zero(),
             is_2d: false,
-        }
+			removed_children: Vec::new(),
+		}
     }
 }
 
@@ -158,7 +171,7 @@ impl Garbage {
             count,
             is_2d: count > GRID_WIDTH,
             ..Default::default()
-        }
+		}
     }
 	
     // NOTE(Skytrias): shouldnt be called when its 1d
@@ -177,14 +190,15 @@ impl Garbage {
         if self.is_2d {
             let skip = (self.count / GRID_WIDTH - 1) * GRID_WIDTH;
 			
-            // TODO(Skytrias): double check
-            self.children
+            let result = self.children
                 .iter()
                 .skip(skip)
                 .enumerate()
                 .take_while(|(i, _)| *i < GRID_WIDTH)
                 .map(|(_, num)| *num)
-                .collect()
+                .collect();
+			
+			result
         } else {
             self.highest()
         }
@@ -213,7 +227,7 @@ impl Garbage {
             .collect()
     }
 	
-    pub fn update(&mut self) {
+    pub fn update(&mut self, app: &mut App, grid: &mut Grid) {
         match &mut self.state {
             Hang { counter, finished } => {
                 if *counter < HANG_TIME {
@@ -223,11 +237,52 @@ impl Garbage {
                 }
             }
 			
-            Clear { counter, finished } => {
-                if *counter < CLEAR_TIME {
-                    *counter += 1;
+            Clear { counter, end_time, finished } => {
+                if *counter < *end_time {
+                    let mut remove = None;
+					
+					for (i, child_index) in self.children.iter_mut().enumerate() {
+						let mut reset = false;
+						
+						if let Components::GarbageChild(c) = &mut grid[*child_index] {
+							if c.counter > c.start_time {
+								if (c.counter - c.start_time) < CLEAR_TIME {
+									c.scale = 1. - ((c.counter - c.start_time) as f32) / (CLEAR_TIME as f32);
+								} else {
+									if c.randomize_at_end {
+										reset = true;
+									} else {
+										c.scale = 1.;
+									}
+								}
+							}
+							
+							c.counter += 1;
+						} else {
+							panic!("GARBAGE: wasnt garbage even though it should have been");
+						}
+						
+						if reset {
+							grid[*child_index] = Components::Normal(Block::random_clear(app));
+							remove = Some(i);
+							break;
+						} 
+					}
+					
+					if let Some(index) = remove {
+						self.removed_children.push(self.children.remove(index));
+					}
+						
+					*counter += 1;
                 } else {
-                    *finished = true;
+					for child_index in self.removed_children.iter() {
+						if let Some(state) = grid.block_state_mut(*child_index) {
+							state.to_idle();
+						}
+					}
+					self.removed_children.clear();
+					
+					*finished = true;
                 }
             }
 			

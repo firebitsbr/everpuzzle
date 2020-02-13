@@ -4,20 +4,32 @@ use crate::scripts::*;
 use winit::event::VirtualKeyCode;
 
 const FRAME_LIMIT: u32 = 25;
+const ANIMATION_TIME: u32 = 64;
+const LERP_TIME: u32 = 8;
 
 pub struct Cursor {
-    position: V2,
-    sprite: Sprite,
+	position: V2,
+    last_position: V2,
+	sprite: Sprite,
+	counter: u32,
+    
+	goal_position: V2,
+	goal_counter: u32,
 }
 
 impl Default for Cursor {
     fn default() -> Self {
         Self {
             position: v2(2., 5.),
-            sprite: Sprite {
+            last_position: V2::zero(),
+            goal_position: V2::zero(),
+            goal_counter: 0,
+			counter: 0,
+			sprite: Sprite {
                 depth: 0.1,
                 position: v2(200., 200.),
-                dimensions: v2(ATLAS_TILE * 2., ATLAS_TILE),
+                dimensions: v2(ATLAS_TILE * 3., ATLAS_TILE * 2.),
+				offset: v2(-16., -16.),
                 vframe: ATLAS_CURSOR,
                 ..Default::default()
             },
@@ -27,7 +39,13 @@ impl Default for Cursor {
 
 impl Cursor {
     pub fn update(&mut self, app: &App, grid: &mut Grid) {
-        let left = app.key_down_frames(VirtualKeyCode::Left);
+        if self.counter < ANIMATION_TIME - 1 {
+			self.counter += 1;
+		} else {
+			self.counter = 0;
+		}
+		
+		let left = app.key_down_frames(VirtualKeyCode::Left);
         let right = app.key_down_frames(VirtualKeyCode::Right);
         let up = app.key_down_frames(VirtualKeyCode::Up);
         let down = app.key_down_frames(VirtualKeyCode::Down);
@@ -66,6 +84,20 @@ impl Cursor {
             }
         }
 		
+		// cursor lerp animation
+		{
+		if self.last_position != self.position {
+			self.goal_position = self.position * ATLAS_TILE + v2(100., 50.);
+			self.goal_counter = LERP_TIME;
+		}
+		
+		if self.goal_counter > 0 {
+			self.goal_counter -= 1;
+		}
+			
+			self.last_position = self.position;
+		}
+		
         if app.key_pressed(VirtualKeyCode::S) {
             // safe for no_bounds since the cursor is limited to the grid indexes
             let i = self.position.raw();
@@ -89,24 +121,11 @@ impl Cursor {
                 }
             }
         }
-    }
+		}
 	
     pub fn draw(&mut self, app: &mut App) {
-        self.sprite.position = ATLAS_TILE * self.position + v2(100., 50.);
+        self.sprite.position.lerp(self.goal_position, (self.goal_counter as f32 / LERP_TIME as f32));
+		self.sprite.hframe = (self.counter as f32 / 32.).floor() * 3.;
         app.push_sprite(self.sprite);
-		
-        app.push_text(Text {
-						  variant: self.position.x.into(),
-						  position: self.sprite.position,
-						  dimensions: V2::both(15.),
-						  ..Default::default()
-					  });
-		
-        app.push_text(Text {
-						  variant: self.position.y.into(),
-						  position: self.sprite.position + v2(0., 15.),
-						  dimensions: V2::both(15.),
-						  ..Default::default()
-					  });
-    }
+		}
 }

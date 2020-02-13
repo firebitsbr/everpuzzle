@@ -19,6 +19,11 @@ pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) 
     m
 }
 
+#[inline]
+pub fn lerp(n1: f32, n2: f32, amount: f32) -> f32 {
+	(1. - amount) * n1 + amount * n2
+}
+
 // own math vectors since its easy and i dont focus on optimization yet
 // only includes fns i actually use in the game
 
@@ -73,6 +78,13 @@ impl V2 {
     pub fn both(xy: f32) -> V2 {
         v2(xy, xy)
     }
+	
+	#[inline]
+	pub fn lerp(&mut self, v2: V2, amount: f32) {
+		self.x = lerp(v2.x, self.x, amount);
+		self.y = lerp(v2.y, self.y, amount);
+	}
+	
 }
 
 impl From<usize> for V2 {

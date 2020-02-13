@@ -90,7 +90,7 @@ impl Grid {
         let children: Vec<usize> = (offset..offset + width).collect();
 		
 		for index in children.iter() {
-			self.components[*index] = Components::GarbageChild;
+			self.components[*index].to_garbage();
 		}
 		
 		garbage_system.list.push(Garbage::new(children));
@@ -102,11 +102,11 @@ impl Grid {
 		
         let mut children = Vec::with_capacity(height * 6);
 		
-        for x in 0..6 {
             for y in 0..height {
+        for x in 0..6 {
 				if let Some(index) = (x, y).to_index() {
                     children.push(index);
-					self.components[index] = Components::GarbageChild;
+					self.components[index].to_garbage();
 				}
 			}
 		}
@@ -268,7 +268,7 @@ impl Grid {
 				}
 				
 				// if child, look it up in any garbage children, set to hang if idle
-				Components::GarbageChild => {
+				Components::GarbageChild { .. } => {
 					if above_fall {
 						for g in garbage_system.list.iter_mut() {
 							if g.state.is_idle() {
@@ -312,6 +312,7 @@ impl Grid {
 				if g.state.is_idle() {
 				if g.lowest_empty(self) {
 					g.state.to_hang(0);
+					println!("cant hang");
 				} else {
 					// TODO(Skytrias): set to idle?
 				}
@@ -333,7 +334,7 @@ impl Grid {
 		for g in garbage_system.list.iter_mut() {
 				if g.state.is_fall() {
 				if g.lowest_empty(self) {
-					for index in g.children.iter_mut() {
+					for index in g.children.iter_mut().rev() {
 						self.components.swap(*index, *index + GRID_WIDTH);
 						*index += GRID_WIDTH;
 					}
@@ -348,7 +349,7 @@ impl Grid {
 	// TODO(Skytrias): garbage child clear start count in as well!
 	// garbage detect clear on multiple blocks, dependant on 2d factor
 	pub fn garbage_detect_clear(&mut self, garbage_system: &mut GarbageSystem) {
-			for g in garbage_system.list.iter_mut() {
+		for g in garbage_system.list.iter_mut().rev() {
 				if g.state.is_idle() {
 					let clear_found = g.children.iter().any(|&i| {
 																// TODO(Skytrias): better way to avoid 0 - 1 on usize
@@ -384,18 +385,30 @@ impl Grid {
 																			 }
 																			 ]
 																	}
-																};
+																	};
 																
 																neighbors.iter().any(|b| *b)
 															});
 					
-					if clear_found {
-						g.state.to_clear();
+				if clear_found {
+					let len = g.children.len() as usize;
+					let lowest = g.lowest();
+					
+					for j in 0..len {
+						let child_index = g.children[j];
+						
+						self.components[child_index] = Components::GarbageChild(Child {
+																					  start_time: j as u32 * 20,
+																						  randomize_at_end: lowest.iter().any(|&index| index == child_index),
+																					  ..Default::default()
+																					  });
+					}
+					
+					g.state.to_clear(len as u32);
 					}
 				}
 		}
 	}
-	
 	
 	// garbage clear resolve
 	pub fn garbage_resolve_clear(&mut self, app: &mut App, garbage_system: &mut GarbageSystem) {
@@ -426,6 +439,7 @@ impl Grid {
 				}
 				}
 				
+			// garbage was empty and gets removed entirely
 				if remove_garbage {
 				garbage_system.list.remove(i);
 				return;
@@ -464,7 +478,7 @@ impl Grid {
 				// dont allow empty components
 				match self[index] {
 				Components::Empty => return,
-				Components::GarbageChild => return,
+				Components::GarbageChild { .. } => return,
 				_ => {}
 				}
 				

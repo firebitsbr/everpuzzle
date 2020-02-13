@@ -47,10 +47,10 @@ pub const ATLAS_SPACING: V2 = V2 {
     y: ATLAS_TILE,
 };
 pub const ATLAS_FILL: f32 = 0.;
-pub const ATLAS_NUMBERS: f32 = 8.;
-pub const ATLAS_ALPHABET: f32 = 9.;
+pub const ATLAS_NUMBERS: f32 = 9.;
+pub const ATLAS_ALPHABET: f32 = 10.;
 pub const ATLAS_CURSOR: f32 = 1.;
-pub const ATLAS_GARBAGE: f32 = 10.;
+pub const ATLAS_GARBAGE: f32 = 11.;
 
 // grid specific
 pub const GRID_WIDTH: usize = 6;

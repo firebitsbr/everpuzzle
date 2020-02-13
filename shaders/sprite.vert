@@ -57,7 +57,8 @@ void main() {
 	//float centered = data[gl_InstanceIndex].additional2.x;
 	
 	if (rotation == 0.) {
-		gl_Position = projection * vec4(((rect_pos[gl_VertexIndex] * dimensions) * scale) + position, depth, 1.);
+		vec2 center = position + offset;
+		gl_Position = projection * vec4(((rect_pos[gl_VertexIndex] * dimensions) * scale) + center, depth, 1.);
 	} else {
 		// rotate around center, have to account ratio in between dimensions and texture
 		vec2 vertice = rect_pos[gl_VertexIndex];
@@ -76,6 +77,6 @@ void main() {
     vec2 i_uv = vec2(gl_VertexIndex & 1, gl_VertexIndex >> 1) * (dimensions / vec2(TILE_SIZE, TILE_SIZE));
 	// make uv be the same scale as the dimensions are i.e. 2 to 1
 	o_uv.x = (hframe + i_uv.x) * (1. / 26.);
-    o_uv.y = (vframe + i_uv.y) * (1. / 11.);
+    o_uv.y = (vframe + i_uv.y) * (1. / 12.);
 	o_color = data[gl_InstanceIndex].color;
 }

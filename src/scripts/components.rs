@@ -2,18 +2,10 @@ use crate::helpers::*;
 use crate::scripts::*;
 use Components::*;
 
-// NOTE(Skytrias): could make bottom ones different
-
-/*
-pub struct Child {
-    pub parent: usize,
-}
-*/
-
 pub enum Components {
     Empty,
     Normal(Block),
-    GarbageChild, // index to parent
+    GarbageChild(Child), 
     Placeholder,         // used to differentiate between empty
 }
 
@@ -26,11 +18,11 @@ impl Components {
         }
     }
 	
-    // the vframe of the component, used for drawing
+    // the vframe of the component, used for drawingm
     pub fn hframe(&self) -> u32 {
         match self {
             Normal(b) => b.hframe,
-            GarbageChild => 0,
+            GarbageChild { .. } => 0,
             _ => 0,
         }
     }
@@ -39,7 +31,7 @@ impl Components {
     pub fn vframe(&self) -> u32 {
         match self {
             Normal(b) => b.vframe,
-            GarbageChild => ATLAS_GARBAGE as u32,
+            GarbageChild { .. } => ATLAS_GARBAGE as u32,
 			
             _ => 0,
         }
@@ -65,7 +57,7 @@ impl Components {
     pub fn scale(&self) -> f32 {
         match self {
             Normal(b) => b.scale,
-            GarbageChild => 1.,
+            GarbageChild(c) => c.scale,
             _ => 0.,
         }
     }
@@ -95,14 +87,6 @@ impl Components {
         }
     }
 	
-    // returns true if component is a garbage child
-    pub fn is_garbage_child(&self) -> bool {
-        match self {
-            GarbageChild => true,
-            _ => false,
-        }
-    }
-	
     // returns true if the component is something real,
     pub fn is_some(&self) -> bool {
         match self {
@@ -128,9 +112,14 @@ impl Components {
     pub fn clear_started(&self) -> bool {
         match self {
             Normal(b) => b.state.clear_started(),
+            GarbageChild(c) => c.counter == 1,
             _ => false,
         }
     }
+	
+    pub fn to_garbage(&mut self) {
+        *self = GarbageChild(Default::default())
+	}
 	
     // data used to send to gpu
     pub fn to_grid_block(&self) -> GridBlock {

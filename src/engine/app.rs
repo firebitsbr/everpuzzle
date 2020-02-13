@@ -536,7 +536,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 			
             // reload grid on space
             if app.key_pressed(VirtualKeyCode::Return) {
-                grid.gen_2d_garbage(&mut garbage_system, 1);
+                grid.gen_2d_garbage(&mut garbage_system, 2);
             }
 			
             if app.key_pressed(VirtualKeyCode::A) {
@@ -546,9 +546,9 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             }
 				
 			cursor.update(&app, &mut grid);
-				grid.update(&mut app, &mut garbage_system);
-			garbage_system.update();
-			
+			grid.update(&mut app, &mut garbage_system);
+			garbage_system.update(&mut app, &mut grid);
+				
             if app.key_pressed(VirtualKeyCode::D) {
 				app.frame_counter += 1;
 			}

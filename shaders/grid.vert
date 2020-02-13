@@ -59,5 +59,5 @@ void main() {
 	
     vec2 i_uv = vec2(gl_VertexIndex & 1, gl_VertexIndex >> 1);
     o_uv.x = (float(hframe) + i_uv.x) * (1. / 26.);
-    o_uv.y = (float(vframe) + i_uv.y) * (1. / 11.);
+    o_uv.y = (float(vframe) + i_uv.y) * (1. / 12.);
 }
