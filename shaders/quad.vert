@@ -19,6 +19,7 @@ layout(location = 3) in vec4 fourth;
 layout(location = 4) in vec2 tiles;
 layout(location = 5) in float hframe;
 layout(location = 6) in float vframe;
+layout(location = 7) in float depth;
 
 layout(location = 0) out vec2 o_uv;
 
@@ -32,9 +33,9 @@ void main() {
 							fourth
 							);
 	
-	gl_Position = projection * i_model * vec4(v_pos, 0., 1.0);
+	gl_Position = projection * i_model * vec4(v_pos, depth, 1.);
 	
 	vec2 i_uv = vec2(gl_VertexIndex & 1, gl_VertexIndex >> 1) * tiles;
-	o_uv.x = (hframe + i_uv.x) * (1. / 26.);
-    o_uv.y = (vframe + i_uv.y) * (1. / 12.);
+	o_uv.x = (hframe + i_uv.x) * (1. / 6.);
+    o_uv.y = (vframe + i_uv.y) * (1. / 10.);
 }

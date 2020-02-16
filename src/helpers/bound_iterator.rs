@@ -10,11 +10,11 @@ enum IteratorFlow {
 struct BoundIterator {
     x: usize,
     y: usize,
-	
-	/// detect how many steps its in
-    steps: usize, 
-	
-	/// which type of iterator should happen
+
+    /// detect how many steps its in
+    steps: usize,
+
+    /// which type of iterator should happen
     flow: IteratorFlow,
 }
 

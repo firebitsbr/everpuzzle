@@ -12,8 +12,8 @@ pub struct Mouse {
     pub right_pressed: bool,
     pub right_released: bool,
     last_right_down: bool,
-    
-	pub position: V2,
+
+    pub position: V2,
 }
 
 impl Default for Mouse {

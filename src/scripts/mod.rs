@@ -4,8 +4,8 @@ pub use self::cursor::*;
 mod grid;
 pub use self::grid::*;
 
-mod components;
-pub use self::components::*;
+mod component;
+pub use self::component::*;
 
 mod block;
 pub use self::block::*;
