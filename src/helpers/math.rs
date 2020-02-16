@@ -1,3 +1,4 @@
+use vek::geom::repr_c::Rect;
 use vek::geom::FrustumPlanes;
 use vek::mat::repr_c::Mat4;
 use vek::vec::repr_c::{Vec2, Vec3};
@@ -8,6 +9,8 @@ pub type M4 = Mat4<f32>;
 pub type V2 = Vec2<f32>;
 /// vector3 f32 type
 pub type V3 = Vec3<f32>;
+/// vector3 f32 type
+pub type R4 = Rect<f32, f32>;
 
 /// wrapper for calling into vek orthographic_lh_zo more easily
 #[inline]

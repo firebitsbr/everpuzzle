@@ -1,8 +1,8 @@
-use crate::engine::{quad, Mouse};
+use crate::engine::*;
 use crate::helpers::*;
 use crate::scripts::*;
 use std::collections::HashMap;
-use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder, Section};
+use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder, HorizontalAlign, Layout, Section, VerticalAlign};
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
@@ -104,6 +104,35 @@ impl App {
     pub fn push_section(&mut self, section: Section) {
         self.glyph_brush.queue(section);
     }
+
+    /// pushes a specified text aligned to a rectangle at the specified position with dimensions
+    pub fn push_text_sprite(
+        &mut self,
+        position: V2,
+        dimensions: V2,
+        text: &'static str,
+        hframe: u32,
+    ) {
+        self.push_sprite(Sprite {
+            position,
+            hframe,
+            scale: dimensions / ATLAS_SPACING,
+            ..Default::default()
+        });
+
+        // TODO(Skytrias): implement from(f32, f32) for V2
+        self.push_section(Section {
+            text,
+            screen_position: (
+                position.x + dimensions.x / 2.,
+                position.y + dimensions.y / 2.,
+            ),
+            layout: Layout::default()
+                .h_align(HorizontalAlign::Center)
+                .v_align(VerticalAlign::Center),
+            ..Default::default()
+        });
+    }
 }
 
 /// main loop of the game, loads the window && all script objects
@@ -186,6 +215,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
     let mut cursor = Cursor::default();
     let mut grid = Grid::new(&mut app);
     let mut garbage_system = GarbageSystem::default();
+    let mut ui_context = UiContext::default();
 
     // main loop
     let mut quit = false;
@@ -336,6 +366,32 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             let mut encoder = app
                 .device
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+
+            // enable mouse pressing
+            app.mouse.update_frame();
+
+            let width = app.swapchain_desc.width as f32;
+            let height = app.swapchain_desc.height as f32;
+            UiBuilder::new(
+                &mut app,
+                &mut ui_context,
+                R4::new(width - 200., 0., 200., height),
+                4,
+            )
+            .push_button("reset", |app| {
+                grid = Grid::new(app);
+                println!("button pressed {}", app.mouse.position)
+            })
+            .push_button("spawn 1d", |app| {
+                let offset = (app.rand_int(1) * 3) as usize;
+                grid.gen_1d_garbage(&mut garbage_system, 3, offset);
+                println!("other pressed")
+            })
+            .push_text("-----")
+            .push_button("spawn 2d", |_app| {
+                grid.gen_2d_garbage(&mut garbage_system, 2);
+                println!("third pressed")
+            });
 
             app.draw_sprites(&frame.view, &mut encoder);
 
