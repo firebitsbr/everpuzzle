@@ -1,44 +1,16 @@
 use crate::engine::App;
 use crate::helpers::*;
 use crate::scripts::*;
-use std::cmp::max;
 use std::ops::{Index, IndexMut};
-use std::collections::HashMap;
 
-// like shader
-#[derive(Copy, Clone, Debug)]
-pub struct GridBlock {
-    pub hframe: u32,
-    pub vframe: u32,
-    pub visible: i32,
-    pub scale: f32,
-    pub x_offset: f32,
-    pub y_offset: f32,
-    pub temp1: f32,
-    pub temp2: f32,
-}
-
-impl Default for GridBlock {
-    fn default() -> Self {
-        Self {
-            hframe: 0,
-            vframe: 0,
-            visible: -1,
-            scale: 1.,
-            x_offset: 0.,
-            y_offset: 0.,
-            temp1: 0.,
-            temp2: 0.,
-        }
-    }
-}
-
+/// horizontal is -x and +x, vertical is -y and +y
 #[derive(Copy, Clone)]
 enum FloodDirection {
-    Horizontal, // -x and +x
-    Vertical,   // -y and +y
+    Horizontal,
+    Vertical,
 }
 
+/// the grid holds all components and updates all the script logic of each component  
 pub struct Grid {
     pub components: Vec<Components>,
     placeholder: Components,
@@ -65,7 +37,8 @@ impl Default for Grid {
 }
 
 impl Grid {
-    pub fn new(app: &mut App) -> Self {
+    /// inits the grid with randomized blocks (seeded)
+	pub fn new(app: &mut App) -> Self {
         let components: Vec<Components> = (0..GRID_TOTAL)
             .map(|_| {
 					 if app.rand_int(1) == 0 {
@@ -82,7 +55,7 @@ impl Grid {
         }
     }
 	
-    // generates a line of garbage at the top of the grid
+    /// generates a line of garbage at the top of the grid
     pub fn gen_1d_garbage(&mut self, garbage_system: &mut GarbageSystem, width: usize, offset: usize) {
         assert!(width >= 3);
         assert!(offset < GRID_WIDTH);
@@ -96,7 +69,7 @@ impl Grid {
 		garbage_system.list.push(Garbage::new(children));
 	}
 	
-    // generates a line of garbage at the top of the grid
+    /// generates a line of garbage at the top of the grid
     pub fn gen_2d_garbage(&mut self, garbage_system: &mut GarbageSystem, height: usize) {
         assert!(height >= 1);
 		
@@ -114,7 +87,7 @@ impl Grid {
 		garbage_system.list.push(Garbage::new(children));
 	}
 	
-	// swaps the 2 index components around if the block was in swap animation
+	/// swaps the 2 index components around if the block was in swap animation
 	pub fn block_resolve_swap(&mut self) {
 		for (_, _, i) in iter_xy() {
 			if let Some(b) = self.block(i) {
@@ -141,10 +114,9 @@ impl Grid {
 		}
 	}
 	
-	// NOTE(Skytrias): might not be necessary anymore, depends on hang
-	// sets the last row of blocks to bottom state
+	/// NOTE(Skytrias): might not be necessary anymore, depends on hang
+	/// sets the last row of blocks to bottom state
 	pub fn block_detect_bottom(&mut self) {
-		// block set bottom row to bottom state
 		for x in 0..GRID_WIDTH {
 			if let Some(state) = self.block_state_mut((x, GRID_HEIGHT - 1)) {
 				if state.is_swap() || state.is_clear() {
@@ -156,7 +128,7 @@ impl Grid {
 		}
 	}
 	
-	// block flood fill check for the current color of the block for any other near colors
+	/// block flood fill check for the current color of the block for any other near colors
 	pub fn block_detect_clear(&mut self) {
 		for (x, y, i) in iter_xy() {
 				let frame = self
@@ -204,7 +176,7 @@ impl Grid {
 		}
 	}
 	
-	// clear the component if clear state is finished
+	/// clear the component if clear state is finished
 	pub fn block_resolve_clear(&mut self) {
 		for (_, _, i) in iter_xy() {
 				let finished = self
@@ -218,11 +190,10 @@ impl Grid {
 		}
 	}
 	
-	// block hang detection, if block state is idle and below is empty, set to hang   
+	/// block hang detection, if block state is idle and below is empty, set to hang   
 	pub fn block_detect_hang(&mut self) {
 		for (_, _, i) in iter_xy() {
 			if self.block_state_check(i, |s| s.is_idle()) {
-			//if self.block_state(i).filter(|s| s.is_idle()).is_some() {
 				if let Some(ib) = (i + GRID_WIDTH).to_index() {
 					if self[ib].is_empty() {
 						if let Some(state) = self.block_state_mut(i) {
@@ -234,7 +205,7 @@ impl Grid {
 		}
 	}
 	
-	// loops upwards, checks if a block hang finished, sets all real above the block to fall, even garbage, garbage fall might fail in fall resolve
+	/// loops upwards, checks if a block hang finished, sets all real above the block to fall, even garbage, garbage fall might fail in fall resolve
 	pub fn block_resolve_hang(&mut self, garbage_system: &mut GarbageSystem) {
 		// block hang finish, set all above finished block to fall state 
 		let mut above_fall = false;
@@ -288,7 +259,7 @@ impl Grid {
 		}
 	}
 	
-	// block fall execution, swap downwards if still empty below, set to idle otherwhise
+	/// block fall execution, swap downwards if still empty below, set to idle otherwhise
 	pub fn block_resolve_fall(&mut self) {
 		for (_, _, i) in iter_yx_rev() {
 				if self.block_state_check(i, |s| s.is_fall()) {
@@ -306,13 +277,12 @@ impl Grid {
 		}
 	}
 	
-	// garbage hang detection, loop through garbages, look if idle and below are all empty, hang 0
+	/// garbage hang detection, loop through garbages, look if idle and below are all empty, hang 0
 	pub fn garbage_detect_hang(&mut self, garbage_system: &mut GarbageSystem) {
 		for g in garbage_system.list.iter_mut() {
 				if g.state.is_idle() {
 				if g.lowest_empty(self) {
 					g.state.to_hang(0);
-					println!("cant hang");
 				} else {
 					// TODO(Skytrias): set to idle?
 				}
@@ -320,7 +290,7 @@ impl Grid {
 		}
 	}
 	
-	// garbage hang finish, loop through garbages, look if hang finished and set to fall 
+	/// garbage hang finish, loop through garbages, look if hang finished and set to fall 
 	pub fn garbage_resolve_hang(&mut self, garbage_system: &mut GarbageSystem) {
 		for g in garbage_system.list.iter_mut() {
 				if g.state.hang_finished() {
@@ -329,7 +299,7 @@ impl Grid {
 		}
 	}
 	
-	// garbage fall, loop through garbages, if fall and below stil empty, swap components and increase index stored in .children
+	/// garbage fall, loop through garbages, if fall and below stil empty, swap components and increase index stored in .children
 	pub fn garbage_resolve_fall(&mut self, garbage_system: &mut GarbageSystem) {
 		for g in garbage_system.list.iter_mut() {
 				if g.state.is_fall() {
@@ -347,7 +317,7 @@ impl Grid {
 	
 	// TODO(Skytrias): look for other garbages that are clearing too!
 	// TODO(Skytrias): garbage child clear start count in as well!
-	// garbage detect clear on multiple blocks, dependant on 2d factor
+	/// garbage detect clear on multiple blocks, dependant on 2d factor
 	pub fn garbage_detect_clear(&mut self, garbage_system: &mut GarbageSystem) {
 		for g in garbage_system.list.iter_mut().rev() {
 				if g.state.is_idle() {
@@ -410,7 +380,7 @@ impl Grid {
 		}
 	}
 	
-	// garbage clear resolve
+	/// garbage clear resolve
 	pub fn garbage_resolve_clear(&mut self, app: &mut App, garbage_system: &mut GarbageSystem) {
 		for i in 0..garbage_system.list.len() {
 				let mut remove_garbage = false;
@@ -447,6 +417,7 @@ impl Grid {
 		}
 	}
 	
+	/// updates all components in the grid and the garbage system 
 	pub fn update(&mut self, app: &mut App, garbage_system: &mut GarbageSystem) {
 		assert!(!self.components.is_empty());
 		
@@ -473,6 +444,7 @@ impl Grid {
 		}
 	}
 	
+	/// recursively goes through each position in the grid and checks for its neighbors if their vframes match, adds them to a list based on the direction
 	fn flood_check(&mut self, x: usize, y: usize, vframe: u32, direction: FloodDirection) {
 		if let Some(index) = (x, y).to_index() {
 				// dont allow empty components
@@ -528,19 +500,22 @@ impl Grid {
 		}
 	}
 	
-	pub fn draw(&mut self, app: &mut App, frame: &wgpu::SwapChainOutput<'_>) {
-		assert!(self.components.len() != 0);
-		
-		// gather info
-		// TODO(Skytrias): convert to gridblock
-		let data: Vec<GridBlock> = self.components.iter().map(|c| c.to_grid_block()).collect();
-		
-		app.draw_grid(&data, frame);
-	}
+	/// draws all the grid components as sprite / quads
+	pub fn draw(&mut self, app: &mut App) {
+		for (i, component) in self.components.iter().enumerate() {
+				let position = V2::new(
+									   (i as usize % GRID_WIDTH) as f32 * ATLAS_TILE,
+									   (i / GRID_WIDTH) as f32 * ATLAS_TILE,
+								   );
+			let opt_sprite = component.to_sprite(position);
+			
+			if let Some(sprite) = opt_sprite {
+				app.push_sprite(sprite.into());
+			}
+			}
+		}
 	
-	// block & and &mut accesors
-	
-	// returns a block from the specified grid_index
+	/// returns a block from the specified grid_index
 	pub fn block<I: BoundIndex>(&self, index: I) -> Option<&Block> {
 		match &self[index] {
 				Components::Normal(b) => Some(&b),
@@ -548,15 +523,7 @@ impl Grid {
 		}
 	}
 	
-	// returns a block from the specified grid_index
-	pub fn block_mut<I: BoundIndex>(&mut self, index: I) -> Option<&mut Block> {
-		match &mut self[index] {
-				Components::Normal(b) => Some(b),
-				_ => None,
-		}
-	}
-	
-	// returns any state if the component is a block
+	/// returns any state if the component is a block
 	pub fn block_state<I: BoundIndex>(&self, index: I) -> Option<&BlockStates> {
 		match &self[index] {
 				Components::Normal(b) => Some(&b.state),
@@ -564,7 +531,7 @@ impl Grid {
 		}
 	}
 	
-	// returns any state if the component is a block
+	/// returns any state if the component is a block
 	pub fn block_state_mut<I: BoundIndex>(&mut self, index: I) -> Option<&mut BlockStates> {
 		match &mut self[index] {
 				Components::Normal(b) => Some(&mut b.state),
@@ -572,9 +539,9 @@ impl Grid {
 		}
 	}
 	
-	// experimental helpers
+	/// experimental helpers
 	
-	// closure on block if it exists
+	/// closure on block if it exists
 	pub fn block_state_check<I, P>(&mut self, index: I, predicate: P) -> bool
 		where I: BoundIndex, P: FnOnce(&BlockStates) -> bool {
 		match &self[index] {

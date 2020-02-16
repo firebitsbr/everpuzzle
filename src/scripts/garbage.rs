@@ -1,15 +1,14 @@
 use crate::engine::App;
-use crate::helpers::*;
-use crate::scripts::*;
+use crate::helpers::{V2, GRID_WIDTH, HANG_TIME, CLEAR_TIME};
+use crate::scripts::{Components, Block, Grid};
 use GarbageStates::*;
 
-const CLEAR_TIME: u32 = 20;
-
+/// garbage child data used mainly for unqiue animation
 pub struct Child {
 	pub counter: u32,
 	pub start_time: u32,
 	pub randomize_at_end: bool,
-	pub scale: f32, 
+	pub scale: V2, 
 }
 
 impl Default for Child {
@@ -18,11 +17,12 @@ impl Default for Child {
 			counter: 0,
 			start_time: 0,
 			randomize_at_end: false,
-			scale: 1.,
+			scale: V2::one(),
 		}
 	}
 }
 
+/// system that holds N garbages per 1 grid
 pub struct GarbageSystem {
 	pub list: Vec<Garbage>,
 }
@@ -36,6 +36,7 @@ impl Default for GarbageSystem {
 }
 
 impl GarbageSystem {
+	/// calls the update event on each garbage
 	pub fn update(&mut self, app: &mut App, grid: &mut Grid) {
 		for garbage in self.list.iter_mut() {
 			garbage.update(app, grid);
@@ -44,17 +45,27 @@ impl GarbageSystem {
 }
 
 // TODO(Skytrias): check for bottom?
-
+/// all states a garbage can have
 #[derive(Copy, Clone, Debug)]
 pub enum GarbageStates {
+    /// tag that does nothing, other state detections depend on this being true
     Idle,
-    Hang { counter: u32, finished: bool },
-    Fall,
+    
+	/// hangs the block in the air until time is finished counting up
+    Hang { 
+		counter: u32, 
+		finished: bool 
+	},
+    
+	/// tag to note that the block is currently falling
+	Fall,
+	
+	/// clear animation, with a specific end time, since clears happen delayed
     Clear { counter: u32, end_time: u32, finished: bool },
 }
 
 impl GarbageStates {
-    // returns true if the garbage is idle
+    /// returns true if the garbage is idle
     pub fn is_idle(self) -> bool {
         match self {
             Idle => true,
@@ -62,31 +73,7 @@ impl GarbageStates {
         }
     }
 	
-    // returns true if the garbage is hang
-    pub fn is_hang(self) -> bool {
-        match self {
-            Hang { .. } => true,
-            _ => false,
-        }
-    }
-	
-    // returns true if the garbage hang state has finished counting up
-    pub fn hang_started(self) -> bool {
-        match self {
-            Hang { counter, .. } => counter == 1,
-            _ => false,
-        }
-    }
-	
-    // returns true if the garbage hang state has finished counting up
-    pub fn hang_finished(self) -> bool {
-        match self {
-            Hang { finished, .. } => finished,
-            _ => false,
-        }
-    }
-	
-    // returns true if the garbage is hang
+    /// returns true if the garbage is hang
     pub fn is_fall(self) -> bool {
         match self {
 			Fall => true,
@@ -94,23 +81,15 @@ impl GarbageStates {
         }
     }
 	
-    // returns true if the garbage is clear
-    pub fn is_clear(self) -> bool {
+    /// returns true if the garbage hang state has finished counting up
+    pub fn hang_finished(self) -> bool {
         match self {
-            Clear { .. } => true,
+            Hang { finished, .. } => finished,
             _ => false,
         }
     }
 	
-    // returns true if the garbage clear state has finished counting up
-    pub fn clear_started(self) -> bool {
-        match self {
-            Clear { counter, .. } => counter == 1,
-            _ => false,
-        }
-    }
-	
-    // returns true if the garbage clear state has finished counting up
+    /// returns true if the garbage clear state has finished counting up
     pub fn clear_finished(self) -> bool {
         match self {
             Clear { finished, .. } => finished,
@@ -118,10 +97,12 @@ impl GarbageStates {
         }
     }
 	
+	/// change the state to idle
     pub fn to_idle(&mut self) {
         *self = Idle;
     }
 	
+	/// change the state to hang with defaults
     pub fn to_hang(&mut self, counter: u32) {
         *self = Hang {
             counter,
@@ -129,6 +110,7 @@ impl GarbageStates {
         };
     }
 	
+	/// change the state to clear with defaults
     pub fn to_clear(&mut self, children_count: u32) {
         *self = Clear {
             counter: 0,
@@ -137,18 +119,29 @@ impl GarbageStates {
 		};
     }
 	
+	/// change the state to fall
     pub fn to_fall(&mut self) {
         *self = Fall;
     }
 }
 
+/// garbage that holds N indexes to garbage children in the list 
 pub struct Garbage {
-    pub children: Vec<usize>,
-    count: usize, // len of children, should stay the same
-    pub is_2d: bool,  // wether the garbage has more than 6 children
+    /// list of children indexes that exist in the grid
+	pub children: Vec<usize>,
+	
+	/// list of children removed in clear, that have to be idled
+	removed_children: Vec<usize>, 
+	
+	/// len of children, should stay the same
+    count: usize, 
+    
+	/// wether the garbage has more than 6 children
+	pub is_2d: bool,
+	
+	/// super state of the garbage and its children
 	pub state: GarbageStates,
-	removed_children: Vec<usize>, // list of children removed in clear, have to be idled
-}
+	}
 
 impl Default for Garbage {
     fn default() -> Self {
@@ -163,7 +156,8 @@ impl Default for Garbage {
 }
 
 impl Garbage {
-    pub fn new(children: Vec<usize>) -> Self {
+    /// creates a garbage with an array of indexes that match the grid garbage children that were spawned
+	pub fn new(children: Vec<usize>) -> Self {
         let count = children.len();
 		
         Self {
@@ -175,7 +169,7 @@ impl Garbage {
     }
 	
     // NOTE(Skytrias): shouldnt be called when its 1d
-    // removes the lowest children and returns them if the garbage is still 2d
+    /// removes the lowest children and returns them if the garbage is still 2d
     pub fn drain_lowest(&mut self) -> Vec<usize> {
         let skip = (self.count / GRID_WIDTH - 1) * GRID_WIDTH;
 		
@@ -185,7 +179,7 @@ impl Garbage {
         self.children.drain(skip..).collect()
     }
 	
-    // depends on dimensions, if 2d skip to the bottom of the children
+    /// returns all the lowest children indexes, if 2d skip to the bottom 6 children
     pub fn lowest(&self) -> Vec<usize> {
         if self.is_2d {
             let skip = (self.count / GRID_WIDTH - 1) * GRID_WIDTH;
@@ -204,7 +198,7 @@ impl Garbage {
         }
     }
 	
-	// checks wether the lowest blocks below are all empty
+	/// checks wether the lowest blocks below are all empty
 	pub fn lowest_empty(&self, grid: &Grid) -> bool {
 		let mut can_hang = true;
 		
@@ -217,7 +211,7 @@ impl Garbage {
 		can_hang
 	}
 	
-    // gets the highest children, will always work
+    /// returns the highest existing children, will always work
     pub fn highest(&self) -> Vec<usize> {
         self.children
             .iter()
@@ -227,6 +221,7 @@ impl Garbage {
             .collect()
     }
 	
+    /// updates the garbage variables based on each state, mostly animation based
     pub fn update(&mut self, app: &mut App, grid: &mut Grid) {
         match &mut self.state {
             Hang { counter, finished } => {
@@ -247,12 +242,13 @@ impl Garbage {
 						if let Components::GarbageChild(c) = &mut grid[*child_index] {
 							if c.counter > c.start_time {
 								if (c.counter - c.start_time) < CLEAR_TIME {
-									c.scale = 1. - ((c.counter - c.start_time) as f32) / (CLEAR_TIME as f32);
+									let amt = 1. - ((c.counter - c.start_time) as f32) / (CLEAR_TIME as f32);
+									c.scale = V2::broadcast(amt);
 								} else {
 									if c.randomize_at_end {
 										reset = true;
 									} else {
-										c.scale = 1.;
+										c.scale = V2::one();
 									}
 								}
 							}

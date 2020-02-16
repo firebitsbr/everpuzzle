@@ -1,7 +1,8 @@
-use crate::helpers::*;
-use crate::scripts::*;
+use crate::helpers::{ATLAS_GARBAGE, ATLAS_SPACING, V2, Sprite};
+use crate::scripts::{Child, Block};
 use Components::*;
 
+/// variants that live in the can live in each grid space 
 pub enum Components {
     Empty,
     Normal(Block),
@@ -10,15 +11,7 @@ pub enum Components {
 }
 
 impl Components {
-    // returns 1 if the component is currently visible, used for drawing
-    pub fn visible(&self) -> i32 {
-        match self {
-            Empty => -1,
-            _ => 1,
-        }
-    }
-	
-    // the vframe of the component, used for drawingm
+    /// the vframe of the component, used for drawingm
     pub fn hframe(&self) -> u32 {
         match self {
             Normal(b) => b.hframe,
@@ -27,7 +20,7 @@ impl Components {
         }
     }
 	
-    // the vframe of the component, used for drawing
+    /// the vframe of the component, used for drawing
     pub fn vframe(&self) -> u32 {
         match self {
             Normal(b) => b.vframe,
@@ -37,41 +30,33 @@ impl Components {
         }
     }
 	
-    // returns the x_offset in the grid, used for drawing
-    pub fn x_offset(&self) -> f32 {
+    /// returns the offset in the grid, used for drawing
+    pub fn offset(&self) -> V2 {
         match self {
-            Normal(b) => b.offset.x,
-            _ => 0.,
+            Normal(b) => b.offset + ATLAS_SPACING / 2.,
+            _ => V2::zero(),
         }
     }
 	
-    // returns the x_offset in the grid, used for drawing
-    pub fn y_offset(&self) -> f32 {
-        match self {
-            Normal(b) => b.offset.y,
-            _ => 0.,
-        }
-    }
-	
-    // returns the scale in the grid, used for drawing
-    pub fn scale(&self) -> f32 {
+    /// returns the scale of the component in the grid, used for drawing
+    pub fn scale(&self) -> V2 {
         match self {
             Normal(b) => b.scale,
             GarbageChild(c) => c.scale,
-            _ => 0.,
+            _ => V2::zero(),
         }
     }
 	
-    // call updates on the component
+    /// call updates on the component
     pub fn update(&mut self) {
         match self {
             Normal(b) => b.update(),
-            //GarbageParent(g) => g.update(),
+            // GarbageParent(g) => g.update(),
             _ => {}
         }
     }
 	
-    // call reset on any component
+    /// call reset on any component
     pub fn reset(&mut self) {
         match self {
             Normal(b) => b.reset(),
@@ -79,15 +64,7 @@ impl Components {
         }
     }
 	
-    // returns true if component is a placeholder
-    pub fn is_placeholder(&self) -> bool {
-        match self {
-            Placeholder => true,
-            _ => false,
-        }
-    }
-	
-    // returns true if the component is something real,
+    /// returns true if the component is something real,
     pub fn is_some(&self) -> bool {
         match self {
             Empty => false,
@@ -96,12 +73,7 @@ impl Components {
         }
     }
 	
-    // returns true if the component is nothing
-    pub fn is_none(&self) -> bool {
-        !self.is_some()
-    }
-	
-    // returns true if the component is empty
+    /// returns true if the component is empty
     pub fn is_empty(&self) -> bool {
         match self {
             Empty => true,
@@ -109,6 +81,7 @@ impl Components {
         }
     }
 	
+	/// checks wether the clear state has just started counting
     pub fn clear_started(&self) -> bool {
         match self {
             Normal(b) => b.state.clear_started(),
@@ -117,20 +90,27 @@ impl Components {
         }
     }
 	
+	/// converts the current component into a GarbageChild no matter what it was before
     pub fn to_garbage(&mut self) {
         *self = GarbageChild(Default::default())
 	}
 	
-    // data used to send to gpu
-    pub fn to_grid_block(&self) -> GridBlock {
-        GridBlock {
-            hframe: self.hframe(),
-            vframe: self.vframe(),
-            visible: self.visible(),
-            scale: self.scale(),
-            x_offset: self.x_offset(),
-            y_offset: self.y_offset(),
-            ..Default::default()
-        }
-    }
+	/// converts the current component into a sprite if it is real, can be turned into a quad
+    pub fn to_sprite(&self, position: V2) -> Option<Sprite> {
+		if self.is_some() {
+			Some(
+					 Sprite {
+						 position,
+						 hframe: self.hframe(),
+						 vframe: self.vframe(),
+						 scale: self.scale(),
+						 offset: self.offset(),
+						 centered: true,
+						 ..Default::default()
+					 }
+					 )
+		} else {
+			None
+		}
+	}
 }

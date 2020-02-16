@@ -1,49 +1,56 @@
 use crate::engine::App;
-use crate::helpers::*;
+use crate::helpers::{V2, HANG_TIME, ATLAS_TILE, CLEAR_TIME};
 use BlockStates::*;
 
+// amount of frames it takes to swap a block
 const SWAP_TIME: u32 = 5;
-pub const CLEAR_TIME: u32 = 20;
 
+/// the direction a block can be swapped into
 #[derive(Copy, Clone, Debug)]
 pub enum SwapDirection {
     Left,
     Right,
 }
 
+/// all states a block can have
 #[derive(Copy, Clone, Debug)]
 pub enum BlockStates {
+	/// tag that does nothing, other state detections depend on this being true
     Idle,
+	
+	/// hangs the block in the air until time is finished counting up
     Hang {
         counter: u32,
         finished: bool,
     },
+	
+	/// tag to note that the block is currently falling
     Fall,
+	
+	/// swap animation, with a direction of where the swap is directed to 
 	Swap {
         counter: u32,
         direction: SwapDirection,
         finished: bool,
     },
-    Bottom,
+    
+	/// tag to note that the block is at the "bottom" of the grid
+	Bottom,
+	
+	/// clear animation, with a specific starting and end time, since clears happen delayed
     Clear {
         counter: u32,
         start_time: u32,
         end_time: u32,
 		finished: bool,
     },
+	
+	/// tag to halt any other state, have to manually set it to idle 
 	Spawned, 
 }
 
-pub struct Block {
-    pub hframe: u32,
-    pub vframe: u32,
-    pub state: BlockStates,
-    pub offset: V2,
-    pub scale: f32,
-}
-
 impl BlockStates {
-    // returns true if the block is idle
+    /// returns true if the block is idle
     pub fn is_idle(self) -> bool {
         match self {
             Idle => true,
@@ -51,31 +58,7 @@ impl BlockStates {
         }
     }
 	
-    // returns true if the block is hang
-    pub fn is_hang(self) -> bool {
-        match self {
-            Hang { .. } => true,
-            _ => false,
-        }
-    }
-	
-    // returns true if the block hang state has finished counting up
-    pub fn hang_started(self) -> bool {
-        match self {
-            Hang { counter, .. } => counter == 1,
-            _ => false,
-        }
-    }
-	
-    // returns true if the block hang state has finished counting up
-    pub fn hang_finished(self) -> bool {
-        match self {
-            Hang { finished, .. } => finished,
-            _ => false,
-        }
-    }
-	
-    // returns true if the block is clear
+    /// returns true if the block is clear
     pub fn is_clear(self) -> bool {
         match self {
             Clear { .. } => true,
@@ -83,7 +66,36 @@ impl BlockStates {
         }
     }
 	
-    // returns true if the block swap state has finished counting up
+	/// returns true if the block is swap
+    pub fn is_swap(self) -> bool {
+        match self {
+            Swap { .. } => true,
+            _ => false,
+        }
+    }
+	
+    /// returns true if the block is real meaning its idle or at the bottom
+    pub fn is_real(self) -> bool {
+        self.is_idle() || self.is_bottom()
+    }
+	
+    /// returns true if the block is at the bottom of the grid
+    pub fn is_bottom(self) -> bool {
+        match self {
+            Bottom => true,
+            _ => false,
+        }
+    }
+	
+	/// returns true if the lbock is currently falling
+	pub fn is_fall(self) -> bool {
+		match self {
+			Fall => true,
+			_ => false
+		}
+	}
+	
+    /// returns true if the block swap state has finished counting up
     pub fn clear_finished(self) -> bool {
         match self {
             Clear { finished, .. } => finished,
@@ -91,7 +103,7 @@ impl BlockStates {
         }
     }
 	
-    // returns true if the block swap state has finished counting up
+    /// returns true if the block swap state has finished counting up
     pub fn clear_started(self) -> bool {
         match self {
             Clear { counter, .. } => counter == 1,
@@ -99,8 +111,7 @@ impl BlockStates {
         }
     }
 	
-    // helpers for state data
-	
+    /// change the state to hang with defaults
     pub fn to_hang(&mut self, counter: u32) {
         *self = Hang {
             counter,
@@ -108,6 +119,7 @@ impl BlockStates {
         };
     }
 	
+    /// change the state to clear with defaults
     pub fn to_clear(&mut self, start_time: u32, end_time: u32) {
         *self = Clear {
 			start_time,
@@ -117,35 +129,7 @@ impl BlockStates {
 		};
     }
 	
-	// returns true if the block is swap
-    pub fn is_swap(self) -> bool {
-        match self {
-            Swap { .. } => true,
-            _ => false,
-        }
-    }
-	
-    // returns true if the block swap state has finished counting up
-    pub fn swap_finished(self) -> bool {
-        match self {
-            Swap { finished, .. } => finished,
-            _ => false,
-        }
-    }
-	
-    // returns true if the block is real meaning its idle or at the bottom
-    pub fn is_real(self) -> bool {
-        self.is_idle() || self.is_bottom()
-    }
-	
-    // returns true if the block is at the bottom of the grid
-    pub fn is_bottom(self) -> bool {
-        match self {
-            Bottom => true,
-            _ => false,
-        }
-    }
-	
+	/// change the state to swap with the given direction
     pub fn to_swap(&mut self, direction: SwapDirection) {
         *self = Swap {
             counter: 0,
@@ -154,21 +138,24 @@ impl BlockStates {
         };
     }
 	
-	pub fn is_fall(self) -> bool {
-		match self {
-			Fall => true,
-			_ => false
-		}
-	}
-	
+    /// change the state to fall
     pub fn to_fall(&mut self) {
         *self = Fall;
     }
 	
+	/// change the state to idle
 	pub fn to_idle(&mut self) {
         *self = Idle;
     }
-	
+}
+
+/// block data used for unique block rendering and unique state 
+pub struct Block {
+    pub hframe: u32,
+    pub vframe: u32,
+    pub offset: V2,
+    pub scale: V2,
+    pub state: BlockStates,
 }
 
 impl Default for Block {
@@ -178,13 +165,13 @@ impl Default for Block {
             vframe: 2,
             state: Idle,
             offset: V2::zero(),
-            scale: 1.,
+            scale: V2::one(),
         }
     }
 }
 
 impl Block {
-    // creates a new randomized block with a different vframe
+    /// creates a block with a "randomized" vframe
 	pub fn random(app: &mut App) -> Self {
         Self {
             vframe: (app.rand_int(5) + 3) as u32,
@@ -192,7 +179,7 @@ impl Block {
         }
     }
 	
-	// randomizes the block and sets it to spawned, having to turn it to idle manually at some point
+	/// creates a "randomized" block and sets it to spawned, having to turn it to idle manually at some point
 	pub fn random_clear(app: &mut App) -> Self {
         Self {
 			state: Spawned,
@@ -201,12 +188,13 @@ impl Block {
         }
     }
 	
-	// sets its state to Idle and offset.x back to 0
+	/// sets the state to idle and offset.x back to 0
     pub fn reset(&mut self) {
         self.state = Idle;
         self.offset.x = 0.;
     }
 	
+	/// updates the block variables based on each state, mostly animation based
     pub fn update(&mut self) {
         match &mut self.state {
             Hang { counter, finished } => {
@@ -238,9 +226,10 @@ impl Block {
                 if *counter < *end_time {
 					if *counter > *start_time {
 						if (*counter - *start_time) < CLEAR_TIME {
-							self.scale = 1. - ((*counter - *start_time) as f32) / (CLEAR_TIME as f32);
+							 let amt = 1. - ((*counter - *start_time) as f32) / (CLEAR_TIME as f32);
+							self.scale = V2::broadcast(amt);
 						} else {
-							self.scale = 0.;
+							self.scale = V2::zero();
 						}
 						
 					}

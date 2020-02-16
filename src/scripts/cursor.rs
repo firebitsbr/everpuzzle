@@ -1,16 +1,21 @@
 use crate::engine::App;
 use crate::helpers::*;
-use crate::scripts::*;
+use crate::scripts::{SwapDirection, Grid};
 use winit::event::VirtualKeyCode;
 
+/// amount of frames it takes for the fast cursor movement to happen
 const FRAME_LIMIT: u32 = 25;
+/// amount of frames it takes to animate till the next cursor vframe appears
 const ANIMATION_TIME: u32 = 64;
+/// amount of frames it takes to lerp from one to the other cursor position
 const LERP_TIME: u32 = 8;
 
+/// the player controls the cursor, holds sprite and position data
 pub struct Cursor {
+	sprite: Sprite,
+	
 	position: V2,
     last_position: V2,
-	sprite: Sprite,
 	counter: u32,
     
 	goal_position: V2,
@@ -20,25 +25,26 @@ pub struct Cursor {
 impl Default for Cursor {
     fn default() -> Self {
         Self {
-            position: v2(2., 5.),
+            position: V2::new(2., 5.),
             last_position: V2::zero(),
             goal_position: V2::zero(),
             goal_counter: 0,
 			counter: 0,
 			sprite: Sprite {
-                depth: 0.1,
-                position: v2(200., 200.),
-                dimensions: v2(ATLAS_TILE * 3., ATLAS_TILE * 2.),
-				offset: v2(-16., -16.),
+                position: V2::new(200., 200.),
+                dimensions: V2::new(ATLAS_TILE * 3., ATLAS_TILE * 2.),
+				offset: V2::new(-16., -16.),
                 vframe: ATLAS_CURSOR,
-                ..Default::default()
+                tiles: V2::new(3., 2.),
+				..Default::default()
             },
         }
     }
 }
 
 impl Cursor {
-    pub fn update(&mut self, app: &App, grid: &mut Grid) {
+    /// input update which controls the movement of the cursor and also swapping of blocks in the grid
+	pub fn update(&mut self, app: &App, grid: &mut Grid) {
         if self.counter < ANIMATION_TIME - 1 {
 			self.counter += 1;
 		} else {
@@ -86,8 +92,8 @@ impl Cursor {
 		
 		// cursor lerp animation
 		{
-		if self.last_position != self.position {
-			self.goal_position = self.position * ATLAS_TILE + v2(100., 50.);
+			if self.last_position != self.position {
+				self.goal_position = self.position * ATLAS_TILE;
 			self.goal_counter = LERP_TIME;
 		}
 		
@@ -123,9 +129,11 @@ impl Cursor {
         }
 		}
 	
+	// draws the cursor sprite into the app 
     pub fn draw(&mut self, app: &mut App) {
-        self.sprite.position.lerp(self.goal_position, (self.goal_counter as f32 / LERP_TIME as f32));
-		self.sprite.hframe = (self.counter as f32 / 32.).floor() * 3.;
+        //V2::lerp(self.goal_position, self.sprite.position, self.goal_counter as f32 / LERP_TIME as f32);
+		self.sprite.position = self.goal_position;
+		self.sprite.hframe = (self.counter as f32 / 32.).floor() as u32 * 3;
         app.push_sprite(self.sprite);
 		}
 }

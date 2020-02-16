@@ -1,8 +1,8 @@
 use crate::helpers::*;
 use num_traits::cast::ToPrimitive;
 
-// attempt at normalizing index usage for the grid vector
-// being able to use usize, V2, or any generic tuple is pretty awesome
+/// attempt at normalizing index usage for the grid vector, being able to use usize, V2, or any generic tuple is pretty awesome
+/// you should only use raw() when knowing the index is in bounds
 pub trait BoundIndex {
     fn raw(&self) -> usize; // without bound check
     fn in_bounds(&self) -> bool; // safety check
@@ -17,6 +17,8 @@ pub trait BoundIndex {
     }
 }
 
+// TODO(Skytrias): kind of bad since the index can never go below 0 so just crashes when going below 0
+/// usual index you would use to index into the grid
 impl BoundIndex for usize {
     // depending on where you get the usize from you're safe to use this
     fn raw(&self) -> usize {
@@ -29,7 +31,7 @@ impl BoundIndex for usize {
     }
 }
 
-// NOTE(Skytrias): shouldnt use no_bounds for these grid_index implementations
+/// converts the v2 into a usize index based on the grid width
 impl BoundIndex for V2 {
     fn raw(&self) -> usize {
         self.y as usize * GRID_WIDTH + self.x as usize
@@ -41,7 +43,7 @@ impl BoundIndex for V2 {
 }
 
 // TODO(Skytrias): might be really slow, check performance
-// NOTE(Skytrias): shouldnt use no_bounds for these grid_index implementations
+/// converts any tuple to a usize that can be used to index into the grid
 impl<T, P> BoundIndex for (T, P)
 where
 T: ToPrimitive,

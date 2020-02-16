@@ -1,18 +1,20 @@
 use crate::helpers::{GRID_HEIGHT, GRID_TOTAL, GRID_WIDTH};
 
-// flow of xyi increase, i usually is converted automatically
+/// flow of xyi increase, i usually is converted automatically
 enum IteratorFlow {
     XY,        // usual i 0..GRID_TOTAL
     YXReverse, // y goes GRID_HEGIHT..0 THEN x GRID_WIDTH..0
-    XYReverse,
 }
 
-// often times you always want x, y, and i so here is an iterator that gives all of them
+/// often times you always want x, y, and i so here is an iterator that gives all of them
 struct BoundIterator {
     x: usize,
     y: usize,
-    i: usize,
-    steps: usize, // detect how many steps its in
+	
+	/// detect how many steps its in
+    steps: usize, 
+	
+	/// which type of iterator should happen
     flow: IteratorFlow,
 }
 
@@ -21,7 +23,6 @@ impl Default for BoundIterator {
         Self {
             x: 0,
             y: 0,
-            i: 0,
             steps: 0,
             flow: IteratorFlow::XY,
         }
@@ -83,58 +84,21 @@ impl Iterator for BoundIterator {
 
                 Some((x, y, i))
             }
-
-            IteratorFlow::XYReverse => {
-                if self.steps == GRID_TOTAL {
-                    //println!("------------------------------- stopped");
-                    return None;
-                }
-
-                self.steps += 1;
-
-                let x = self.x;
-                let y = self.y;
-                let i = y * GRID_WIDTH + x;
-
-                if self.y != GRID_HEIGHT {
-                    self.y += 1;
-                //println!("c {}    x {}    y {}    i {}", self.steps - 1, x, y, i);
-                } else {
-                    //println!("c {}    x {}    y {}    i {}", self.steps - 1, x, y, i);
-                    //println!("--------------------");
-
-                    // let last self.y != 0 go through
-                    if self.x != GRID_WIDTH {
-                        self.x += 1;
-                    }
-
-                    self.y = 0;
-                }
-
-                Some((x, y, i))
-            }
         }
     }
 }
 
+/// returns a bound_iterator that goes from i 0..GRID_TOTAL, x 0..GRID_WIDTH, y 0..GRID_HEIGHT
 pub fn iter_xy() -> impl Iterator<Item = (usize, usize, usize)> {
     BoundIterator::default()
 }
 
+/// returns a bound_iterator that goes from y GRID_HEIGHT..0 then x GRID_WIDTH..0, i follows
 pub fn iter_yx_rev() -> impl Iterator<Item = (usize, usize, usize)> {
     BoundIterator {
         x: GRID_WIDTH - 1,
         y: GRID_HEIGHT - 1,
         flow: IteratorFlow::YXReverse,
-        ..Default::default()
-    }
-}
-
-pub fn iter_xy_rev() -> impl Iterator<Item = (usize, usize, usize)> {
-    BoundIterator {
-        x: 0,
-        y: 0,
-        flow: IteratorFlow::XYReverse,
         ..Default::default()
     }
 }

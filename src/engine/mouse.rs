@@ -1,6 +1,7 @@
 use crate::helpers::V2;
 use winit::event::{ElementState, MouseButton};
 
+/// mouse that holds all info of the click states and its position
 pub struct Mouse {
     pub left_down: bool,
     pub left_pressed: bool,
@@ -11,8 +12,8 @@ pub struct Mouse {
     pub right_pressed: bool,
     pub right_released: bool,
     last_right_down: bool,
-
-    pub position: V2,
+    
+	pub position: V2,
 }
 
 impl Default for Mouse {
@@ -34,7 +35,7 @@ impl Default for Mouse {
 }
 
 impl Mouse {
-    // updates the mouse each frame for presses based on old events
+    /// updates the mouse each frame for presses based on old events
     pub fn update_frame(&mut self) {
         self.left_pressed = if self.left_down {
             !self.last_left_down
@@ -50,7 +51,7 @@ impl Mouse {
         self.last_right_down = self.right_down;
     }
 
-    // on mouse event sets down / released
+    /// on winit mouse event sets down / released
     pub fn update_event(&mut self, state: ElementState, button: MouseButton) {
         if button == MouseButton::Left {
             self.left_down = state == ElementState::Pressed;
