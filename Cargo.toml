@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["skytrias <skytrias@protonmail.com>"]
 edition = "2018"
 keywords = ["game", "puzzle"]
+description = "realtime multiplayer puzzle game"
+license = "MIT"
 
 [dependencies]
 wgpu = "0.4"
