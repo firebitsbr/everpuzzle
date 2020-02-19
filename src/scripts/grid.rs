@@ -20,9 +20,9 @@ pub struct Grid {
     flood_horizontal_history: Vec<usize>,
     flood_vertical_count: u32,
     flood_vertical_history: Vec<usize>,
-
+	
     combo_highlight: ComboHighlight,
-}
+	}
 
 impl Default for Grid {
     fn default() -> Self {
@@ -133,17 +133,23 @@ impl Grid {
         }
     }
 
-    /// NOTE(Skytrias): might not be necessary anymore, depends on hang
     /// sets the last row of blocks to bottom state
     pub fn block_detect_bottom(&mut self) {
-        for x in 0..GRID_WIDTH {
-            if let Some(state) = self.block_state_mut((x, GRID_HEIGHT - 1)) {
-                if state.is_swap() || state.is_clear() {
-                    continue;
-                }
-
-                *state = BlockState::Bottom;
-            }
+		for (_, y, i) in iter_xy() {
+		if let Some(state) = self.block_state_mut(i) {
+				if y == GRID_HEIGHT - 1 {
+					if state.is_swap() || state.is_clear() {
+						continue;
+					}
+					
+					state.to_bottom();
+				} else {
+					// NOTE(Skytrias): might not be needed anymore
+					if state.is_bottom() {
+						state.to_idle();
+					}
+				}
+			}
         }
     }
 
@@ -152,7 +158,7 @@ impl Grid {
         for (x, y, i) in iter_xy() {
             let frame = self
                 .block(i)
-                .filter(|b| b.state.is_real())
+                .filter(|b| (b.state.is_idle() || b.state.land_started()))
                 .map(|b| b.vframe);
 
             if let Some(vframe) = frame {
@@ -167,31 +173,65 @@ impl Grid {
                 histories.dedup();
 
                 let histories_length = histories.len();
-
+				
+				// TODO(Skytrias): REFACTOR
+				// TODO(Skytrias): max from chainables?
+				
                 let mut offset: usize = 0;
                 let end_time = (histories_length * CLEAR_TIME as usize) as u32;
                 if self.flood_horizontal_count > 2 {
-                    for (j, clear_index) in self.flood_horizontal_history.clone().iter().enumerate()
+                    let mut had_chainable = None;
+					for (j, clear_index) in self.flood_horizontal_history.clone().iter().enumerate()
                     {
-                        if let Some(state) = self.block_state_mut(*clear_index) {
-                            state.to_clear((j * CLEAR_TIME as usize) as u32, end_time);
+                        if let Some(b) = self.block_mut(*clear_index) {
+							if let Some(size) = b.was_chainable {
+								had_chainable = Some(size);
+							}
+							
+							b.state.to_clear((j * CLEAR_TIME as usize) as u32, end_time);
                         }
                     }
 
                     offset = self.flood_horizontal_count as usize;
-                    self.combo_highlight.push(self.flood_horizontal_count);
-                }
+                    
+					// push chainable even if count was 3
+					if let Some(size) = had_chainable {
+						self.combo_highlight.push_chain(size as u32 + 1);
+					}
+					
+					// only allow more than 3 to result in highlight
+					if self.flood_horizontal_count > 3 {
+					self.combo_highlight.push_combo(self.flood_horizontal_count);
+					}
+				}
 
                 if self.flood_vertical_count > 2 {
-                    for (j, clear_index) in self.flood_vertical_history.clone().iter().enumerate() {
-                        if let Some(state) = self.block_state_mut(*clear_index) {
-                            state.to_clear(((offset + j) * CLEAR_TIME as usize) as u32, end_time);
+                    let mut had_chainable = None;
+					for (j, clear_index) in self.flood_vertical_history.clone().iter().enumerate() {
+                        if let Some(b) = self.block_mut(*clear_index) {
+                            if let Some(size) = b.was_chainable {
+								had_chainable = Some(size);
+							}
+							
+							b.state.to_clear(((offset + j) * CLEAR_TIME as usize) as u32, end_time);
                         }
                     }
-
-                    self.combo_highlight.push(self.flood_vertical_count);
+					 
+					// push chainable even if count was 3
+					if let Some(size) = had_chainable {
+						self.combo_highlight.push_chain(size as u32 + 1);
+					}
+					
+					// only allow more than 3 to result in highlight
+					if self.flood_vertical_count > 3 {
+                    self.combo_highlight.push_combo(self.flood_vertical_count);
                 }
-
+                }
+				
+				if histories_length > 4 {
+					println!("was probably L");
+				}
+				
                 self.flood_horizontal_count = 0;
                 self.flood_horizontal_history.clear();
                 self.flood_vertical_count = 0;
@@ -203,14 +243,12 @@ impl Grid {
     /// clear the component if clear state is finished
     pub fn block_resolve_clear(&mut self) {
         for (_, _, i) in iter_xy() {
-            let finished = self
-                .block_state(i)
-                .map(|s| s.is_clear() && s.clear_finished())
-                .unwrap_or(false);
-
+            let finished = self.block_state_check(i, |s| s.clear_finished());
+			
             if finished {
-                self.components[i] = Component::Empty;
-            }
+				let size = self.block(i).unwrap().was_chainable.unwrap_or(0);
+				self.components[i] = Component::Chainable(size + 1);
+			}
         }
     }
 
@@ -289,7 +327,23 @@ impl Grid {
             if self.block_state_check(i, |s| s.is_fall()) {
                 if let Some(ib) = (i + GRID_WIDTH).to_index() {
                     if self[ib].is_empty() {
-                        self.components.swap(i, ib);
+                        let was_chainable = {
+						if let Component::Chainable(size) = self[ib] {
+							if let Component::Normal(b) = &mut self[i] {
+								b.was_chainable = Some(size);
+								}
+								
+								true
+							} else {
+								false
+							}
+						};
+						
+						if was_chainable {
+							self[ib] = Component::Empty;
+						}
+						
+						self.components.swap(i, ib);
                     } else {
                         // reset blocks that were in fall and cant fall anymore
                         if let Some(state) = self.block_state_mut(i) {
@@ -305,8 +359,9 @@ impl Grid {
     pub fn block_resolve_land(&mut self) {
         for (_, _, i) in iter_yx_rev() {
             if self.block_state_check(i, |s| s.land_finished()) {
-                if let Some(state) = self.block_state_mut(i) {
-                    state.to_idle();
+                if let Some(b) = self.block_mut(i) {
+                    //b.can_chain = false;
+					b.state.to_idle();
                 }
             }
         }
@@ -456,10 +511,10 @@ impl Grid {
         // NOTE(Skytrias): always do resolves before detects so there is 1 frame at minimum delay
         self.block_resolve_swap();
         self.block_detect_bottom();
-
+		
         // resolve any lands
         self.block_resolve_land();
-
+		
         // resolve any falls
         self.block_resolve_fall();
         self.garbage_resolve_fall(garbage_system);
@@ -479,7 +534,7 @@ impl Grid {
         // resolve any clear
         self.block_detect_clear();
         self.garbage_detect_clear(garbage_system);
-    }
+	}
 
     /// updates all non empty components in the grid
     pub fn update_components(&mut self) {
@@ -492,15 +547,13 @@ impl Grid {
     fn flood_check(&mut self, x: usize, y: usize, vframe: u32, direction: FloodDirection) {
         if let Some(index) = (x, y).to_index() {
             // dont allow empty components
-            match self[index] {
-                Component::Empty => return,
-                Component::GarbageChild { .. } => return,
-                _ => {}
-            }
-
+            if !self[index].is_block() {
+				return;
+				}
+			
             // only allow the same vframe to be counted
             if let Component::Normal(b) = &self[index] {
-                if b.vframe != vframe || !b.state.is_real() {
+                if b.vframe != vframe || !(b.state.is_idle() || b.state.land_started()) {
                     return;
                 }
             }
@@ -535,8 +588,10 @@ impl Grid {
                     self.flood_vertical_count += 1;
 
                     // repeat recursively around the component, gaining counts
-                    self.flood_check(x, y + 1, vframe, FloodDirection::Vertical);
-
+                    if y < GRID_HEIGHT - 1 {
+					self.flood_check(x, y + 1, vframe, FloodDirection::Vertical);
+					}
+					
                     // TODO(Skytrias): restriction by u32 / usize
                     if y > 1 {
                         self.flood_check(x, y - 1, vframe, FloodDirection::Vertical);
@@ -566,7 +621,15 @@ impl Grid {
             _ => None,
         }
     }
-
+	
+    /// returns a block from the specified grid_index
+    pub fn block_mut<I: BoundIndex>(&mut self, index: I) -> Option<&mut Block> {
+        match &mut self[index] {
+            Component::Normal(b) => Some(b),
+            _ => None,
+        }
+    }
+	
     /// returns any state if the component is a block
     pub fn block_state<I: BoundIndex>(&self, index: I) -> Option<&BlockState> {
         match &self[index] {

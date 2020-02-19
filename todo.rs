@@ -10,6 +10,8 @@ Rendering {
 General {
 	[_] Use IV2 on things that dont need float?,
 	
+	iterator through real blocks, block_states, garbage, garbage_states,
+	
 	multiple grids,
 	multiple players with set controls,
 	rebind keys,
@@ -31,8 +33,9 @@ Cursor {
 
 Block {
 	falling stop swap?,
+	[!] make L J R Rreverse clears work,
 	[x] clear should happen in a row,
-	land state,
+	[x] land state,
 	
 	get_clear_type - from vframe {
 		normal,
@@ -42,9 +45,14 @@ Block {
 }
 
 Grid {
-	[!] clear chain,
-	combo count on each frame,
-	y offset per pixel,
+	Randomization {
+	randomization dont let combos happen at spawn,
+		gen 6 without matches,
+	},
+		
+	[!] y offset per pixel,
+	[x] clear chain,
+	[_] combo count on each frame,
 	[_] have block_state(i) in bounds dependant on the type -> if option return option else ref,
 }
 

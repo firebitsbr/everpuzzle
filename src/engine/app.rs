@@ -241,22 +241,33 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             if app.key_pressed(VirtualKeyCode::Escape) {
                 quit = true;
             }
-
-            if app.key_pressed(VirtualKeyCode::Space) {
-                // grid = Grid::new(&mut app);
-                for x in 0..GRID_WIDTH {
-                    grid.components[(x, 0).raw()] = Component::Normal(Block::random(&mut app));
-                }
-            }
-
+			
+			/*
+            if app.key_pressed(VirtualKeyCode::A) {
+                let offset = (app.rand_int(1) * 3) as usize;
+                grid.gen_1d_garbage(&mut garbage_system, 3, offset);
+				}
+   */
+			
             if app.key_pressed(VirtualKeyCode::Return) {
                 grid.gen_2d_garbage(&mut garbage_system, 2);
             }
 
-            if app.key_pressed(VirtualKeyCode::A) {
-                let offset = (app.rand_int(1) * 3) as usize;
-                grid.gen_1d_garbage(&mut garbage_system, 3, offset);
-            }
+            if let Some(frames) = app.key_down_frames(VirtualKeyCode::Space) {
+				if frames == 1 || frames % 50 == 0 {
+				for x in 0..GRID_WIDTH {
+					for y in 0..GRID_HEIGHT {
+							let index = (x, y).raw();
+						
+						if y < GRID_HEIGHT - 1 {
+								grid.components.swap(index, index + GRID_WIDTH);
+						} else {
+							grid.components[index] = Component::Normal(Block::random_bottom(&mut app));
+							}
+				}
+				}
+				}
+				}
 
             cursor.update(&app, &mut grid);
             grid.update(&mut app, &mut garbage_system);
@@ -390,17 +401,14 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             )
             .push_button("reset", |app| {
                 grid = Grid::new(app);
-                println!("button pressed {}", app.mouse.position)
             })
             .push_button("spawn 1d", |app| {
                 let offset = (app.rand_int(1) * 3) as usize;
                 grid.gen_1d_garbage(&mut garbage_system, 3, offset);
-                println!("other pressed")
             })
             .push_text("-----")
             .push_button("spawn 2d", |_app| {
                 grid.gen_2d_garbage(&mut garbage_system, 2);
-                println!("third pressed")
             });
 
             app.draw_sprites(&frame.view, &mut encoder);

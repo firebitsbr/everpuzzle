@@ -38,15 +38,24 @@ impl Default for ComboHighlight {
 }
 
 impl ComboHighlight {
-    pub fn push(&mut self, combo_size: u32) {
+    pub fn push_chain(&mut self, chain_size: u32) {
         self.list.push_front(ComboData {
-            size: combo_size,
+            size: chain_size,
             counter: 0,
-            variant: ComboVariant::Combo,
+            variant: ComboVariant::Chain,
         });
         self.y_offset = COMBO_APPEAR_TIME;
     }
-
+	
+    pub fn push_combo(&mut self, combo_size: u32) {
+        self.list.push_front(ComboData {
+								 size: combo_size,
+								 counter: 0,
+								 variant: ComboVariant::Combo,
+							 });
+        self.y_offset = COMBO_APPEAR_TIME;
+    }
+	
     pub fn draw(&mut self, app: &mut App) {
         let mut position = V2::new(200., 300.);
         for combo in self.list.iter_mut() {

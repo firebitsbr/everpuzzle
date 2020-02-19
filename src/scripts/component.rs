@@ -4,10 +4,20 @@ use Component::*;
 
 /// variants that live in each grid space
 pub enum Component {
-    Empty,
+    /// shows up as nothing in the grid 
+	Empty,
+	
+	/// normal block with unique data 
     Normal(Block),
+	
+	/// garbage child that lives in the grid and is linked up in a higher layer garbage  
     GarbageChild(Child),
-    Placeholder, // used to differentiate between empty
+	
+	/// used to indicate if the component before this was a block that was cleared 
+	Chainable(usize),
+	
+	/// used to differentiate between empty, filler when you dont want anything to happen with the component
+    Placeholder, 
 }
 
 impl Component {
@@ -94,7 +104,8 @@ impl Component {
     pub fn is_empty(&self) -> bool {
         match self {
             Empty => true,
-            _ => false,
+            Chainable(_) => true,
+			_ => false,
         }
     }
 

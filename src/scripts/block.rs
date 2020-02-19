@@ -18,9 +18,7 @@ block_state!(
 				 Spawned, spawned,
 				 },
 			 {
-				 Hang, hang {
-					 
-				 },
+				 Hang, hang {},
 				 
 				 Swap, swap {
 					 direction: SwapDirection,
@@ -31,27 +29,30 @@ block_state!(
 					 end_time: u32,
 				 },
 				 
-				 Land, land {
-					 
-				 },
+				 Land, land {},
 			 }
 			 );
 
-impl BlockState {
-    /// returns true if the block is real meaning its idle or at the bottom
-    pub fn is_real(self) -> bool {
-        self.is_idle() || self.is_bottom()
-    }
-}
-
 /// block data used for unique block rendering and unique state
 pub struct Block {
-    pub hframe: u32,
-    pub vframe: u32,
+    /// hframe horizontal position in the texture atlas
+	pub hframe: u32,
+	
+    /// vframe vertical position in the texture atlas
+	pub vframe: u32,
+	
+	/// visual sprite offset 
     pub offset: V2,
+	
+	/// visual sprite scale
     pub scale: V2,
+	
+	/// logic state machine with all states
     pub state: BlockState,
-}
+	
+	/// wether the block could result in a chain or not
+	pub was_chainable: Option<usize>,
+	}
 
 impl Default for Block {
     fn default() -> Self {
@@ -61,7 +62,8 @@ impl Default for Block {
             state: Idle,
             offset: V2::zero(),
             scale: V2::one(),
-        }
+			was_chainable: None,
+		}
     }
 }
 
@@ -73,7 +75,16 @@ impl Block {
             ..Default::default()
         }
     }
-
+	
+	/// creates a block with a "randomized" vframe
+    pub fn random_bottom(app: &mut App) -> Self {
+        Self {
+			state: Bottom,
+            vframe: (app.rand_int(5) + 3) as u32,
+            ..Default::default()
+        }
+    }
+	
     /// creates a "randomized" block and sets it to spawned, having to turn it to idle manually at some point
     pub fn random_clear(app: &mut App) -> Self {
         Self {
@@ -94,7 +105,11 @@ impl Block {
         match &mut self.state {
             Hang { counter, finished } => {
                 if *counter < HANG_TIME - 1 {
-                    *counter += 1;
+                    if let Some(_) = self.was_chainable {
+						self.hframe = 1;
+					}
+					
+					*counter += 1;
                 } else {
                     *finished = true;
                 }
@@ -141,7 +156,7 @@ impl Block {
             }
 
             Fall => {
-                self.hframe = 3;
+				self.hframe = 3;
             }
 
             Bottom => {
@@ -153,12 +168,18 @@ impl Block {
                     self.hframe = 3 + ((*counter as f32 / LAND_TIME as f32) * 3.).floor() as u32;
                     *counter += 1;
                 } else {
-                    self.hframe = 0;
-                    *finished = true;
+					// TODO(Skytrias): test out if this is the right place to disable chaining
+                    self.was_chainable = None;
+					
+					*finished = true;
                 }
             }
 
-            _ => {}
+			Idle => {
+				self.hframe = 0;
+			}
+			
+			 _ => {}
         }
     }
 }

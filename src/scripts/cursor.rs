@@ -108,6 +108,12 @@ impl Cursor {
         if app.key_pressed(VirtualKeyCode::S) {
             self.swap_blocks(grid);
         }
+		
+		// TODO(Skytrias): REMOVE ON RELEASE, only used for debugging faster
+        if app.key_pressed(VirtualKeyCode::A) {
+			let index = self.position.raw();
+			grid.components.swap(index, index - GRID_WIDTH);
+		}
     }
 
     // draws the cursor sprite into the app
@@ -126,9 +132,9 @@ impl Cursor {
         let i = self.position.raw();
 
         // look for valid state or check if the spot is empty
-        let left_state = grid.block_state_check(i, |s| s.is_real());
+        let left_state = grid.block_state_check(i, |s| s.is_idle());
         let left_empty = grid.block(i).is_none();
-        let right_state = grid.block_state_check(i + 1, |s| s.is_real());
+        let right_state = grid.block_state_check(i + 1, |s| s.is_idle());
         let right_empty = grid.block(i + 1).is_none();
 
         if let Some(state) = grid.block_state_mut(i) {
