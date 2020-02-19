@@ -1,4 +1,4 @@
-![screenshot](https://github.com/Skytrias/everpuzzle/previews/011.gif)
+![screenshot](https://github.com/Skytrias/everpuzzle/blob/master/previews/011.gif)
 
 # Everpuzzle
 Talk / Code Walkthrough
