@@ -9,15 +9,16 @@ license = "MIT"
 repository = "https://github.com/Skytrias/everpuzzle"
 
 [dependencies]
-wgpu = "0.4"
-winit = "0.21"
-vek = "0.9.11"
-png_pong = "0.1"
-pix = "0.7.0"
-fixedstep = "0.3"
-oorandom = "11.1"
-num-traits = "0.2.11"
-wgpu_glyph = "0.6"
+wgpu = "0.4" # rendering
+winit = "0.21" # window loading 
+vek = "0.9.11" # math & utility 
+png_pong = "0.1" # png loading
+pix = "0.7.0"  
+fixedstep = "0.3" # main loop at specified fps
+oorandom = "11.1" # random number generator
+num-traits = "0.2.11" # convert numbers to usize 
+wgpu_glyph = "0.6" # text renddering
+paste = "0.1.6" # combine function names with $*:ident in macros
 
 [profile.dev] 
 debug = 1 

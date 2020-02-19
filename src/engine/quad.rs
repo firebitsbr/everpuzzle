@@ -22,7 +22,8 @@ pub struct Quad {
 
 impl Quad {
     /// max number of quads that can be rendered
-    pub const MAX: usize = 100;
+    pub const MAX: usize = 1000;
+
     /// byte size of the quad struct
     const SIZE: usize = std::mem::size_of::<Quad>();
 }
@@ -105,9 +106,9 @@ impl Pipeline {
         // load our single texture atlas into ubo
         let texture_view = {
             // load the texture and its info
-            //let data = std::fs::read("textures/atlas.png").expect("Failed to open PNG");
-            let data = include_bytes!("../../textures/atlas.png");
-            let data = std::io::Cursor::new(&data[..]);
+            let data = load_file!("textures/atlas.png");
+            let data = std::io::Cursor::new(data);
+
             let decoder = png_pong::FrameDecoder::<_, pix::Rgba8>::new(data);
             let png_pong::Frame { raster, .. } = decoder
                 .last()
@@ -192,28 +193,13 @@ impl Pipeline {
             bind_group_layouts: &[&bind_group_layout],
         });
 
-        // debug build
-        /*
-              let vs_module = {
-                  let file = std::fs::File::open("shaders/quad.vert.spv")
-                      .expect("FS: quad vert file open failed");
-                  device.create_shader_module(&wgpu::read_spirv(file).unwrap())
-              };
-
-              let fs_module = {
-                  let file = std::fs::File::open("shaders/quad.frag.spv")
-                      .expect("FS: quad frag file open failed");
-                  device.create_shader_module(&wgpu::read_spirv(file).unwrap())
-              };
-        */
-
         let vs_module = {
-            let file = include_bytes!("../../shaders/quad.vert.spv");
+            let file = load_file!("shaders/quad.vert.spv");
             device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&file[..])).unwrap())
         };
 
         let fs_module = {
-            let file = include_bytes!("../../shaders/quad.frag.spv");
+            let file = load_file!("shaders/quad.frag.spv");
             device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&file[..])).unwrap())
         };
 

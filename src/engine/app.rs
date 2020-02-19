@@ -34,21 +34,37 @@ fn create_depth_texture(
 
 /// state of the Application, includes drawing, input, generators
 pub struct App {
+    /// wgpu device
     device: wgpu::Device,
 
+    /// projection ubo buffer, resends ortho on resize
     ubo_projection: wgpu::Buffer,
-    quad_pipeline: quad::Pipeline,
-    glyph_brush: GlyphBrush<'static, ()>,
 
+    /// pipeline for rendering sprites
+    quad_pipeline: quad::Pipeline,
+
+    /// queues draw commands
     queue: wgpu::Queue,
+
+    /// description of the swapchain containing width / height
     swapchain_desc: wgpu::SwapChainDescriptor,
+
+    /// depth texture access for depth checking
     depth_texture_view: wgpu::TextureView,
 
+    /// data storage to draw texts
+    glyph_brush: GlyphBrush<'static, ()>,
+
+    /// data storage for each key that was pressed with the frame time
     key_downs: HashMap<VirtualKeyCode, u32>,
+
+    /// data storage for all quads in the frame that you want to draw
     quads: Vec<quad::Quad>,
 
-    pub frame_counter: u32,
+    /// mouse handle that which holds left / right button and position info
     pub mouse: Mouse,
+
+    /// random number generator
     pub gen: oorandom::Rand32,
 }
 
@@ -74,7 +90,6 @@ impl App {
         (self.gen.rand_float() * range as f32).round() as i32
     }
 
-    // TODO(Skytrias): remove sprite.visible?
     /// pushes a sprite to the anonymous sprites
     pub fn push_sprite(&mut self, sprite: Sprite) {
         if self.quads.len() < quad::Quad::MAX {
@@ -106,11 +121,11 @@ impl App {
     }
 
     /// pushes a specified text aligned to a rectangle at the specified position with dimensions
-    pub fn push_text_sprite(
+    pub fn push_text_sprite<'a>(
         &mut self,
         position: V2,
         dimensions: V2,
-        text: &'static str,
+        text: &'a str,
         hframe: u32,
     ) {
         self.push_sprite(Sprite {
@@ -206,7 +221,6 @@ pub fn run(width: f32, height: f32, title: &'static str) {
         key_downs: HashMap::new(),
         quads: Vec::new(),
 
-        frame_counter: 0,
         mouse: Default::default(),
         gen: oorandom::Rand32::new(0),
     };
@@ -247,10 +261,6 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             cursor.update(&app, &mut grid);
             grid.update(&mut app, &mut garbage_system);
             garbage_system.update(&mut app, &mut grid);
-
-            if app.key_pressed(VirtualKeyCode::D) {
-                app.frame_counter += 1;
-            }
 
             // clearing key / mouse input
             {
@@ -394,11 +404,6 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             });
 
             app.draw_sprites(&frame.view, &mut encoder);
-
-            app.push_section(Section {
-                text: &format!("frame: {}", app.frame_counter),
-                ..Default::default()
-            });
 
             // draws all sections sent into glyph_brush
             app.glyph_brush

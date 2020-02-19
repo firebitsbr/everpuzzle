@@ -42,87 +42,22 @@ impl GarbageSystem {
     }
 }
 
-// TODO(Skytrias): check for bottom?
-/// all states a garbage can have
-#[derive(Copy, Clone, Debug)]
-pub enum GarbageState {
-    /// tag that does nothing, other state detections depend on this being true
-    Idle,
-
-    /// hangs the block in the air until time is finished counting up
-    Hang { counter: u32, finished: bool },
-
-    /// tag to note that the block is currently falling
-    Fall,
-
-    /// clear animation, with a specific end time, since clears happen delayed
-    Clear {
-        counter: u32,
-        end_time: u32,
-        finished: bool,
-    },
-}
-
-impl GarbageState {
-    /// returns true if the garbage is idle
-    pub fn is_idle(self) -> bool {
-        match self {
-            Idle => true,
-            _ => false,
-        }
-    }
-
-    /// returns true if the garbage is hang
-    pub fn is_fall(self) -> bool {
-        match self {
-            Fall => true,
-            _ => false,
-        }
-    }
-
-    /// returns true if the garbage hang state has finished counting up
-    pub fn hang_finished(self) -> bool {
-        match self {
-            Hang { finished, .. } => finished,
-            _ => false,
-        }
-    }
-
-    /// returns true if the garbage clear state has finished counting up
-    pub fn clear_finished(self) -> bool {
-        match self {
-            Clear { finished, .. } => finished,
-            _ => false,
-        }
-    }
-
-    /// change the state to idle
-    pub fn to_idle(&mut self) {
-        *self = Idle;
-    }
-
-    /// change the state to hang with defaults
-    pub fn to_hang(&mut self, counter: u32) {
-        *self = Hang {
-            counter,
-            finished: false,
-        };
-    }
-
-    /// change the state to clear with defaults
-    pub fn to_clear(&mut self, children_count: u32) {
-        *self = Clear {
-            counter: 0,
-            finished: false,
-            end_time: children_count * CLEAR_TIME,
-        };
-    }
-
-    /// change the state to fall
-    pub fn to_fall(&mut self) {
-        *self = Fall;
-    }
-}
+block_state!(
+			 GarbageState,
+			 {
+				 Idle, idle,
+				 Fall, fall,
+				 },
+			 {
+				 Hang, hang {
+					 
+				 },
+				 
+				 Clear, clear {
+					 end_time: u32,
+				 },
+			 }
+			 );
 
 /// garbage that holds N indexes to garbage children in the list
 pub struct Garbage {

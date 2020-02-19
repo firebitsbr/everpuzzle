@@ -2,6 +2,7 @@ use crate::engine::App;
 use crate::helpers::*;
 use crate::scripts::*;
 use std::ops::{Index, IndexMut};
+use wgpu_glyph::Section;
 
 /// horizontal is -x and +x, vertical is -y and +y
 #[derive(Copy, Clone)]
@@ -19,6 +20,8 @@ pub struct Grid {
     flood_horizontal_history: Vec<usize>,
     flood_vertical_count: u32,
     flood_vertical_history: Vec<usize>,
+
+    combo_highlight: ComboHighlight,
 }
 
 impl Default for Grid {
@@ -32,6 +35,8 @@ impl Default for Grid {
 
             flood_vertical_count: 0,
             flood_vertical_history: Vec::with_capacity(GRID_HEIGHT),
+
+            combo_highlight: Default::default(),
         }
     }
 }
@@ -174,6 +179,7 @@ impl Grid {
                     }
 
                     offset = self.flood_horizontal_count as usize;
+                    self.combo_highlight.push(self.flood_horizontal_count);
                 }
 
                 if self.flood_vertical_count > 2 {
@@ -182,6 +188,8 @@ impl Grid {
                             state.to_clear(((offset + j) * CLEAR_TIME as usize) as u32, end_time);
                         }
                     }
+
+                    self.combo_highlight.push(self.flood_vertical_count);
                 }
 
                 self.flood_horizontal_count = 0;
@@ -213,7 +221,7 @@ impl Grid {
                 if let Some(ib) = (i + GRID_WIDTH).to_index() {
                     if self[ib].is_empty() {
                         if let Some(state) = self.block_state_mut(i) {
-                            state.to_hang(0);
+                            state.to_hang();
                         }
                     }
                 }
@@ -285,9 +293,20 @@ impl Grid {
                     } else {
                         // reset blocks that were in fall and cant fall anymore
                         if let Some(state) = self.block_state_mut(i) {
-                            state.to_idle();
+                            state.to_land();
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /// block fall execution, swap downwards if still empty below, set to idle otherwhise
+    pub fn block_resolve_land(&mut self) {
+        for (_, _, i) in iter_yx_rev() {
+            if self.block_state_check(i, |s| s.land_finished()) {
+                if let Some(state) = self.block_state_mut(i) {
+                    state.to_idle();
                 }
             }
         }
@@ -298,7 +317,7 @@ impl Grid {
         for g in garbage_system.list.iter_mut() {
             if g.state.is_idle() {
                 if g.lowest_empty(self) {
-                    g.state.to_hang(0);
+                    g.state.to_hang();
                 } else {
                     // TODO(Skytrias): set to idle?
                 }
@@ -374,7 +393,6 @@ impl Grid {
                 if clear_found {
                     let len = g.children.len() as usize;
                     let lowest = g.lowest();
-                    println!("found clear");
 
                     for j in 0..len {
                         let child_index = g.children[j];
@@ -439,6 +457,9 @@ impl Grid {
         self.block_resolve_swap();
         self.block_detect_bottom();
 
+        // resolve any lands
+        self.block_resolve_land();
+
         // resolve any falls
         self.block_resolve_fall();
         self.garbage_resolve_fall(garbage_system);
@@ -498,6 +519,7 @@ impl Grid {
                     // repeat recursively around the component, gaining counts
                     self.flood_check(x + 1, y, vframe, FloodDirection::Horizontal);
 
+                    // TODO(Skytrias): restriction by u32 / usize
                     if x > 1 {
                         self.flood_check(x - 1, y, vframe, FloodDirection::Horizontal);
                     }
@@ -515,6 +537,7 @@ impl Grid {
                     // repeat recursively around the component, gaining counts
                     self.flood_check(x, y + 1, vframe, FloodDirection::Vertical);
 
+                    // TODO(Skytrias): restriction by u32 / usize
                     if y > 1 {
                         self.flood_check(x, y - 1, vframe, FloodDirection::Vertical);
                     }
@@ -525,14 +548,12 @@ impl Grid {
 
     /// draws all the grid components as sprite / quads
     pub fn draw(&mut self, app: &mut App) {
-        for (i, component) in self.components.iter().enumerate() {
-            let position = V2::new(
-                (i as usize % GRID_WIDTH) as f32 * ATLAS_TILE,
-                (i / GRID_WIDTH) as f32 * ATLAS_TILE,
-            );
-            let opt_sprite = component.to_sprite(position);
+        self.combo_highlight.draw(app);
 
-            if let Some(sprite) = opt_sprite {
+        // draw all grid components
+        for (x, y, i) in iter_xy() {
+            let position = V2::new(x as f32, y as f32) * ATLAS_SPACING;
+            if let Some(sprite) = self[i].to_sprite(position) {
                 app.push_sprite(sprite.into());
             }
         }
@@ -651,7 +672,7 @@ mod tests {
         // hang state setting
         grid.assert_state(0, |s| s.is_idle());
         if let Some(state) = grid.block_state_mut(0) {
-            state.to_hang(0);
+            state.to_hang();
         } else {
             assert!(false);
         }

@@ -83,7 +83,7 @@ impl Cursor {
             }
         }
 
-        if self.position.y < (GRID_HEIGHT - 1) as f32 {
+        if self.position.y < (GRID_HEIGHT - 2) as f32 {
             if let Some(frame) = down {
                 if frame == 1 || frame > FRAME_LIMIT {
                     self.position.y += 1.;

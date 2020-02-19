@@ -1,58 +1,15 @@
 
-Now {
-	Marketing {
-		Video explaining everpuzzle and rebuilt,
-		
-		Support {
-			Play / Feedback / Follow Development,
-			Add Github Issues,
-			Pull Requests,
-			Donations - streams,
-		},
-		
-		Readme {
-			gifs,
-			goal,
-			how to help,
-		},
-	}
-	
-	Clipping,
-	chache rendering,
-	[_] Use IV2 on things that dont need float?,
-	}
-
-Script helpers {
-	high {
-		[_] none unwrap for block_state dependant on wether the bound_index is in bounds?,
-		[x] find a better way to associate children with their parent,
-	},
-	
-	mid {
-		[_] deref for bound_index,
-		use *_state non mut to get copies back instead of refs,
-	},
-	
-	low {
-		is_state better with matches! macro?,
-	},
-	
-}
-
 Rendering {
+	clipping,
+	chaching,
+	
 	[x] move to instanced rendering + indices,
 	[x] text rendering back again,
-	
-	[_] debug rendering {
-		which sticks for a few seconds,
-		time of start - release debug sprites after a few ms instead of every frame,
-	}
-	
-	pixel perfect rendering,
-	ui elements,
 }
 
 General {
+	[_] Use IV2 on things that dont need float?,
+	
 	multiple grids,
 	multiple players with set controls,
 	rebind keys,
@@ -85,7 +42,7 @@ Block {
 }
 
 Grid {
-	clear chain,
+	[!] clear chain,
 	combo count on each frame,
 	y offset per pixel,
 	[_] have block_state(i) in bounds dependant on the type -> if option return option else ref,
@@ -118,4 +75,23 @@ Garbage System {
 
 4coder {
 	add {}, (), [], automatically,
+	recognize fn asd<> as a function too,
+	#[inline] shouldnt indent next text,
+}
+
+marketing {
+	[x] Video explaining everpuzzle and rebuilt,
+	
+	Support {
+		Play / Feedback / Follow Development,
+		Add Github Issues,
+		Pull Requests,
+		Donations - streams,
+	},
+	
+	[x] Readme {
+		[x] gifs,
+		[x] goal,
+		how to help,
+	},
 }
