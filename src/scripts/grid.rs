@@ -1,6 +1,7 @@
 use crate::engine::App;
 use crate::helpers::*;
 use crate::scripts::*;
+use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
 use wgpu_glyph::Section;
 
@@ -15,13 +16,7 @@ enum FloodDirection {
 pub struct Grid {
     pub components: Vec<Component>,
     placeholder: Component,
-
-    flood_horizontal_count: u32,
-    flood_horizontal_history: Vec<usize>,
-    flood_vertical_count: u32,
-    flood_vertical_history: Vec<usize>,
-	
-    combo_highlight: ComboHighlight,
+combo_highlight: ComboHighlight,
 	}
 
 impl Default for Grid {
@@ -29,16 +24,15 @@ impl Default for Grid {
         Self {
             components: Vec::with_capacity(GRID_TOTAL),
             placeholder: Component::Placeholder,
-
-            flood_horizontal_count: 0,
-            flood_horizontal_history: Vec::with_capacity(GRID_WIDTH),
-
-            flood_vertical_count: 0,
-            flood_vertical_history: Vec::with_capacity(GRID_HEIGHT),
-
             combo_highlight: Default::default(),
         }
     }
+}
+
+#[derive(Debug)]
+struct ClearData {
+	vframe: u32,
+	indexes: Vec<usize>,
 }
 
 impl Grid {
@@ -153,93 +147,78 @@ impl Grid {
         }
     }
 
-    /// block flood fill check for the current color of the block for any other near colors
-    pub fn block_detect_clear(&mut self) {
-        for (x, y, i) in iter_xy() {
-            let frame = self
-                .block(i)
-                .filter(|b| (b.state.is_idle() || b.state.land_started()))
-                .map(|b| b.vframe);
-
-            if let Some(vframe) = frame {
-                self.flood_check(x, y, vframe, FloodDirection::Horizontal);
-                self.flood_check(x, y, vframe, FloodDirection::Vertical);
-
-                let mut histories = [
-                    self.flood_horizontal_history.clone(),
-                    self.flood_vertical_history.clone(),
-                ]
-                .concat();
-                histories.dedup();
-
-                let histories_length = histories.len();
+	pub fn block_detect_clear(&mut self) {
+		// NOTE(Skytrias): consider pushing to grid variables?
+		let mut list = Vec::new();
+		
+		// get all vframes, otherwhise 99
+		let vframes: Vec<u32> = (0..GRID_TOTAL)
+			.map(|i| self.block(i).map(|b| {
+												if b.state.is_idle() || b.state.land_started() {
+												b.vframe
+												} else {
+													99
+												}
+											}).unwrap_or(99))
+			.collect();
+		
+		// loop through vframes and match horizontal or vertical matches, append them to list 
+		for x in 0..GRID_WIDTH {
+		for y in 0..GRID_HEIGHT {
+				let i = (x, y).raw();
+				let hv0 = vframes[i];
 				
-				// TODO(Skytrias): REFACTOR
-				// TODO(Skytrias): max from chainables?
-				
-                let mut offset: usize = 0;
-                let end_time = (histories_length * CLEAR_TIME as usize) as u32;
-                if self.flood_horizontal_count > 2 {
-                    let mut had_chainable = None;
-					for (j, clear_index) in self.flood_horizontal_history.clone().iter().enumerate()
-                    {
-                        if let Some(b) = self.block_mut(*clear_index) {
-							if let Some(size) = b.was_chainable {
-								had_chainable = Some(size);
-							}
-							
-							b.state.to_clear((j * CLEAR_TIME as usize) as u32, end_time);
-                        }
-                    }
-
-                    offset = self.flood_horizontal_count as usize;
-                    
-					// push chainable even if count was 3
-					if let Some(size) = had_chainable {
-						self.combo_highlight.push_chain(size as u32 + 1);
-					}
+				if x > 1 {
+				let h1 = vframes[i - 1];
+			let h2 = vframes[i - 2];
 					
-					// only allow more than 3 to result in highlight
-					if self.flood_horizontal_count > 3 {
-					self.combo_highlight.push_combo(self.flood_horizontal_count);
+					if hv0 != 99 && hv0 == h1 && hv0 == h2 {
+						let mut temp = vec![i, i - 1, i - 2];
+						list.append(&mut temp);
 					}
 				}
-
-                if self.flood_vertical_count > 2 {
-                    let mut had_chainable = None;
-					for (j, clear_index) in self.flood_vertical_history.clone().iter().enumerate() {
-                        if let Some(b) = self.block_mut(*clear_index) {
-                            if let Some(size) = b.was_chainable {
-								had_chainable = Some(size);
-							}
-							
-							b.state.to_clear(((offset + j) * CLEAR_TIME as usize) as u32, end_time);
-                        }
-                    }
-					 
-					// push chainable even if count was 3
-					if let Some(size) = had_chainable {
-						self.combo_highlight.push_chain(size as u32 + 1);
-					}
+				
+				if y > 1 {
+					let v1 = vframes[i - GRID_WIDTH];
+			let v2 = vframes[i - GRID_WIDTH * 2];
 					
-					// only allow more than 3 to result in highlight
-					if self.flood_vertical_count > 3 {
-                    self.combo_highlight.push_combo(self.flood_vertical_count);
-                }
-                }
-				
-				if histories_length > 4 {
-					println!("was probably L");
+					if hv0 != 99 && hv0 == v1 && hv0 == v2 {
+						let mut temp = vec![i, i - GRID_WIDTH, i - GRID_WIDTH * 2];
+						list.append(&mut temp);
+					}
 				}
-				
-                self.flood_horizontal_count = 0;
-                self.flood_horizontal_history.clear();
-                self.flood_vertical_count = 0;
-                self.flood_vertical_history.clear();
-            }
-        }
-    }
-
+					}
+		}
+		
+		if list.len() != 0 {
+			// clear duplicates and sort 
+			list.sort();
+			list.dedup();
+		let length = list.len();
+			
+			let end_time = (length * CLEAR_TIME as usize) as u32;
+			
+			let mut had_chainable = None;
+			for (i, index) in list.iter().enumerate() {
+				if let Some(block) = self.block_mut(*index) {
+					block.state.to_clear((i * CLEAR_TIME as usize) as u32, end_time);
+					
+					if let Some(size) = block.was_chainable {
+						had_chainable = Some(size);
+					}
+				}
+				}
+			
+			// push chainable even if count was 3
+			if let Some(size) = had_chainable {
+				self.combo_highlight.push_chain(size as u32 + 1);
+			}
+			
+			// always send combo info
+			self.combo_highlight.push_combo(length as u32);
+			}
+	}
+	
     /// clear the component if clear state is finished
     pub fn block_resolve_clear(&mut self) {
         for (_, _, i) in iter_xy() {
@@ -540,64 +519,6 @@ impl Grid {
     pub fn update_components(&mut self) {
         for c in self.components.iter_mut() {
             c.update();
-        }
-    }
-
-    /// recursively goes through each position in the grid and checks for its neighbors if their vframes match, adds them to a list based on the direction
-    fn flood_check(&mut self, x: usize, y: usize, vframe: u32, direction: FloodDirection) {
-        if let Some(index) = (x, y).to_index() {
-            // dont allow empty components
-            if !self[index].is_block() {
-				return;
-				}
-			
-            // only allow the same vframe to be counted
-            if let Component::Normal(b) = &self[index] {
-                if b.vframe != vframe || !(b.state.is_idle() || b.state.land_started()) {
-                    return;
-                }
-            }
-
-            // TODO(Skytrias): could go into standalone function
-            match direction {
-                FloodDirection::Horizontal => {
-                    // skip already checked ones
-                    if self.flood_horizontal_history.contains(&index) {
-                        return;
-                    }
-
-                    self.flood_horizontal_history.push(index);
-                    self.flood_horizontal_count += 1;
-
-                    // repeat recursively around the component, gaining counts
-                    self.flood_check(x + 1, y, vframe, FloodDirection::Horizontal);
-
-                    // TODO(Skytrias): restriction by u32 / usize
-                    if x > 1 {
-                        self.flood_check(x - 1, y, vframe, FloodDirection::Horizontal);
-                    }
-                }
-
-                FloodDirection::Vertical => {
-                    // skip already checked ones
-                    if self.flood_vertical_history.contains(&index) {
-                        return;
-                    }
-
-                    self.flood_vertical_history.push(index);
-                    self.flood_vertical_count += 1;
-
-                    // repeat recursively around the component, gaining counts
-                    if y < GRID_HEIGHT - 1 {
-					self.flood_check(x, y + 1, vframe, FloodDirection::Vertical);
-					}
-					
-                    // TODO(Skytrias): restriction by u32 / usize
-                    if y > 1 {
-                        self.flood_check(x, y - 1, vframe, FloodDirection::Vertical);
-                    }
-                }
-            }
         }
     }
 

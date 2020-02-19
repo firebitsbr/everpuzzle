@@ -36,6 +36,6 @@ void main() {
 	gl_Position = projection * i_model * vec4(v_pos, depth, 1.);
 	
 	vec2 i_uv = vec2(gl_VertexIndex & 1, gl_VertexIndex >> 1) * tiles;
-	o_uv.x = (hframe + i_uv.x) * (1. / 6.);
+	o_uv.x = (hframe + i_uv.x) * (1. / 8.);
     o_uv.y = (vframe + i_uv.y) * (1. / 10.);
 }

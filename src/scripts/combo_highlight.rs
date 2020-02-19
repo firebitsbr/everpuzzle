@@ -68,11 +68,16 @@ impl ComboHighlight {
                 - (COMBO_DISAPPEAR_TIME - COMBO_DISAPPEAR_START) as i32)
                 .max(0);
             let stupid_scale = 1. - (death_counter as f32 / COMBO_DISAPPEAR_START as f32);
-
+			
+            let hframe = match combo.variant {
+                ComboVariant::Combo => 5,
+                ComboVariant::Chain => 6,
+            };
+			
             app.push_sprite(Sprite {
                 position: offset_position,
                 offset: self.dimensions / 2.,
-                hframe: 5,
+                hframe,
                 scale: self.dimensions / ATLAS_SPACING * stupid_scale,
                 centered: true,
                 ..Default::default()
