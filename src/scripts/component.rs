@@ -1,23 +1,23 @@
-use crate::helpers::{Sprite, ATLAS_GARBAGE, ATLAS_SPACING, V2};
+use crate::helpers::{Sprite, ATLAS_SPACING, V2};
 use crate::scripts::{Block, Child};
 use Component::*;
 
 /// variants that live in each grid space
 pub enum Component {
-    /// shows up as nothing in the grid 
-	Empty,
-	
-	/// normal block with unique data 
+    /// shows up as nothing in the grid
+    Empty,
+
+    /// normal block with unique data
     Normal(Block),
-	
-	/// garbage child that lives in the grid and is linked up in a higher layer garbage  
+
+    /// garbage child that lives in the grid and is linked up in a higher layer garbage  
     GarbageChild(Child),
-	
-	/// used to indicate if the component before this was a block that was cleared 
-	Chainable(usize),
-	
-	/// used to differentiate between empty, filler when you dont want anything to happen with the component
-    Placeholder, 
+
+    /// used to indicate if the component before this was a block that was cleared
+    Chainable(usize),
+
+    /// used to differentiate between empty, filler when you dont want anything to happen with the component
+    Placeholder,
 }
 
 impl Component {
@@ -25,7 +25,7 @@ impl Component {
     pub fn hframe(&self) -> u32 {
         match self {
             Normal(b) => b.hframe,
-            GarbageChild { .. } => 0,
+            GarbageChild(g) => g.hframe,
             _ => 0,
         }
     }
@@ -34,7 +34,7 @@ impl Component {
     pub fn vframe(&self) -> u32 {
         match self {
             Normal(b) => b.vframe,
-            GarbageChild { .. } => ATLAS_GARBAGE as u32,
+            GarbageChild(g) => g.vframe,
 
             _ => 0,
         }
@@ -44,7 +44,7 @@ impl Component {
     pub fn offset(&self) -> V2 {
         match self {
             Normal(b) => b.offset + ATLAS_SPACING / 2.,
-            GarbageChild(_) => ATLAS_SPACING / 2.,
+            GarbageChild(g) => V2::new(0., g.y_offset) + ATLAS_SPACING / 2.,
             _ => V2::zero(),
         }
     }
@@ -62,7 +62,6 @@ impl Component {
     pub fn update(&mut self) {
         match self {
             Normal(b) => b.update(),
-            // GarbageParent(g) => g.update(),
             _ => {}
         }
     }
@@ -105,7 +104,7 @@ impl Component {
         match self {
             Empty => true,
             Chainable(_) => true,
-			_ => false,
+            _ => false,
         }
     }
 
@@ -119,8 +118,12 @@ impl Component {
     }
 
     /// converts the current component into a GarbageChild no matter what it was before
-    pub fn to_garbage(&mut self) {
-        *self = GarbageChild(Default::default())
+    pub fn to_garbage(&mut self, (hframe, vframe): (u32, u32)) {
+        *self = GarbageChild(Child {
+            hframe,
+            vframe,
+            ..Default::default()
+        })
     }
 
     /// converts the current component into a sprite if it is real, can be turned into a quad

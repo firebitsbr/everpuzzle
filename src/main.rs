@@ -1,6 +1,5 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
-// NOTE(Skytrias): i remove allow before shipping releases builds, i prefer this so i dont get bombarded with warnings after small changes
 
 /// loads a file at runtime in debug mode, includes the file into the binary in release mode
 macro_rules! load_file {

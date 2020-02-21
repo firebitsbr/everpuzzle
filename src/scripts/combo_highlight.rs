@@ -46,16 +46,16 @@ impl ComboHighlight {
         });
         self.y_offset = COMBO_APPEAR_TIME;
     }
-	
+
     pub fn push_combo(&mut self, combo_size: u32) {
         self.list.push_front(ComboData {
-								 size: combo_size,
-								 counter: 0,
-								 variant: ComboVariant::Combo,
-							 });
+            size: combo_size,
+            counter: 0,
+            variant: ComboVariant::Combo,
+        });
         self.y_offset = COMBO_APPEAR_TIME;
     }
-	
+
     pub fn draw(&mut self, app: &mut App) {
         let mut position = V2::new(200., 300.);
         for combo in self.list.iter_mut() {
@@ -68,12 +68,12 @@ impl ComboHighlight {
                 - (COMBO_DISAPPEAR_TIME - COMBO_DISAPPEAR_START) as i32)
                 .max(0);
             let stupid_scale = 1. - (death_counter as f32 / COMBO_DISAPPEAR_START as f32);
-			
+
             let hframe = match combo.variant {
                 ComboVariant::Combo => 5,
                 ComboVariant::Chain => 6,
             };
-			
+
             app.push_sprite(Sprite {
                 position: offset_position,
                 offset: self.dimensions / 2.,

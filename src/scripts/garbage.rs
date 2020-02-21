@@ -1,24 +1,110 @@
 use crate::engine::App;
-use crate::helpers::{CLEAR_TIME, GRID_WIDTH, HANG_TIME, V2};
-use crate::scripts::{Block, Component, Grid};
+use crate::helpers::*;
+use crate::scripts::{Block, BlockState, Component, Grid};
 use GarbageState::*;
 
 /// garbage child data used mainly for unqiue animation
 pub struct Child {
+    /// y pixel offset of child
+    pub y_offset: f32,
+
+    /// hframe horizontal position in the texture atlas
+    pub hframe: u32,
+
+    /// vframe vertical position in the texture atlas
+    pub vframe: u32,
+
+    /// clear animation counter
     pub counter: u32,
+
+    /// clear start animation frame time
     pub start_time: u32,
+
+    /// wether the child will be randomized into a block after clear animation
     pub randomize_at_end: bool,
+
+    /// clear animation scale
     pub scale: V2,
+
+    /// wether the clearing animation finished on this child
+    pub finished: bool,
 }
 
 impl Default for Child {
     fn default() -> Self {
         Self {
+            hframe: 0,
+            vframe: 0,
             counter: 0,
             start_time: 0,
             randomize_at_end: false,
             scale: V2::one(),
+            y_offset: 0.,
+            finished: false,
         }
+    }
+}
+
+impl Child {
+    /// temporary way to generate the hframes / vframes dependand on height
+    pub fn gen_2d_frames(x: usize, y: usize, height: usize) -> (u32, u32) {
+        debug_assert!(height >= 1);
+
+        if height != 1 {
+            let hframe = {
+                if x == 0 {
+                    if y == 0 {
+                        1
+                    } else if y == height - 1 {
+                        2
+                    } else {
+                        8
+                    }
+                } else {
+                    if y == 0 {
+                        if x == GRID_WIDTH - 1 {
+                            3
+                        } else {
+                            5
+                        }
+                    } else {
+                        if x == GRID_WIDTH - 1 {
+                            if y == height - 1 {
+                                4
+                            } else {
+                                6
+                            }
+                        } else {
+                            if y == height - 1 {
+                                7
+                            } else {
+                                // midle pieces
+                                0
+                            }
+                        }
+                    }
+                }
+            };
+
+            (hframe, ATLAS_GARBAGE_2D)
+        } else {
+            Child::gen_1d_frames(x, GRID_WIDTH)
+        }
+    }
+
+    /// temporary way to generate the hframes / vframes by default for 1D garbages
+    pub fn gen_1d_frames(i: usize, end: usize) -> (u32, u32) {
+        let hframe = {
+            if i == 0 {
+                0
+            } else if i == end - 1 {
+                2
+            } else {
+                1
+            }
+        };
+
+        (hframe, ATLAS_GARBAGE_1D)
     }
 }
 
@@ -175,10 +261,18 @@ impl Garbage {
                 if *counter < *end_time {
                     let mut remove = None;
 
+                    // TODO(Skytrias): create simple gen_2d_frames based on xycount or icount
+                    let min_pos = self.children.iter().min().unwrap_or(&0);
+                    let min_y = (*min_pos as f32 / GRID_WIDTH as f32).floor() as usize;
+
                     for (i, child_index) in self.children.iter_mut().enumerate() {
                         let mut reset = false;
 
                         if let Component::GarbageChild(c) = &mut grid[*child_index] {
+                            if c.finished {
+                                continue;
+                            }
+
                             if c.counter > c.start_time {
                                 if (c.counter - c.start_time) < CLEAR_TIME {
                                     let amt = 1.
@@ -188,8 +282,28 @@ impl Garbage {
                                     if c.randomize_at_end {
                                         reset = true;
                                     } else {
+                                        let (hframe, vframe) = {
+                                            let pos = child_index.to_v2();
+
+                                            // TODO(Skytrias): too complex
+                                            if self.is_2d {
+                                                Child::gen_2d_frames(
+                                                    pos.x as usize,
+                                                    pos.y as usize - min_y,
+                                                    (self.count - GRID_WIDTH) / GRID_WIDTH,
+                                                )
+                                            } else {
+                                                println!("child");
+                                                Child::gen_1d_frames(pos.x as usize, self.count)
+                                            }
+                                        };
+
+                                        c.vframe = vframe;
+                                        c.hframe = hframe;
                                         c.scale = V2::one();
                                     }
+
+                                    c.finished = true;
                                 }
                             }
 
@@ -198,14 +312,25 @@ impl Garbage {
                             panic!("GARBAGE: wasnt garbage even though it should have been");
                         }
 
+                        // reset the block and save the i in which that block lived
                         if reset {
-                            grid[*child_index] = Component::Normal(Block::random_clear(app));
+                            grid[*child_index] = Component::Normal(Block {
+                                state: BlockState::Spawned,
+                                offset: V2::new(0., -grid.push_amount),
+                                vframe: Block::random_vframe(app),
+
+                                // allow chains from garbage
+                                was_chainable: Some(1),
+                                ..Default::default()
+                            });
                             remove = Some(i);
                             break;
                         }
                     }
 
+                    // remove the saved children in i in children, save in removed_children
                     if let Some(index) = remove {
+                        self.count -= 1;
                         self.removed_children.push(self.children.remove(index));
                     }
 
@@ -216,6 +341,8 @@ impl Garbage {
                             state.to_idle();
                         }
                     }
+
+                    self.is_2d = self.count > GRID_WIDTH;
                     self.removed_children.clear();
 
                     *finished = true;

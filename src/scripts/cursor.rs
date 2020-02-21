@@ -14,11 +14,12 @@ const LERP_TIME: u32 = 8;
 pub struct Cursor {
     sprite: Sprite,
 
+    pub y_offset: f32,
     pub position: V2,
-    last_position: V2,
+    pub last_position: V2,
     counter: u32,
 
-    goal_position: V2,
+    pub goal_position: V2,
     goal_counter: u32,
 }
 
@@ -39,6 +40,7 @@ impl Default for Cursor {
                 depth: 0.1,
                 ..Default::default()
             },
+            y_offset: 0.,
         }
     }
 }
@@ -108,22 +110,24 @@ impl Cursor {
         if app.key_pressed(VirtualKeyCode::S) {
             self.swap_blocks(grid);
         }
-		
-		// TODO(Skytrias): REMOVE ON RELEASE, only used for debugging faster
+
+        // TODO(Skytrias): REMOVE ON RELEASE, only used for debugging faster
         if app.key_pressed(VirtualKeyCode::A) {
-			let index = self.position.raw();
-			grid.components.swap(index, index - GRID_WIDTH);
-		}
+            let index = self.position.raw();
+            grid.components.swap(index, index - GRID_WIDTH);
+        }
     }
 
     // draws the cursor sprite into the app
     pub fn draw(&mut self, app: &mut App) {
+        //self.sprite.position = self.goal_position;
         self.sprite.position = V2::lerp(
             self.goal_position,
             self.sprite.position,
             self.goal_counter as f32 / LERP_TIME as f32,
         );
         self.sprite.hframe = (self.counter as f32 / 32.).floor() as u32 * 3;
+        self.sprite.offset.y = self.y_offset - ATLAS_TILE / 2.;
         app.push_sprite(self.sprite);
     }
 
@@ -136,6 +140,21 @@ impl Cursor {
         let left_empty = grid.block(i).is_none();
         let right_state = grid.block_state_check(i + 1, |s| s.is_idle());
         let right_empty = grid.block(i + 1).is_none();
+
+        // NOTE(Skytrias): feel of swap - might disable this to allow tricks, wont allow swap if any of the above left / right have hang
+        {
+            if i as i32 - 1 - GRID_WIDTH as i32 > 0 {
+                if grid.block_state_check(i - 1 - GRID_WIDTH, |s| s.is_hang()) {
+                    return;
+                }
+            }
+
+            if i as i32 + 1 - GRID_WIDTH as i32 > 0 {
+                if grid.block_state_check(i + 1 - GRID_WIDTH, |s| s.is_hang()) {
+                    return;
+                }
+            }
+        }
 
         if let Some(state) = grid.block_state_mut(i) {
             if left_state && (right_state || right_empty) {

@@ -36,23 +36,23 @@ block_state!(
 /// block data used for unique block rendering and unique state
 pub struct Block {
     /// hframe horizontal position in the texture atlas
-	pub hframe: u32,
-	
+    pub hframe: u32,
+
     /// vframe vertical position in the texture atlas
-	pub vframe: u32,
-	
-	/// visual sprite offset 
+    pub vframe: u32,
+
+    /// visual sprite offset
     pub offset: V2,
-	
-	/// visual sprite scale
+
+    /// visual sprite scale
     pub scale: V2,
-	
-	/// logic state machine with all states
+
+    /// logic state machine with all states
     pub state: BlockState,
-	
-	/// wether the block could result in a chain or not
-	pub was_chainable: Option<usize>,
-	}
+
+    /// wether the block could result in a chain or not
+    pub was_chainable: Option<usize>,
+}
 
 impl Default for Block {
     fn default() -> Self {
@@ -62,8 +62,8 @@ impl Default for Block {
             state: Idle,
             offset: V2::zero(),
             scale: V2::one(),
-			was_chainable: None,
-		}
+            was_chainable: None,
+        }
     }
 }
 
@@ -75,23 +75,10 @@ impl Block {
             ..Default::default()
         }
     }
-	
-	/// creates a block with a "randomized" vframe
-    pub fn random_bottom(app: &mut App) -> Self {
-        Self {
-			state: Bottom,
-            vframe: (app.rand_int(5) + 3) as u32,
-            ..Default::default()
-        }
-    }
-	
-    /// creates a "randomized" block and sets it to spawned, having to turn it to idle manually at some point
-    pub fn random_clear(app: &mut App) -> Self {
-        Self {
-            state: Spawned,
-            vframe: (app.rand_int(5) + 3) as u32,
-            ..Default::default()
-        }
+
+    /// simply creates a vframe designed for the block
+    pub fn random_vframe(app: &mut App) -> u32 {
+        (app.rand_int(5) + 3) as u32
     }
 
     /// sets the state to idle and offset.x back to 0
@@ -105,11 +92,7 @@ impl Block {
         match &mut self.state {
             Hang { counter, finished } => {
                 if *counter < HANG_TIME - 1 {
-                    if let Some(_) = self.was_chainable {
-						self.hframe = 1;
-					}
-					
-					*counter += 1;
+                    *counter += 1;
                 } else {
                     *finished = true;
                 }
@@ -155,31 +138,28 @@ impl Block {
                 }
             }
 
-            Fall => {
-				self.hframe = 3;
+            Land { counter, finished } => {
+                if *counter < LAND_TIME - 1 {
+                    self.hframe = 3 + ((*counter as f32 / LAND_TIME as f32) * 3.).floor() as u32;
+                    *counter += 1;
+                } else {
+                    // TODO(Skytrias): test out if this is the right place to disable chaining
+                    self.was_chainable = None;
+
+                    *finished = true;
+                }
             }
 
             Bottom => {
                 self.hframe = 2;
             }
 
-            Land { counter, finished } => {
-                if *counter < LAND_TIME - 1 {
-                    self.hframe = 3 + ((*counter as f32 / LAND_TIME as f32) * 3.).floor() as u32;
-                    *counter += 1;
-                } else {
-					// TODO(Skytrias): test out if this is the right place to disable chaining
-                    self.was_chainable = None;
-					
-					*finished = true;
-                }
+            Idle => {
+                self.was_chainable = None;
+                self.hframe = 0;
             }
 
-			Idle => {
-				self.hframe = 0;
-			}
-			
-			 _ => {}
+            _ => {}
         }
     }
 }

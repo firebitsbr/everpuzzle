@@ -203,7 +203,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
     // first pipeline
     let quad_pipeline = quad::Pipeline::new(&mut device, &mut queue, &ubo_projection);
 
-    let font: &[u8] = include_bytes!("../../fonts/JetBrainsMono-Regular.ttf");
+    let font = load_file!("fonts/JetBrainsMono-Regular.ttf");
     let glyph_brush = GlyphBrushBuilder::using_font_bytes(font).build(&mut device, RENDER_FORMAT);
 
     // initializse the app itself
@@ -241,37 +241,28 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             if app.key_pressed(VirtualKeyCode::Escape) {
                 quit = true;
             }
-			
-			/*
+
+            /*
             if app.key_pressed(VirtualKeyCode::A) {
                 let offset = (app.rand_int(1) * 3) as usize;
                 grid.gen_1d_garbage(&mut garbage_system, 3, offset);
-				}
-   */
-			
+                }
+            */
+
             if app.key_pressed(VirtualKeyCode::Return) {
                 grid.gen_2d_garbage(&mut garbage_system, 2);
             }
 
             if let Some(frames) = app.key_down_frames(VirtualKeyCode::Space) {
-				if frames == 1 || frames % 50 == 0 {
-				for x in 0..GRID_WIDTH {
-					for y in 0..GRID_HEIGHT {
-							let index = (x, y).raw();
-						
-						if y < GRID_HEIGHT - 1 {
-								grid.components.swap(index, index + GRID_WIDTH);
-						} else {
-							grid.components[index] = Component::Normal(Block::random_bottom(&mut app));
-							}
-				}
-				}
-				}
-				}
+                if frames == 1 || frames % 50 == 0 {
+                    grid.push_upwards(&mut app, &mut garbage_system, &mut cursor);
+                }
+            }
 
             cursor.update(&app, &mut grid);
-            grid.update(&mut app, &mut garbage_system);
+            grid.update(&mut garbage_system);
             garbage_system.update(&mut app, &mut grid);
+            grid.push_update(&mut app, &mut garbage_system, &mut cursor);
 
             // clearing key / mouse input
             {
@@ -381,6 +372,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 
             grid.draw(&mut app);
             cursor.draw(&mut app);
+            //garbage_system.draw(&mut app, &mut grid);
 
             let frame = swap_chain.get_next_texture();
 

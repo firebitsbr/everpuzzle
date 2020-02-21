@@ -19,7 +19,9 @@ pub const ATLAS_FILL: u32 = 0;
 /// vframe position of the cursor texture
 pub const ATLAS_CURSOR: u32 = 1;
 /// vframe position of the garbage texture
-pub const ATLAS_GARBAGE: u32 = 9;
+pub const ATLAS_GARBAGE_1D: u32 = 9;
+/// vframe position of the garbage texture
+pub const ATLAS_GARBAGE_2D: u32 = 10;
 
 /// block width size of the grid
 pub const GRID_WIDTH: usize = 6;

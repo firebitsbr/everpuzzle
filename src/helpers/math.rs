@@ -1,3 +1,4 @@
+use crate::helpers::GRID_WIDTH;
 use vek::geom::repr_c::Rect;
 use vek::geom::FrustumPlanes;
 use vek::mat::repr_c::Mat4;
@@ -28,4 +29,17 @@ pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) 
 #[inline]
 pub fn lerp(n1: f32, n2: f32, amount: f32) -> f32 {
     (1. - amount) * n1 + amount * n2
+}
+
+pub trait ToV2 {
+    fn to_v2(&self) -> V2;
+}
+
+impl ToV2 for usize {
+    fn to_v2(&self) -> V2 {
+        V2::new(
+            (*self % GRID_WIDTH) as f32,
+            (*self as f32 / GRID_WIDTH as f32).floor(),
+        )
+    }
 }

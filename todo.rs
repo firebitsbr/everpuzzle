@@ -1,17 +1,24 @@
 
+Bugs {
+	Block {
+		Swap triggers hang to be chainable?,
+	}
+}
+
 Rendering {
 	clipping,
 	chaching,
 	
 	[x] move to instanced rendering + indices,
-	[x] text rendering back again,
+}
+
+Helpers {
+	builder pattern for block / state checking?,
+	iterator through real blocks, block_states, garbage, garbage_states,
+	[_] Use IV2 on things that dont need float?,
 }
 
 General {
-	[_] Use IV2 on things that dont need float?,
-	
-	iterator through real blocks, block_states, garbage, garbage_states,
-	
 	multiple grids,
 	multiple players with set controls,
 	rebind keys,
@@ -32,13 +39,13 @@ Cursor {
 }
 
 Block {
-	falling stop swap?,
-	[!] make L J R Rreverse clears work,
+	[x] falling stop swap?,
+	[x] make L J R Rreverse clears work,
 	[x] clear should happen in a row,
 	[x] land state,
 	
 	get_clear_type - from vframe {
-		normal,
+		[x] normal,
 		Steel,
 		etc,
 	}
@@ -49,8 +56,9 @@ Grid {
 	randomization dont let combos happen at spawn,
 		gen 6 without matches,
 	},
-		
-	[!] y offset per pixel,
+	
+	y_offset key_down held till one push is done,
+	[x] y offset per pixel,
 	[x] clear chain,
 	[_] combo count on each frame,
 	[_] have block_state(i) in bounds dependant on the type -> if option return option else ref,
@@ -58,7 +66,10 @@ Grid {
 
 Garbage System {
 	delay garbage spawn,
+	draw new block already when clearing child - till it gets added as real component,
 	
+	[x] make new spawned blocks from garbage chainable,
+	[x] fix garbage clear not ending properly,
 	[x] clear should be checked from other garbage too,
 	
 	[x] 2d {
@@ -85,6 +96,7 @@ Garbage System {
 	add {}, (), [], automatically,
 	recognize fn asd<> as a function too,
 	#[inline] shouldnt indent next text,
+	make brace highlights not highlight indent = 1,
 }
 
 marketing {

@@ -1,23 +1,28 @@
 use crate::engine::App;
 use crate::helpers::*;
 use crate::scripts::*;
-use std::collections::HashMap;
 use std::ops::{Index, IndexMut};
-use wgpu_glyph::Section;
 
-/// horizontal is -x and +x, vertical is -y and +y
-#[derive(Copy, Clone)]
-enum FloodDirection {
-    Horizontal,
-    Vertical,
-}
+/// frame time until the push_counter gets reset
+const PUSH_TIME: u32 = 100;
 
 /// the grid holds all components and updates all the script logic of each component  
 pub struct Grid {
+    /// all components that the player can interact with
     pub components: Vec<Component>,
+
+    /// placeholder component so that &component and &mut component can be shared around
     placeholder: Component,
-combo_highlight: ComboHighlight,
-	}
+
+    /// rendering highlight for combo / chain appearing
+    combo_highlight: ComboHighlight,
+
+    /// counter till the push_amount is increased
+    push_counter: u32,
+
+    /// pixel amount of y offset of all pushable structs
+    pub push_amount: f32,
+}
 
 impl Default for Grid {
     fn default() -> Self {
@@ -25,17 +30,15 @@ impl Default for Grid {
             components: Vec::with_capacity(GRID_TOTAL),
             placeholder: Component::Placeholder,
             combo_highlight: Default::default(),
+
+            push_counter: 0,
+            push_amount: 0.,
         }
     }
 }
 
-#[derive(Debug)]
-struct ClearData {
-	vframe: u32,
-	indexes: Vec<usize>,
-}
-
 impl Grid {
+    /// creates empty grid for testing
     pub fn empty() -> Self {
         let components: Vec<Component> = (0..GRID_TOTAL).map(|_| Component::Empty).collect();
 
@@ -63,6 +66,53 @@ impl Grid {
         }
     }
 
+    // TODO(Skytrias): use new bound iterator yx_non_rev
+    pub fn push_upwards(
+        &mut self,
+        app: &mut App,
+        garbage_system: &mut GarbageSystem,
+        cursor: &mut Cursor,
+    ) {
+        for x in 0..GRID_WIDTH {
+            for y in 0..GRID_HEIGHT {
+                let index = (x, y).raw();
+
+                if y < GRID_HEIGHT - 1 {
+                    match &mut self[index + GRID_WIDTH] {
+                        Component::Normal(b) => b.offset.y = 0.,
+                        Component::GarbageChild(g) => g.y_offset = 0.,
+                        _ => {}
+                    }
+
+                    self.components.swap(index, index + GRID_WIDTH);
+                } else {
+                    self.components[index] = Component::Normal(Block {
+                        state: BlockState::Bottom,
+                        vframe: Block::random_vframe(app),
+                        offset: V2::new(0., -self.push_amount),
+                        ..Default::default()
+                    });
+                }
+            }
+        }
+
+        // TODO(Skytrias): detection for out of bounds?
+        // shift up the garbage children indexes
+        for garbage in garbage_system.list.iter_mut() {
+            for child_index in garbage.children.iter_mut() {
+                *child_index -= GRID_WIDTH;
+            }
+        }
+
+        // shift up the cursor if still in grid range
+        if cursor.position.y > 0. {
+            cursor.position.y -= 1.;
+            cursor.last_position.y -= 1.;
+            cursor.goal_position.y -= 1. * ATLAS_TILE;
+            cursor.y_offset = 0.;
+        }
+    }
+
     /// generates a line of garbage at the top of the grid
     pub fn gen_1d_garbage(
         &mut self,
@@ -75,8 +125,8 @@ impl Grid {
 
         let children: Vec<usize> = (offset..offset + width).collect();
 
-        for index in children.iter() {
-            self.components[*index].to_garbage();
+        for (i, index) in children.iter().enumerate() {
+            self.components[*index].to_garbage(Child::gen_1d_frames(i, width));
         }
 
         garbage_system.list.push(Garbage::new(children));
@@ -89,10 +139,10 @@ impl Grid {
         let mut children = Vec::with_capacity(height * 6);
 
         for y in 0..height {
-            for x in 0..6 {
+            for x in 0..GRID_WIDTH {
                 if let Some(index) = (x, y).to_index() {
                     children.push(index);
-                    self.components[index].to_garbage();
+                    self.components[index].to_garbage(Child::gen_2d_frames(x, y, height));
                 }
             }
         }
@@ -129,105 +179,111 @@ impl Grid {
 
     /// sets the last row of blocks to bottom state
     pub fn block_detect_bottom(&mut self) {
-		for (_, y, i) in iter_xy() {
-		if let Some(state) = self.block_state_mut(i) {
-				if y == GRID_HEIGHT - 1 {
-					if state.is_swap() || state.is_clear() {
-						continue;
-					}
-					
-					state.to_bottom();
-				} else {
-					// NOTE(Skytrias): might not be needed anymore
-					if state.is_bottom() {
-						state.to_idle();
-					}
-				}
-			}
+        for (_, y, i) in iter_xy() {
+            if let Some(state) = self.block_state_mut(i) {
+                if y == GRID_HEIGHT - 1 {
+                    if state.is_swap() || state.is_clear() {
+                        continue;
+                    }
+
+                    state.to_bottom();
+                } else {
+                    // NOTE(Skytrias): might not be needed anymore
+                    if state.is_bottom() {
+                        state.to_idle();
+                    }
+                }
+            }
         }
     }
 
-	pub fn block_detect_clear(&mut self) {
-		// NOTE(Skytrias): consider pushing to grid variables?
-		let mut list = Vec::new();
-		
-		// get all vframes, otherwhise 99
-		let vframes: Vec<u32> = (0..GRID_TOTAL)
-			.map(|i| self.block(i).map(|b| {
-												if b.state.is_idle() || b.state.land_started() {
-												b.vframe
-												} else {
-													99
-												}
-											}).unwrap_or(99))
-			.collect();
-		
-		// loop through vframes and match horizontal or vertical matches, append them to list 
-		for x in 0..GRID_WIDTH {
-		for y in 0..GRID_HEIGHT {
-				let i = (x, y).raw();
-				let hv0 = vframes[i];
-				
-				if x > 1 {
-				let h1 = vframes[i - 1];
-			let h2 = vframes[i - 2];
-					
-					if hv0 != 99 && hv0 == h1 && hv0 == h2 {
-						let mut temp = vec![i, i - 1, i - 2];
-						list.append(&mut temp);
-					}
-				}
-				
-				if y > 1 {
-					let v1 = vframes[i - GRID_WIDTH];
-			let v2 = vframes[i - GRID_WIDTH * 2];
-					
-					if hv0 != 99 && hv0 == v1 && hv0 == v2 {
-						let mut temp = vec![i, i - GRID_WIDTH, i - GRID_WIDTH * 2];
-						list.append(&mut temp);
-					}
-				}
-					}
-		}
-		
-		if list.len() != 0 {
-			// clear duplicates and sort 
-			list.sort();
-			list.dedup();
-		let length = list.len();
-			
-			let end_time = (length * CLEAR_TIME as usize) as u32;
-			
-			let mut had_chainable = None;
-			for (i, index) in list.iter().enumerate() {
-				if let Some(block) = self.block_mut(*index) {
-					block.state.to_clear((i * CLEAR_TIME as usize) as u32, end_time);
-					
-					if let Some(size) = block.was_chainable {
-						had_chainable = Some(size);
-					}
-				}
-				}
-			
-			// push chainable even if count was 3
-			if let Some(size) = had_chainable {
-				self.combo_highlight.push_chain(size as u32 + 1);
-			}
-			
-			// always send combo info
-			self.combo_highlight.push_combo(length as u32);
-			}
-	}
-	
+    pub fn block_detect_clear(&mut self) {
+        // NOTE(Skytrias): consider pushing to grid variables?
+        let mut list = Vec::new();
+
+        // get all vframes, otherwhise 99
+        let vframes: Vec<u32> = (0..GRID_TOTAL)
+            .map(|i| {
+                self.block(i)
+                    .map(|b| {
+                        if b.state.is_idle() || b.state.land_started() {
+                            b.vframe
+                        } else {
+                            99
+                        }
+                    })
+                    .unwrap_or(99)
+            })
+            .collect();
+
+        // loop through vframes and match horizontal or vertical matches, append them to list
+        for x in 0..GRID_WIDTH {
+            for y in 0..GRID_HEIGHT {
+                let i = (x, y).raw();
+                let hv0 = vframes[i];
+
+                if x > 1 {
+                    let h1 = vframes[i - 1];
+                    let h2 = vframes[i - 2];
+
+                    if hv0 != 99 && hv0 == h1 && hv0 == h2 {
+                        let mut temp = vec![i, i - 1, i - 2];
+                        list.append(&mut temp);
+                    }
+                }
+
+                if y > 1 {
+                    let v1 = vframes[i - GRID_WIDTH];
+                    let v2 = vframes[i - GRID_WIDTH * 2];
+
+                    if hv0 != 99 && hv0 == v1 && hv0 == v2 {
+                        let mut temp = vec![i, i - GRID_WIDTH, i - GRID_WIDTH * 2];
+                        list.append(&mut temp);
+                    }
+                }
+            }
+        }
+
+        if list.len() != 0 {
+            // clear duplicates and sort
+            list.sort();
+            list.dedup();
+            let length = list.len();
+
+            let end_time = (length * CLEAR_TIME as usize) as u32;
+
+            let mut had_chainable = None;
+            for (i, index) in list.iter().enumerate() {
+                if let Some(block) = self.block_mut(*index) {
+                    block
+                        .state
+                        .to_clear((i * CLEAR_TIME as usize) as u32, end_time);
+
+                    if let Some(size) = block.was_chainable {
+                        had_chainable = Some(size);
+                    }
+                }
+            }
+
+            // push chainable even if count was 3
+            if let Some(size) = had_chainable {
+                self.combo_highlight.push_chain(size as u32 + 1);
+            }
+
+            // always send combo info
+            self.combo_highlight.push_combo(length as u32);
+        }
+    }
+
     /// clear the component if clear state is finished
     pub fn block_resolve_clear(&mut self) {
         for (_, _, i) in iter_xy() {
             let finished = self.block_state_check(i, |s| s.clear_finished());
-			
+
             if finished {
-				let size = self.block(i).unwrap().was_chainable.unwrap_or(0);
-				self.components[i] = Component::Chainable(size + 1);
-			}
+                let size = self.block(i).unwrap().was_chainable.unwrap_or(0);
+                self.components[i] = Component::Chainable(size + 1);
+            }
         }
     }
 
@@ -307,22 +363,22 @@ impl Grid {
                 if let Some(ib) = (i + GRID_WIDTH).to_index() {
                     if self[ib].is_empty() {
                         let was_chainable = {
-						if let Component::Chainable(size) = self[ib] {
-							if let Component::Normal(b) = &mut self[i] {
-								b.was_chainable = Some(size);
-								}
-								
-								true
-							} else {
-								false
-							}
-						};
-						
-						if was_chainable {
-							self[ib] = Component::Empty;
-						}
-						
-						self.components.swap(i, ib);
+                            if let Component::Chainable(size) = self[ib] {
+                                if let Component::Normal(b) = &mut self[i] {
+                                    b.was_chainable = Some(size);
+                                }
+
+                                true
+                            } else {
+                                false
+                            }
+                        };
+
+                        if was_chainable {
+                            self[ib] = Component::Empty;
+                        }
+
+                        self.components.swap(i, ib);
                     } else {
                         // reset blocks that were in fall and cant fall anymore
                         if let Some(state) = self.block_state_mut(i) {
@@ -340,7 +396,7 @@ impl Grid {
             if self.block_state_check(i, |s| s.land_finished()) {
                 if let Some(b) = self.block_mut(i) {
                     //b.can_chain = false;
-					b.state.to_idle();
+                    b.state.to_idle();
                 }
             }
         }
@@ -431,58 +487,44 @@ impl Grid {
                     for j in 0..len {
                         let child_index = g.children[j];
 
-                        self.components[child_index] = Component::GarbageChild(Child {
-                            start_time: j as u32 * 20,
-                            randomize_at_end: lowest.iter().any(|&index| index == child_index),
-                            ..Default::default()
-                        });
+                        if let Some(child) = self.garbage_child_mut(child_index) {
+                            // set clear hframe on each garbage child
+                            if g.is_2d {
+                                child.hframe = 9;
+                            } else {
+                                child.hframe = 3;
+                            }
+
+                            child.counter = 0;
+                            child.finished = false;
+                            child.start_time = j as u32 * CLEAR_TIME;
+                            child.randomize_at_end =
+                                lowest.iter().any(|&index| index == child_index);
+                        }
                     }
 
-                    g.state.to_clear(len as u32);
+                    g.state.to_clear((len as u32 + 1) * CLEAR_TIME);
                 }
             }
         }
     }
 
-    /// garbage clear resolve
-    pub fn garbage_resolve_clear(&mut self, app: &mut App, garbage_system: &mut GarbageSystem) {
-        for i in 0..garbage_system.list.len() {
-            let mut remove_garbage = false;
+    /// garbage clear resolve, checks for finished - sets state to idle - removes garbage from list if empty
+    pub fn garbage_resolve_clear(&mut self, garbage_system: &mut GarbageSystem) {
+        for (i, garbage) in garbage_system.list.iter_mut().enumerate() {
+            if garbage.state.clear_finished() {
+                garbage.state.to_idle();
 
-            {
-                let g = &mut garbage_system.list[i];
-
-                if g.state.clear_finished() {
-                    if g.is_2d {
-                        // delete the lowest blocks and loop through those instead of all
-                        let lowest = g.drain_lowest();
-                        g.state.to_idle();
-
-                        // convert all into random in 1d
-                        for index in lowest.iter() {
-                            self.components[*index] = Component::Normal(Block::random(app));
-                        }
-                    } else {
-                        // convert all into random in 1d
-                        for index in g.children.clone().iter() {
-                            self.components[*index] = Component::Normal(Block::random(app));
-                        }
-
-                        remove_garbage = true;
-                    }
+                if garbage.children.is_empty() {
+                    garbage_system.list.remove(i);
+                    break;
                 }
-            }
-
-            // garbage was empty and gets removed entirely
-            if remove_garbage {
-                garbage_system.list.remove(i);
-                return;
             }
         }
     }
 
     /// updates all components in the grid and the garbage system
-    pub fn update(&mut self, app: &mut App, garbage_system: &mut GarbageSystem) {
+    pub fn update(&mut self, garbage_system: &mut GarbageSystem) {
         debug_assert!(!self.components.is_empty());
 
         self.update_components();
@@ -490,10 +532,10 @@ impl Grid {
         // NOTE(Skytrias): always do resolves before detects so there is 1 frame at minimum delay
         self.block_resolve_swap();
         self.block_detect_bottom();
-		
+
         // resolve any lands
         self.block_resolve_land();
-		
+
         // resolve any falls
         self.block_resolve_fall();
         self.garbage_resolve_fall(garbage_system);
@@ -508,12 +550,42 @@ impl Grid {
 
         // detect any clears
         self.block_resolve_clear();
-        self.garbage_resolve_clear(app, garbage_system);
+        self.garbage_resolve_clear(garbage_system);
 
         // resolve any clear
         self.block_detect_clear();
         self.garbage_detect_clear(garbage_system);
-	}
+    }
+
+    pub fn push_update(
+        &mut self,
+        app: &mut App,
+        garbage_system: &mut GarbageSystem,
+        cursor: &mut Cursor,
+    ) {
+        if self.push_counter < PUSH_TIME {
+            self.push_counter += 1;
+        } else {
+            self.push_amount += 1.;
+            let amt = self.push_amount;
+            self.push_counter = 0;
+
+            if amt < ATLAS_TILE {
+                for i in 0..GRID_TOTAL {
+                    match &mut self[i] {
+                        Component::Normal(b) => b.offset.y = -amt,
+                        Component::GarbageChild(g) => g.y_offset = -amt,
+                        _ => {}
+                    }
+                }
+
+                cursor.y_offset = -amt;
+            } else {
+                self.push_upwards(app, garbage_system, cursor);
+                self.push_amount = 0.;
+            }
+        }
+    }
 
     /// updates all non empty components in the grid
     pub fn update_components(&mut self) {
@@ -542,7 +614,7 @@ impl Grid {
             _ => None,
         }
     }
-	
+
     /// returns a block from the specified grid_index
     pub fn block_mut<I: BoundIndex>(&mut self, index: I) -> Option<&mut Block> {
         match &mut self[index] {
@@ -550,7 +622,7 @@ impl Grid {
             _ => None,
         }
     }
-	
+
     /// returns any state if the component is a block
     pub fn block_state<I: BoundIndex>(&self, index: I) -> Option<&BlockState> {
         match &self[index] {
@@ -563,6 +635,14 @@ impl Grid {
     pub fn block_state_mut<I: BoundIndex>(&mut self, index: I) -> Option<&mut BlockState> {
         match &mut self[index] {
             Component::Normal(b) => Some(&mut b.state),
+            _ => None,
+        }
+    }
+
+    /// returns any state if the component is a block
+    pub fn garbage_child_mut<I: BoundIndex>(&mut self, index: I) -> Option<&mut Child> {
+        match &mut self[index] {
+            Component::GarbageChild(g) => Some(g),
             _ => None,
         }
     }

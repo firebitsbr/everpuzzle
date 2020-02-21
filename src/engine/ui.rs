@@ -1,6 +1,6 @@
 use crate::engine::App;
-use crate::helpers::{Sprite, ATLAS_SPACING, ATLAS_TILE, R4, V2};
-use wgpu_glyph::{HorizontalAlign, Layout, Section, VerticalAlign};
+use crate::helpers::{Sprite, ATLAS_SPACING, R4, V2};
+use wgpu_glyph::{HorizontalAlign, Layout, Section};
 use UiItem::*;
 
 // TODO(Skytrias): helper for drawing text and sprite on top of each other
