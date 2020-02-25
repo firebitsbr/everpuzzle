@@ -5,7 +5,7 @@ use BlockState::*;
 /// the direction a block can be swapped into
 #[derive(Copy, Clone, Debug)]
 pub enum SwapDirection {
-    Left,
+	Left,
     Right,
 }
 
@@ -32,6 +32,23 @@ block_state!(
 				 Land, land {},
 			 }
 			 );
+
+pub trait AdditionalState {
+	fn swap_direction(self) -> Option<SwapDirection>;
+}
+
+impl AdditionalState for Option<&BlockState> {
+	fn swap_direction(self) -> Option<SwapDirection> {
+		match self {
+			Some(state) => match state {
+				BlockState::Swap { direction, .. } => Some(*direction),
+				_ => None
+			}
+			
+			_ => None,
+		}
+	}
+}
 
 /// block data used for unique block rendering and unique state
 pub struct Block {

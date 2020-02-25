@@ -1,6 +1,7 @@
 use crate::helpers::{Sprite, ATLAS_SPACING, V2};
 use crate::scripts::{Block, Child};
-use Component::*;
+
+// TODO(Skytrias): remove placeholder
 
 /// variants that live in each grid space
 pub enum Component {
@@ -8,24 +9,24 @@ pub enum Component {
     Empty,
 
     /// normal block with unique data
-    Normal(Block),
+    Block(Block),
 
     /// garbage child that lives in the grid and is linked up in a higher layer garbage  
-    GarbageChild(Child),
+    Child(Child),
 
     /// used to indicate if the component before this was a block that was cleared
     Chainable(usize),
 
     /// used to differentiate between empty, filler when you dont want anything to happen with the component
     Placeholder,
-}
+	}
 
 impl Component {
     /// the vframe of the component, used for drawing
     pub fn hframe(&self) -> u32 {
         match self {
-            Normal(b) => b.hframe,
-            GarbageChild(g) => g.hframe,
+            Component::Block(b) => b.hframe,
+            Component::Child(g) => g.hframe,
             _ => 0,
         }
     }
@@ -33,8 +34,8 @@ impl Component {
     /// the vframe of the component, used for drawing
     pub fn vframe(&self) -> u32 {
         match self {
-            Normal(b) => b.vframe,
-            GarbageChild(g) => g.vframe,
+            Component::Block(b) => b.vframe,
+            Component::Child(g) => g.vframe,
 
             _ => 0,
         }
@@ -43,8 +44,8 @@ impl Component {
     /// returns the offset in the grid, used for drawing
     pub fn offset(&self) -> V2 {
         match self {
-            Normal(b) => b.offset + ATLAS_SPACING / 2.,
-            GarbageChild(g) => V2::new(0., g.y_offset) + ATLAS_SPACING / 2.,
+            Component::Block(b) => b.offset + ATLAS_SPACING / 2.,
+            Component::Child(g) => V2::new(0., g.y_offset) + ATLAS_SPACING / 2.,
             _ => V2::zero(),
         }
     }
@@ -52,8 +53,8 @@ impl Component {
     /// returns the scale of the component in the grid, used for drawing
     pub fn scale(&self) -> V2 {
         match self {
-            Normal(b) => b.scale,
-            GarbageChild(c) => c.scale,
+            Component::Block(b) => b.scale,
+            Component::Child(c) => c.scale,
             _ => V2::zero(),
         }
     }
@@ -61,7 +62,7 @@ impl Component {
     /// call updates on the component
     pub fn update(&mut self) {
         match self {
-            Normal(b) => b.update(),
+            Component::Block(b) => b.update(),
             _ => {}
         }
     }
@@ -69,7 +70,7 @@ impl Component {
     /// call reset on any component
     pub fn reset(&mut self) {
         match self {
-            Normal(b) => b.reset(),
+            Component::Block(b) => b.reset(),
             _ => {}
         }
     }
@@ -77,7 +78,7 @@ impl Component {
     /// returns true if the component is something real,
     pub fn is_block(&self) -> bool {
         match self {
-            Normal(_) => true,
+            Component::Block(_) => true,
             _ => false,
         }
     }
@@ -85,7 +86,7 @@ impl Component {
     /// returns true if the component is something real,
     pub fn is_garbage(&self) -> bool {
         match self {
-            GarbageChild(_) => true,
+            Component::Child(_) => true,
             _ => false,
         }
     }
@@ -93,8 +94,8 @@ impl Component {
     /// returns true if the component is something real,
     pub fn is_some(&self) -> bool {
         match self {
-            Empty => false,
-            Placeholder => false,
+            Component::Empty => false,
+            Component::Placeholder => false,
             _ => true,
         }
     }
@@ -102,8 +103,8 @@ impl Component {
     /// returns true if the component is empty
     pub fn is_empty(&self) -> bool {
         match self {
-            Empty => true,
-            Chainable(_) => true,
+            Component::Empty => true,
+            Component::Chainable(_) => true,
             _ => false,
         }
     }
@@ -111,15 +112,15 @@ impl Component {
     /// checks wether the clear state has just started counting
     pub fn clear_started(&self) -> bool {
         match self {
-            Normal(b) => b.state.clear_started(),
-            GarbageChild(c) => c.counter == 0 && c.start_time != 0,
+            Component::Block(b) => b.state.clear_started(),
+            Component::Child(c) => c.counter == 0 && c.start_time != 0,
             _ => false,
         }
     }
 
-    /// converts the current component into a GarbageChild no matter what it was before
+    /// converts the current component into a Component::Child no matter what it was before
     pub fn to_garbage(&mut self, (hframe, vframe): (u32, u32)) {
-        *self = GarbageChild(Child {
+        *self = Component::Child(Child {
             hframe,
             vframe,
             ..Default::default()
@@ -142,4 +143,8 @@ impl Component {
             None
         }
     }
+}
+
+pub trait OptionChainable {
+	fn chain() -> bool;
 }

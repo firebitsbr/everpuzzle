@@ -1,4 +1,12 @@
 
+Now {
+	Explore better / declaritive scripting {
+		different types of iters,
+		enum for directions above, below?,
+		one iter call with enum variants,
+	}
+}
+
 Bugs {
 	Block {
 		Swap triggers hang to be chainable?,

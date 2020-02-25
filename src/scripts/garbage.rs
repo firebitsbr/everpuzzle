@@ -268,7 +268,7 @@ impl Garbage {
                     for (i, child_index) in self.children.iter_mut().enumerate() {
                         let mut reset = false;
 
-                        if let Component::GarbageChild(c) = &mut grid[*child_index] {
+                        if let Component::Child(c) = &mut grid[*child_index] {
                             if c.finished {
                                 continue;
                             }
@@ -314,7 +314,7 @@ impl Garbage {
 
                         // reset the block and save the i in which that block lived
                         if reset {
-                            grid[*child_index] = Component::Normal(Block {
+                            grid[*child_index] = Component::Block(Block {
                                 state: BlockState::Spawned,
                                 offset: V2::new(0., -grid.push_amount),
                                 vframe: Block::random_vframe(app),

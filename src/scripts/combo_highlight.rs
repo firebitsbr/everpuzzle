@@ -62,8 +62,8 @@ impl ComboHighlight {
             let offset_position = V2::new(
                 position.x,
                 position.y + self.dimensions.y * (self.y_offset as f32 / COMBO_APPEAR_TIME as f32),
-            );
-
+											  );
+			
             let death_counter = (combo.counter as i32
                 - (COMBO_DISAPPEAR_TIME - COMBO_DISAPPEAR_START) as i32)
                 .max(0);

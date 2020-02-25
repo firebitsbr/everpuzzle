@@ -19,6 +19,11 @@ oorandom = "11.1" # random number generator
 num-traits = "0.2.11" # convert numbers to usize 
 wgpu_glyph = "0.6" # text renddering
 paste = "0.1.6" # combine function names with $*:ident in macros
+bitflags = "1.2.1" # flags 
+
+[dependencies.hecs]
+version = "0.2.7" # ecs
+features = ["macros"]
 
 [profile.dev] 
 debug = 1 
