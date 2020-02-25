@@ -13,9 +13,6 @@ macro_rules! load_file {
     };
 }
 
-#[macro_use]
-extern crate hecs;
-
 mod engine;
 mod helpers;
 mod scripts;

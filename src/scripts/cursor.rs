@@ -1,8 +1,7 @@
-use crate::engine::{App, State, EmptyChain};
+use crate::engine::App;
 use crate::helpers::*;
-use crate::scripts::{Grid, SwapDirection};
+use crate::scripts::{BlockState, Component, Grid};
 use winit::event::VirtualKeyCode;
-use hecs::{Entity, World};
 
 /// amount of frames it takes for the fast cursor movement to happen
 const FRAME_LIMIT: u32 = 25;
@@ -46,7 +45,7 @@ impl Default for Cursor {
 
 impl Cursor {
     /// input update which controls the movement of the cursor and also swapping of blocks in the grid
-    pub fn update(&mut self, app: &App, grid: &mut Vec<Entity>, world: &mut World) {
+    pub fn update(&mut self, app: &App, grid: &mut Grid) {
         if self.counter < ANIMATION_TIME - 1 {
             self.counter += 1;
         } else {
@@ -108,15 +107,14 @@ impl Cursor {
         }
 
         if app.key_pressed(VirtualKeyCode::S) {
-            self.swap_blocks(grid, world);
+            self.swap_blocks(grid);
         }
 
         // TODO(Skytrias): REMOVE ON RELEASE, only used for debugging faster
         if app.key_pressed(VirtualKeyCode::A) {
-            if let Some(index) = self.position.to_index() {
-				grid.swap(index, index - GRID_WIDTH);
-			}
-			}
+            let index = self.position.to_index();
+            grid.components.swap(index, index - GRID_WIDTH);
+        }
     }
 
     // draws the cursor sprite into the app
@@ -132,99 +130,50 @@ impl Cursor {
         app.push_sprite(self.sprite);
     }
 
-    pub fn swap_blocks(&self, grid: &Vec<Entity>, world: &mut World) {
-        if let Some(index) = self.position.to_index() {
-				
-			
-			/*
-			// NOTE(Skytrias): feel of swap - might disable this to allow tricks, wont allow swap if any of the above left / right have hang
-			{
-				if i as i32 - 1 - GRID_WIDTH as i32 > 0 {
-					if grid.block_state_check(i - 1 - GRID_WIDTH, |s| s.is_hang()) {
-						return;
-					}
-				}
-				
-				if i as i32 + 1 - GRID_WIDTH as i32 > 0 {
-					if grid.block_state_check(i + 1 - GRID_WIDTH, |s| s.is_hang()) {
-						return;
-					}
-				}
-			}
-			*/
-			
-			// TODO(Skytrias): refactor to one call 
-			
-				let (left_swap, right_swap) = {
-					let left_state = world.get::<State>(grid[index]);
-					let left_empty = world.get::<EmptyChain>(grid[index]);
-					let right_state = world.get::<State>(grid[index + 1]);
-				let right_empty = world.get::<EmptyChain>(grid[index + 1]);
-					
-					let mut result_left = false;
-				let mut result_right = false;
-					
-					if let Ok(state) = left_state {
-				if let State::Idle = *state {
-						if let Ok(right) = right_state {
-							if let State::Idle = *right {
-								result_left = true;
-						}
-						}
-						
-						if let Ok(_) = right_empty {
-							result_left = true;
-						}
-						
-						}
-				}
-				
-				let left_state = world.get::<State>(grid[index]);
-				let left_empty = world.get::<EmptyChain>(grid[index]);
-				let right_state = world.get::<State>(grid[index + 1]);
-				let right_empty = world.get::<EmptyChain>(grid[index + 1]);
-				
-				if let Ok(state) = right_state {
-					if let State::Idle = *state {
-						if let Ok(left) = left_state {
-							if let State::Idle = *left {
-								result_right = true;
-							}
-						}
-						
-						if let Ok(_) = left_empty {
-							 result_right = true;
-						}
-						
-					}
-				}
-				
-				(result_left, result_right)
-				};
-					
-				if left_swap {
-					let left_state = world.get_mut::<State>(grid[index]);
-					
-					if let Ok(mut state) = left_state {
-					*state = State::Swap { 
-						counter: 0, 
-						direction: 1,
-						x_offset: 0.,
-					};
-				}
-				}
-			
-				if right_swap {
-				let right_state = world.get_mut::<State>(grid[index + 1]);
-				
-				if let Ok(mut state) = right_state {
-					*state = State::Swap { 
-						counter: 0, 
-						direction: -1,
-						x_offset: 0.,
-					};
-				}
-				}
-		}
-		}
+    pub fn swap_blocks(&self, grid: &mut Grid) {
+        let i = self.position.to_index();
+
+        let right = can_swap(grid, i + 1);
+        let left = can_swap(grid, i);
+
+        if right {
+            if let Component::Block { state, .. } = &mut grid[i] {
+                if let BlockState::Idle = state {
+                    *state = BlockState::Swap {
+                        counter: 0,
+                        direction: 1,
+                    };
+                }
+            }
+        }
+
+        if left {
+            if let Component::Block { state, .. } = &mut grid[i + 1] {
+                if let BlockState::Idle = state {
+                    *state = BlockState::Swap {
+                        counter: 0,
+                        direction: -1,
+                    };
+                }
+            }
+        }
+    }
+}
+
+fn can_swap(grid: &Grid, index: usize) -> bool {
+    match &grid[index] {
+        Component::Block { state, .. } => {
+            if let BlockState::Idle = state {
+                return true;
+            }
+        }
+
+        Component::Empty { .. } => {
+            return true;
+        }
+
+        _ => return false,
+    }
+
+    false
 }

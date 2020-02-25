@@ -2,52 +2,26 @@ use crate::engine::App;
 use crate::helpers::*;
 use BlockState::*;
 
-/// the direction a block can be swapped into
-#[derive(Copy, Clone, Debug)]
-pub enum SwapDirection {
-	Left,
-    Right,
-}
-
-block_state!(
-			 BlockState,
-			 {
-				 Idle, idle,
-				 Fall, fall,
-				 Bottom, bottom,
-				 Spawned, spawned,
-				 },
-			 {
-				 Hang, hang {},
-				 
-				 Swap, swap {
-					 direction: SwapDirection,
-				 },
-				 
-				 Clear, clear {
-					 start_time: u32,
-					 end_time: u32,
-				 },
-				 
-				 Land, land {},
-			 }
-			 );
-
-pub trait AdditionalState {
-	fn swap_direction(self) -> Option<SwapDirection>;
-}
-
-impl AdditionalState for Option<&BlockState> {
-	fn swap_direction(self) -> Option<SwapDirection> {
-		match self {
-			Some(state) => match state {
-				BlockState::Swap { direction, .. } => Some(*direction),
-				_ => None
-			}
-			
-			_ => None,
-		}
-	}
+#[derive(Debug)]
+pub enum BlockState {
+    Idle,
+    Hang {
+        counter: u32,
+    },
+    Fall,
+    Swap {
+        counter: u32,
+        direction: i32,
+    },
+    Land {
+        counter: u32,
+    },
+    Clear {
+        counter: u32,
+        start_time: u32,
+        end_time: u32,
+    },
+    Spawned,
 }
 
 /// block data used for unique block rendering and unique state
@@ -64,11 +38,8 @@ pub struct Block {
     /// visual sprite scale
     pub scale: V2,
 
-    /// logic state machine with all states
-    pub state: BlockState,
-
     /// wether the block could result in a chain or not
-    pub was_chainable: Option<usize>,
+    pub saved_chain: Option<usize>,
 }
 
 impl Default for Block {
@@ -76,10 +47,9 @@ impl Default for Block {
         Self {
             hframe: 0,
             vframe: 2,
-            state: Idle,
             offset: V2::zero(),
             scale: V2::one(),
-            was_chainable: None,
+            saved_chain: None,
         }
     }
 }
@@ -98,81 +68,42 @@ impl Block {
         (app.rand_int(5) + 3) as u32
     }
 
-    /// sets the state to idle and offset.x back to 0
-    pub fn reset(&mut self) {
-        self.state = Idle;
-        self.offset.x = 0.;
-    }
-
     /// updates the block variables based on each state, mostly animation based
-    pub fn update(&mut self) {
-        match &mut self.state {
-            Hang { counter, finished } => {
-                if *counter < HANG_TIME - 1 {
-                    *counter += 1;
-                } else {
-                    *finished = true;
-                }
-            }
+    pub fn update(&mut self, state: &mut BlockState) {
+        match state {
+            Hang { counter } => *counter += 1,
 
-            Swap {
-                counter,
-                direction,
-                finished,
-            } => {
-                if *counter < SWAP_TIME - 1 {
-                    self.offset.x = match *direction {
-                        SwapDirection::Left => -(*counter as f32) / (SWAP_TIME as f32) * ATLAS_TILE,
-                        SwapDirection::Right => (*counter as f32) / (SWAP_TIME as f32) * ATLAS_TILE,
-                    };
-
-                    *counter += 1;
-                } else {
-                    *finished = true;
-                }
+            Swap { counter, direction } => {
+                self.offset.x =
+                    *direction as f32 * (*counter as f32) / (SWAP_TIME as f32) * ATLAS_TILE;
+                *counter += 1;
             }
 
             Clear {
                 counter,
-                finished,
                 start_time,
                 end_time,
             } => {
-                if *counter < *end_time - 1 {
-                    if *counter > *start_time {
-                        if (*counter - *start_time) < CLEAR_TIME - 1 {
-                            let amt = 1. - ((*counter - *start_time) as f32) / (CLEAR_TIME as f32);
-                            self.scale = V2::broadcast(amt);
-                        } else {
-                            self.scale = V2::zero();
-                        }
+                if *counter > *start_time {
+                    if (*counter - *start_time) < CLEAR_TIME - 1 {
+                        let amt = 1. - ((*counter - *start_time) as f32) / (CLEAR_TIME as f32);
+                        self.scale = V2::broadcast(amt);
+                    } else {
+                        self.scale = V2::zero();
                     }
-
-                    self.hframe = 1;
-                    *counter += 1;
-                } else {
-                    *finished = true;
                 }
+
+                self.hframe = 1;
+                *counter += 1;
             }
 
-            Land { counter, finished } => {
-                if *counter < LAND_TIME - 1 {
-                    self.hframe = 3 + ((*counter as f32 / LAND_TIME as f32) * 3.).floor() as u32;
-                    *counter += 1;
-                } else {
-                    // TODO(Skytrias): test out if this is the right place to disable chaining
-                    self.was_chainable = None;
-
-                    *finished = true;
-                }
-            }
-
-            Bottom => {
-                self.hframe = 2;
+            Land { counter } => {
+                self.hframe = 3 + ((*counter as f32 / LAND_TIME as f32) * 3.).floor() as u32;
+                *counter += 1;
             }
 
             Idle => {
-                self.was_chainable = None;
+                //self.was_chainable = None;
                 self.hframe = 0;
             }
 

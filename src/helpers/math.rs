@@ -1,4 +1,4 @@
-use crate::helpers::{GRID_WIDTH, GRID_HEIGHT};
+use crate::helpers::{GRID_HEIGHT, GRID_WIDTH};
 use vek::geom::repr_c::Rect;
 use vek::geom::FrustumPlanes;
 use vek::mat::repr_c::Mat4;
@@ -33,18 +33,15 @@ pub fn lerp(n1: f32, n2: f32, amount: f32) -> f32 {
     (1. - amount) * n1 + amount * n2
 }
 
+/// NOTE(Skytrias): no out of bounds safety garantee
 pub trait ToIndex {
-	fn to_index(self) -> Option<usize>;
+    fn to_index(self) -> usize;
 }
 
 impl ToIndex for I2 {
-	fn to_index(self) -> Option<usize> {
-		if self.x >= 0 && self.x < GRID_WIDTH as i32 && self.y >= 0 && self.y < GRID_HEIGHT as i32 {
-			Some(self.y as usize * GRID_WIDTH + self.x as usize)
-		} else {
-			None
-		}
-	}
+    fn to_index(self) -> usize {
+        self.y as usize * GRID_WIDTH + self.x as usize
+    }
 }
 
 pub trait ToV2 {

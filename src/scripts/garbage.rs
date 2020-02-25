@@ -3,6 +3,22 @@ use crate::helpers::*;
 use crate::scripts::{Block, BlockState, Component, Grid};
 use GarbageState::*;
 
+pub enum GarbageState {
+    Idle,
+
+    Fall,
+
+    Hang {
+        counter: u32,
+    },
+
+    Clear {
+        counter: u32,
+        end_time: u32,
+        finished: bool,
+    },
+}
+
 /// garbage child data used mainly for unqiue animation
 pub struct Child {
     /// y pixel offset of child
@@ -128,23 +144,6 @@ impl GarbageSystem {
     }
 }
 
-block_state!(
-			 GarbageState,
-			 {
-				 Idle, idle,
-				 Fall, fall,
-				 },
-			 {
-				 Hang, hang {
-					 
-				 },
-				 
-				 Clear, clear {
-					 end_time: u32,
-				 },
-			 }
-			 );
-
 /// garbage that holds N indexes to garbage children in the list
 pub struct Garbage {
     /// list of children indexes that exist in the grid
@@ -224,8 +223,10 @@ impl Garbage {
         let mut can_hang = true;
 
         for child_index in self.lowest().iter() {
-            if !grid[child_index + GRID_WIDTH].is_empty() {
-                can_hang = false;
+            match grid[child_index + GRID_WIDTH] {
+                Component::Block { .. } => can_hang = false,
+                Component::Child(_) => can_hang = false,
+                _ => {}
             }
         }
 
@@ -245,13 +246,7 @@ impl Garbage {
     /// updates the garbage variables based on each state, mostly animation based
     pub fn update(&mut self, app: &mut App, grid: &mut Grid) {
         match &mut self.state {
-            Hang { counter, finished } => {
-                if *counter < HANG_TIME {
-                    *counter += 1;
-                } else {
-                    *finished = true;
-                }
-            }
+            Hang { counter } => *counter += 1,
 
             Clear {
                 counter,
@@ -314,15 +309,17 @@ impl Garbage {
 
                         // reset the block and save the i in which that block lived
                         if reset {
-                            grid[*child_index] = Component::Block(Block {
+                            grid[*child_index] = Component::Block {
                                 state: BlockState::Spawned,
-                                offset: V2::new(0., -grid.push_amount),
-                                vframe: Block::random_vframe(app),
+                                block: Block {
+                                    offset: V2::new(0., -grid.push_amount),
+                                    vframe: Block::random_vframe(app),
 
-                                // allow chains from garbage
-                                was_chainable: Some(1),
-                                ..Default::default()
-                            });
+                                    // allow chains from garbage
+                                    saved_chain: Some(1),
+                                    ..Default::default()
+                                },
+                            };
                             remove = Some(i);
                             break;
                         }
@@ -337,8 +334,8 @@ impl Garbage {
                     *counter += 1;
                 } else {
                     for child_index in self.removed_children.iter() {
-                        if let Some(state) = grid.block_state_mut(*child_index) {
-                            state.to_idle();
+                        if let Component::Block { state, .. } = &mut grid[*child_index] {
+                            *state = BlockState::Idle;
                         }
                     }
 
