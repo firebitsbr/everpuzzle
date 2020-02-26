@@ -1,12 +1,14 @@
 [package]
 name = "everpuzzle"
-version = "0.1.0"
+version = "0.1.2"
 authors = ["skytrias <skytrias@protonmail.com>"]
 edition = "2018"
 keywords = ["game", "puzzle"]
 description = "realtime multiplayer puzzle game"
 license = "MIT"
 repository = "https://github.com/Skytrias/everpuzzle"
+documentation = "https://docs.rs/everpuzzle"
+readme = "../README.md"
 
 [dependencies]
 wgpu = "0.4" # rendering
@@ -18,6 +20,7 @@ fixedstep = "0.3" # main loop at specified fps
 oorandom = "11.1" # random number generator
 wgpu_glyph = "0.6" # text renddering
 bitflags = "1.2.1" # flags 
+gilrs = "0.7.4"
 
 [profile.dev] 
 debug = 1 

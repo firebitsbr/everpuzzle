@@ -1,4 +1,8 @@
 
+Now {
+	gamepad integration
+}
+
 Bugs {
 	Block {
 		Swap triggers hang to be chainable?,
@@ -19,16 +23,18 @@ Helpers {
 	[x] Use IV2 on things that dont need float?,
 }
 
-General {
-	multiple grids,
-	multiple players with set controls,
+ Option / Nice to have {
 	rebind keys,
-	gamepad input,
-	
 	ini file for data {
 		hot swapped?,
 		animation data,
 	}
+}
+
+General {
+	multiple grids,
+	multiple players with set controls,
+	[!] gamepad input,
 	
 	extend grid height to 24 {
 		lookup each frame if a block exists in the top space - disable polling in the range if nothing,
@@ -63,11 +69,10 @@ Grid {
 		gen 6 without matches,
 	},
 	
-	[!] y_offset key_down held till one push is done,
+	[x] y_offset key_down held till one push is done,
 	[x] y offset per pixel,
 	[x] clear chain,
-	[_] combo count on each frame,
-	[_] have block_state(i) in bounds dependant on the type -> if option return option else ref,
+	[x] combo count on each frame,
 }
 
 Garbage System {
@@ -94,7 +99,7 @@ Garbage System {
 	}
 	
 	[x] other garbage falling on top of other garbage should also get smooth hang,
-	[_] other color while clearing,
+	[x] other color while clearing,
 	[x] check create 3x1 - 4x1 etc,
 	}
 

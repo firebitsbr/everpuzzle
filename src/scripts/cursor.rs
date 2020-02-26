@@ -2,6 +2,7 @@ use crate::engine::App;
 use crate::helpers::*;
 use crate::scripts::{BlockState, Component, Grid};
 use winit::event::VirtualKeyCode;
+use gilrs::Button;
 
 /// amount of frames it takes for the fast cursor movement to happen
 const FRAME_LIMIT: u32 = 25;
@@ -52,11 +53,11 @@ impl Cursor {
             self.counter = 0;
         }
 
-        let left = app.key_down_frames(VirtualKeyCode::Left);
-        let right = app.key_down_frames(VirtualKeyCode::Right);
-        let up = app.key_down_frames(VirtualKeyCode::Up);
-        let down = app.key_down_frames(VirtualKeyCode::Down);
-
+        let left = app.kb_down_frames(VirtualKeyCode::Left, Button::DPadLeft);
+        let right = app.kb_down_frames(VirtualKeyCode::Right, Button::DPadRight);
+        let up = app.kb_down_frames(VirtualKeyCode::Up, Button::DPadUp);
+        let down = app.kb_down_frames(VirtualKeyCode::Down, Button::DPadDown);
+		
         // movement dependant on how long a key down has been held for in frames
 
         if self.position.x > 0 {
@@ -106,9 +107,9 @@ impl Cursor {
             self.last_position = self.position;
         }
 
-        if app.key_pressed(VirtualKeyCode::S) {
+        if app.key_pressed(VirtualKeyCode::S) || app.button_pressed(Button::South) || app.button_pressed(Button::East) {
             self.swap_blocks(grid);
-        }
+				}
 
         // TODO(Skytrias): REMOVE ON RELEASE, only used for debugging faster
         if app.key_pressed(VirtualKeyCode::A) {
@@ -160,6 +161,7 @@ impl Cursor {
     }
 }
 
+/// helper to detect if a block is currently swappable - in idle state or empty
 fn can_swap(grid: &Grid, index: usize) -> bool {
     match &grid[index] {
         Component::Block { state, .. } => {

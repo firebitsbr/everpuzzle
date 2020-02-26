@@ -73,7 +73,8 @@ impl Grid {
             ..Default::default()
         }
     }
-
+	
+	/// sets all blocks and childs y_offset to 0, swaps them with below and sets bottom row to randoimized blocks
     pub fn push_upwards(
         &mut self,
         app: &mut App,
@@ -200,7 +201,8 @@ impl Grid {
             }
         }
     }
-
+	
+	/// detects wether any clear is happening, turns blocks to clear state if 3 or more blocks match vframes
     pub fn block_detect_clear(&mut self) {
         // NOTE(Skytrias): consider pushing to grid variables?
         let mut list = Vec::new();
@@ -285,7 +287,6 @@ impl Grid {
 
             // push chainable even if count was 3
             if let Some(size) = had_chainable {
-                println!("set chainable");
 				self.combo_highlight.push_chain(size as u32 + 1);
             }
 
@@ -613,7 +614,8 @@ impl Grid {
         self.block_detect_clear();
         self.garbage_detect_clear(garbage_system);
     }
-
+	
+	/// updates the push / raise data which offsets the grid components
     pub fn push_update(
         &mut self,
         app: &mut App,

@@ -1,7 +1,7 @@
 use crate::helpers::math::*;
 
 /// block and garbage hang time
-pub const HANG_TIME: u32 = 60;
+pub const HANG_TIME: u32 = 40;
 /// block and garbage clear time
 pub const CLEAR_TIME: u32 = 40;
 /// amount of frames it takes to swap a block

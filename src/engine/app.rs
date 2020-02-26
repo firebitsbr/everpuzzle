@@ -9,6 +9,10 @@ use winit::{
     platform::desktop::EventLoopExtDesktop,
     window::WindowBuilder,
 };
+use gilrs::{
+	ev::EventType::{ButtonPressed, ButtonReleased},
+	Button,
+};
 
 /// wgpu depth const
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
@@ -57,7 +61,10 @@ pub struct App {
 
     /// data storage for each key that was pressed with the frame time
     key_downs: HashMap<VirtualKeyCode, u32>,
-
+	
+    /// data storage for each button that was pressed with the frame time
+    button_downs: HashMap<Button, u32>,
+	
     /// data storage for all quads in the frame that you want to draw
     quads: Vec<quad::Quad>,
 
@@ -74,7 +81,7 @@ impl App {
         self.key_downs.get(&code).filter(|&&v| v != 0).is_some()
     }
 
-    /// returns true if a key is held down
+    /// returns true the amount of frames a key has been down for
     pub fn key_down_frames(&self, code: VirtualKeyCode) -> Option<u32> {
         self.key_downs.get(&code).filter(|&&v| v != 0).copied()
     }
@@ -83,7 +90,51 @@ impl App {
     pub fn key_pressed(&self, code: VirtualKeyCode) -> bool {
         self.key_downs.get(&code).filter(|&&v| v == 1).is_some()
     }
-
+	
+    /// returns true if a button is held down
+    pub fn button_down(&self, button: Button) -> bool {
+        self.button_downs.get(&button).filter(|&&v| v != 0).is_some()
+    }
+	
+    /// returns true the amount of frames a button has been down for
+    pub fn button_down_frames(&self, button: Button) -> Option<u32> {
+        self.button_downs.get(&button).filter(|&&v| v != 0).copied()
+    }
+	
+    /// returns true if a button is pressed for a single frame
+    pub fn button_pressed(&self, button: Button) -> bool {
+        self.button_downs.get(&button).filter(|&&v| v == 1).is_some()
+    }
+	
+	/// returns true if a button or a key is held down
+    pub fn kb_down(&self, code: VirtualKeyCode, button: Button) -> bool {
+		self.key_down(code) || self.button_down(button)
+	}
+	
+    /// returns true the amount of frames a button or a key has been down for
+    pub fn kb_down_frames(&self, code: VirtualKeyCode, button: Button) -> Option<u32> {
+		let mut result = None;
+		
+		if let Some(frames) = self.key_down_frames(code) {
+			result = Some(frames);
+		}
+		
+		if let Some(frames) = self.button_down_frames(button) {
+			if let Some(old_frames) = result {
+				result = Some(old_frames.max(frames));
+			} else {
+				result = Some(frames);
+				}
+		}
+		
+		result
+	}
+	
+	/// returns true if a button or a key is pressed for a single frame
+    pub fn kb_pressed(&self, code: VirtualKeyCode, button: Button) -> bool {
+		self.key_pressed(code) || self.button_pressed(button)
+	}
+	
     /// returns an integer in the range wanted
     #[inline]
     pub fn rand_int(&mut self, range: u32) -> i32 {
@@ -219,11 +270,12 @@ pub fn run(width: f32, height: f32, title: &'static str) {
         depth_texture_view,
 
         key_downs: HashMap::new(),
-        quads: Vec::new(),
+        button_downs: HashMap::new(),
+		quads: Vec::new(),
 
         mouse: Default::default(),
         gen: oorandom::Rand32::new(0),
-    };
+	};
 
     // scripts
     let mut cursor = Cursor::default();
@@ -233,12 +285,136 @@ pub fn run(width: f32, height: f32, title: &'static str) {
     let mut ui_context = UiContext::default();
     let mut grid = Grid::new(&mut app);
     let mut debug_info = true;
-
+	
+	let mut gilrs = match gilrs::GilrsBuilder::new().set_update_state(false).build() {
+        Ok(g) => g,
+        Err(gilrs::Error::NotImplemented(g)) => {
+            eprintln!("Current platform is not supported");
+			
+            g
+        }
+        Err(e) => {
+            eprintln!("Failed to create gilrs context: {}", e);
+            std::process::exit(-1);
+        }
+    };
+	
     // main loop
     let mut quit = false;
     let mut fixedstep = fixedstep::FixedStep::start(FRAME_AMOUNT);
     while !quit {
-        // update scope
+        event_loop.run_return(|event, _, control_flow| {
+								  *control_flow = ControlFlow::Wait;
+								  
+								  match event {
+									  Event::MainEventsCleared => {
+										  *control_flow = ControlFlow::Exit;
+									  }
+									  
+									  Event::WindowEvent { event, .. } => match event {
+										  WindowEvent::Resized(size) => {
+											  if size.width != 0 && size.height != 0 {
+												  // recreate swapchain
+												  app.swapchain_desc.width = size.width;
+												  app.swapchain_desc.height = size.height;
+												  swap_chain =
+													  app.device.create_swap_chain(&surface, &app.swapchain_desc);
+												  
+												  depth_texture = create_depth_texture(&app.device, &app.swapchain_desc);
+												  app.depth_texture_view = depth_texture.create_default_view();
+												  
+												  // upload new projection
+												  let projection =
+													  ortho(0., size.width as f32, 0., size.height as f32, -1., 1.);
+												  let temp_buffer = app
+													  .device
+													  .create_buffer_mapped(1, wgpu::BufferUsage::COPY_SRC)
+													  .fill_from_slice(&[projection]);
+												  
+												  let mut init_encoder = app.device.create_command_encoder(
+																										   &wgpu::CommandEncoderDescriptor { todo: 0 },
+																										   );
+												  init_encoder.copy_buffer_to_buffer(
+																					 &temp_buffer,
+																					 0,
+																					 &app.ubo_projection,
+																					 0,
+																					 std::mem::size_of::<M4>() as u64,
+																					 );
+												  init_encoder.finish();
+											  }
+										  }
+										  
+										  WindowEvent::CloseRequested => {
+											  quit = true;
+										  }
+										  
+										  WindowEvent::CursorMoved { position, .. } => {
+											  app.mouse.position = V2::new(position.x as f32, position.y as f32);
+										  }
+										  
+										  WindowEvent::MouseInput { state, button, .. } => {
+											  app.mouse.update_event(state, button);
+										  }
+										  
+										  WindowEvent::KeyboardInput {
+											  input:
+											  KeyboardInput {
+												  virtual_keycode: Some(code),
+												  state,
+												  ..
+											  },
+											  ..
+										  } => {
+											  // add new codes, modify code that is 0 back to 1 if pressed
+											  if state == ElementState::Pressed {
+												  if let Some(value) = app.key_downs.get_mut(&code) {
+													  if *value == 0 {
+														  *value = 1;
+													  }
+												  } else {
+													  app.key_downs.insert(code, 1);
+												  }
+											  }
+											  
+											  if state == ElementState::Released {
+												  if let Some(value) = app.key_downs.get_mut(&code) {
+													  *value = 0;
+												  }
+											  }
+										  }
+										  
+										  _ => (),
+									  },
+									  
+									  _ => (),
+								  }
+							  });
+		
+		// gamepad update
+		while let Some(gilrs::Event { id, event, time }) = gilrs.next_event() {
+			match event {
+				ButtonPressed(btn, code) => {
+						if let Some(value) = app.button_downs.get_mut(&btn) {
+							if *value == 0 {
+							*value = 1;
+							}
+						} else {
+							app.button_downs.insert(btn, 1);
+						}
+					}
+				
+				ButtonReleased(btn, code) => {
+					if let Some(value) = app.button_downs.get_mut(&btn) {
+						*value = 0;
+						}
+				}
+				
+				_ => {}
+			}
+		}
+		
+		// update scope
         while fixedstep.update() {
             // quit on escape
             if app.key_pressed(VirtualKeyCode::Escape) {
@@ -246,20 +422,20 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             }
 
             // show debug info
-            if app.key_pressed(VirtualKeyCode::Tab) {
+            if app.kb_pressed(VirtualKeyCode::Tab, Button::Select) {
                 debug_info = !debug_info;
             }
 
-            if app.key_pressed(VirtualKeyCode::A) {
+            if app.kb_pressed(VirtualKeyCode::A, Button::North) {
                 let offset = (app.rand_int(1) * 3) as usize;
                 grid.gen_1d_garbage(&mut garbage_system, 3, offset);
             }
-
-            if app.key_pressed(VirtualKeyCode::Return) {
+			
+            if app.kb_pressed(VirtualKeyCode::Return, Button::West) {
                 grid.gen_2d_garbage(&mut garbage_system, 2);
             }
 
-            if app.key_down(VirtualKeyCode::Space) {
+            if app.key_down(VirtualKeyCode::Space) || app.button_down(Button::LeftTrigger) || app.button_down(Button::RightTrigger) {
 					grid.push_raise = true;
 					}
 
@@ -267,7 +443,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             grid.update(&mut garbage_system);
             garbage_system.update(&mut app, &mut grid);
             grid.push_update(&mut app, &mut garbage_system, &mut cursor);
-
+			
             // clearing key / mouse input
             {
                 // increase the frame times on the keys
@@ -276,99 +452,18 @@ pub fn run(width: f32, height: f32, title: &'static str) {
                         *value += 1;
                     }
                 }
-
+				
+				// increase the frame times on the keys
+                for (_, value) in app.button_downs.iter_mut() {
+                    if *value != 0 {
+                        *value += 1;
+                    }
+                }
+				
                 // enable mouse pressing
                 app.mouse.update_frame();
             }
         }
-
-        event_loop.run_return(|event, _, control_flow| {
-            *control_flow = ControlFlow::Wait;
-
-            match event {
-                Event::MainEventsCleared => {
-                    *control_flow = ControlFlow::Exit;
-                }
-
-                Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::Resized(size) => {
-                        if size.width != 0 && size.height != 0 {
-                            // recreate swapchain
-                            app.swapchain_desc.width = size.width;
-                            app.swapchain_desc.height = size.height;
-                            swap_chain =
-                                app.device.create_swap_chain(&surface, &app.swapchain_desc);
-
-                            depth_texture = create_depth_texture(&app.device, &app.swapchain_desc);
-                            app.depth_texture_view = depth_texture.create_default_view();
-
-                            // upload new projection
-                            let projection =
-                                ortho(0., size.width as f32, 0., size.height as f32, -1., 1.);
-                            let temp_buffer = app
-                                .device
-                                .create_buffer_mapped(1, wgpu::BufferUsage::COPY_SRC)
-                                .fill_from_slice(&[projection]);
-
-                            let mut init_encoder = app.device.create_command_encoder(
-                                &wgpu::CommandEncoderDescriptor { todo: 0 },
-                            );
-                            init_encoder.copy_buffer_to_buffer(
-                                &temp_buffer,
-                                0,
-                                &app.ubo_projection,
-                                0,
-                                std::mem::size_of::<M4>() as u64,
-                            );
-                            init_encoder.finish();
-                        }
-                    }
-
-                    WindowEvent::CloseRequested => {
-                        quit = true;
-                    }
-
-                    WindowEvent::CursorMoved { position, .. } => {
-                        app.mouse.position = V2::new(position.x as f32, position.y as f32);
-                    }
-
-                    WindowEvent::MouseInput { state, button, .. } => {
-                        app.mouse.update_event(state, button);
-                    }
-
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                virtual_keycode: Some(code),
-                                state,
-                                ..
-                            },
-                        ..
-                    } => {
-                        // add new codes, modify code that is 0 back to 1 if pressed
-                        if state == ElementState::Pressed {
-                            if let Some(value) = app.key_downs.get_mut(&code) {
-                                if *value == 0 {
-                                    *value = 1;
-                                }
-                            } else {
-                                app.key_downs.insert(code, 1);
-                            }
-                        }
-
-                        if state == ElementState::Released {
-                            if let Some(value) = app.key_downs.get_mut(&code) {
-                                *value = 0;
-                            }
-                        }
-                    }
-
-                    _ => (),
-                },
-
-                _ => (),
-            }
-        });
 
         // render scope
         {
