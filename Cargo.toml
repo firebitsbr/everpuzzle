@@ -20,7 +20,7 @@ fixedstep = "0.3" # main loop at specified fps
 oorandom = "11.1" # random number generator
 wgpu_glyph = "0.6" # text renddering
 bitflags = "1.2.1" # flags 
-gilrs = "0.7.4"
+gilrs = "0.7.4" # gamepad input
 
 [profile.dev] 
 debug = 1 

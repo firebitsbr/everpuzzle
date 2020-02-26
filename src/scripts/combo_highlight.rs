@@ -1,5 +1,5 @@
 use crate::engine::App;
-use crate::helpers::{Sprite, ATLAS_SPACING, V2};
+use crate::helpers::{Sprite, ATLAS_SPACING, GRID_HEIGHT, GRID_WIDTH, V2};
 use std::collections::VecDeque;
 use wgpu_glyph::{HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
@@ -7,6 +7,7 @@ const COMBO_APPEAR_TIME: u32 = 5;
 const COMBO_DISAPPEAR_START: u32 = 10;
 const COMBO_DISAPPEAR_TIME: u32 = 500;
 
+/// Types of combos
 enum ComboVariant {
     /// wether a combo is the type
     Combo,
@@ -15,12 +16,14 @@ enum ComboVariant {
     Chain,
 }
 
+/// Data each combo requries
 struct ComboData {
     size: u32,
     counter: u32,
     variant: ComboVariant,
 }
 
+/// list of combo data and draw info
 pub struct ComboHighlight {
     list: VecDeque<ComboData>,
     dimensions: V2,
@@ -31,13 +34,14 @@ impl Default for ComboHighlight {
     fn default() -> Self {
         Self {
             list: VecDeque::new(),
-            dimensions: V2::new(50., 25.),
+            dimensions: V2::new(64., 32.),
             y_offset: 0,
         }
     }
 }
 
 impl ComboHighlight {
+    /// pushes a chain onto the vecdeque start, restarts the appear animation
     pub fn push_chain(&mut self, chain_size: u32) {
         self.list.push_front(ComboData {
             size: chain_size,
@@ -47,6 +51,7 @@ impl ComboHighlight {
         self.y_offset = COMBO_APPEAR_TIME;
     }
 
+    /// pushes a combo onto the vecdeque start, restarts the appear animation
     pub fn push_combo(&mut self, combo_size: u32) {
         self.list.push_front(ComboData {
             size: combo_size,
@@ -56,12 +61,15 @@ impl ComboHighlight {
         self.y_offset = COMBO_APPEAR_TIME;
     }
 
-    pub fn draw(&mut self, app: &mut App) {
-        let mut position = V2::new(200., 300.);
+    /// draws all current combos
+    pub fn draw(&mut self, app: &mut App, position: V2) {
+        let mut offset =
+            position + V2::new(GRID_WIDTH as f32 + 1., GRID_HEIGHT as f32 - 1.) * ATLAS_SPACING;
+
         for combo in self.list.iter_mut() {
             let offset_position = V2::new(
-                position.x,
-                position.y + self.dimensions.y * (self.y_offset as f32 / COMBO_APPEAR_TIME as f32),
+                offset.x,
+                offset.y + self.dimensions.y * (self.y_offset as f32 / COMBO_APPEAR_TIME as f32),
             );
 
             let death_counter = (combo.counter as i32
@@ -102,7 +110,7 @@ impl ComboHighlight {
                 ..Default::default()
             });
 
-            position.y -= self.dimensions.y;
+            offset.y -= self.dimensions.y;
 
             if combo.counter < COMBO_DISAPPEAR_TIME {
                 combo.counter += 1;

@@ -19,5 +19,5 @@ mod scripts;
 
 /// starts the entire game
 fn main() {
-    engine::run(500., 500., "everpuzzle")
+    engine::run(1000., 500., "everpuzzle")
 }

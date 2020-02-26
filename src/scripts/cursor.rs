@@ -1,8 +1,8 @@
 use crate::engine::App;
 use crate::helpers::*;
 use crate::scripts::{BlockState, Component, Grid};
-use winit::event::VirtualKeyCode;
 use gilrs::Button;
+use winit::event::VirtualKeyCode;
 
 /// amount of frames it takes for the fast cursor movement to happen
 const FRAME_LIMIT: u32 = 25;
@@ -46,7 +46,7 @@ impl Default for Cursor {
 
 impl Cursor {
     /// input update which controls the movement of the cursor and also swapping of blocks in the grid
-    pub fn update(&mut self, app: &App, grid: &mut Grid) {
+    pub fn update(&mut self, app: &App, components: &mut Vec<Component>) {
         if self.counter < ANIMATION_TIME - 1 {
             self.counter += 1;
         } else {
@@ -57,7 +57,7 @@ impl Cursor {
         let right = app.kb_down_frames(VirtualKeyCode::Right, Button::DPadRight);
         let up = app.kb_down_frames(VirtualKeyCode::Up, Button::DPadUp);
         let down = app.kb_down_frames(VirtualKeyCode::Down, Button::DPadDown);
-		
+
         // movement dependant on how long a key down has been held for in frames
 
         if self.position.x > 0 {
@@ -107,38 +107,40 @@ impl Cursor {
             self.last_position = self.position;
         }
 
-        if app.key_pressed(VirtualKeyCode::S) || app.button_pressed(Button::South) || app.button_pressed(Button::East) {
-            self.swap_blocks(grid);
-				}
+        if app.key_pressed(VirtualKeyCode::S)
+            || app.button_pressed(Button::South)
+            || app.button_pressed(Button::East)
+        {
+            self.swap_blocks(components);
+        }
 
         // TODO(Skytrias): REMOVE ON RELEASE, only used for debugging faster
         if app.key_pressed(VirtualKeyCode::A) {
             let index = self.position.to_index();
-            grid.components.swap(index, index - GRID_WIDTH);
+            components.swap(index, index - GRID_WIDTH);
         }
     }
 
     // draws the cursor sprite into the app
-    pub fn draw(&mut self, app: &mut App) {
-        //self.sprite.position = self.goal_position;
+    pub fn draw(&mut self, app: &mut App, offset: V2) {
         self.sprite.position = V2::lerp(
             self.goal_position,
             self.sprite.position,
             self.goal_counter as f32 / LERP_TIME as f32,
         );
         self.sprite.hframe = (self.counter as f32 / 32.).floor() as u32 * 3;
-        self.sprite.offset.y = self.y_offset - ATLAS_TILE / 2.;
+        self.sprite.offset = offset + V2::new(-16., self.y_offset - ATLAS_TILE / 2.);
         app.push_sprite(self.sprite);
     }
 
-    pub fn swap_blocks(&self, grid: &mut Grid) {
+    pub fn swap_blocks(&self, components: &mut Vec<Component>) {
         let i = self.position.to_index();
 
-        let right = can_swap(grid, i + 1);
-        let left = can_swap(grid, i);
+        let right = can_swap(components, i + 1);
+        let left = can_swap(components, i);
 
         if right {
-            if let Component::Block { state, .. } = &mut grid[i] {
+            if let Component::Block { state, .. } = &mut components[i] {
                 if let BlockState::Idle = state {
                     *state = BlockState::Swap {
                         counter: 0,
@@ -149,7 +151,7 @@ impl Cursor {
         }
 
         if left {
-            if let Component::Block { state, .. } = &mut grid[i + 1] {
+            if let Component::Block { state, .. } = &mut components[i + 1] {
                 if let BlockState::Idle = state {
                     *state = BlockState::Swap {
                         counter: 0,
@@ -162,8 +164,8 @@ impl Cursor {
 }
 
 /// helper to detect if a block is currently swappable - in idle state or empty
-fn can_swap(grid: &Grid, index: usize) -> bool {
-    match &grid[index] {
+fn can_swap(components: &Vec<Component>, index: usize) -> bool {
+    match &components[index] {
         Component::Block { state, .. } => {
             if let BlockState::Idle = state {
                 return true;

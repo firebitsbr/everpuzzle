@@ -1,5 +1,6 @@
 # Everpuzzle 0.1.2:
 
+* Multiple grids can live standalone
 * Added basic Gamepad button support for a single player
 * TAB toggles debug info
 * Garbage children have different hframes dependant on their position

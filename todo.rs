@@ -1,6 +1,6 @@
 
 Now {
-	gamepad integration
+	
 }
 
 Bugs {
@@ -14,7 +14,6 @@ Bugs {
 Rendering {
 	clipping,
 	chaching,
-	
 	[x] move to instanced rendering + indices,
 }
 
@@ -34,7 +33,7 @@ Helpers {
 General {
 	multiple grids,
 	multiple players with set controls,
-	[!] gamepad input,
+	[x] gamepad input singleplayer,
 	
 	extend grid height to 24 {
 		lookup each frame if a block exists in the top space - disable polling in the range if nothing,
@@ -64,6 +63,8 @@ Block {
 }
 
 Grid {
+	lose at top,
+	
 	Randomization {
 	randomization dont let combos happen at spawn,
 		gen 6 without matches,
@@ -102,6 +103,10 @@ Garbage System {
 	[x] other color while clearing,
 	[x] check create 3x1 - 4x1 etc,
 	}
+
+Game Modes {
+	Each level increase get a new grid to manage with the same input,
+}
 
 4coder {
 	add {}, (), [], automatically,

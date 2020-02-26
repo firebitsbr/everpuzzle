@@ -1,6 +1,10 @@
 use crate::engine::*;
 use crate::helpers::*;
 use crate::scripts::*;
+use gilrs::{
+    ev::EventType::{ButtonPressed, ButtonReleased},
+    Button,
+};
 use std::collections::HashMap;
 use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder, HorizontalAlign, Layout, Section, VerticalAlign};
 use winit::{
@@ -8,10 +12,6 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     platform::desktop::EventLoopExtDesktop,
     window::WindowBuilder,
-};
-use gilrs::{
-	ev::EventType::{ButtonPressed, ButtonReleased},
-	Button,
 };
 
 /// wgpu depth const
@@ -61,10 +61,10 @@ pub struct App {
 
     /// data storage for each key that was pressed with the frame time
     key_downs: HashMap<VirtualKeyCode, u32>,
-	
+
     /// data storage for each button that was pressed with the frame time
     button_downs: HashMap<Button, u32>,
-	
+
     /// data storage for all quads in the frame that you want to draw
     quads: Vec<quad::Quad>,
 
@@ -90,51 +90,57 @@ impl App {
     pub fn key_pressed(&self, code: VirtualKeyCode) -> bool {
         self.key_downs.get(&code).filter(|&&v| v == 1).is_some()
     }
-	
+
     /// returns true if a button is held down
     pub fn button_down(&self, button: Button) -> bool {
-        self.button_downs.get(&button).filter(|&&v| v != 0).is_some()
+        self.button_downs
+            .get(&button)
+            .filter(|&&v| v != 0)
+            .is_some()
     }
-	
+
     /// returns true the amount of frames a button has been down for
     pub fn button_down_frames(&self, button: Button) -> Option<u32> {
         self.button_downs.get(&button).filter(|&&v| v != 0).copied()
     }
-	
+
     /// returns true if a button is pressed for a single frame
     pub fn button_pressed(&self, button: Button) -> bool {
-        self.button_downs.get(&button).filter(|&&v| v == 1).is_some()
+        self.button_downs
+            .get(&button)
+            .filter(|&&v| v == 1)
+            .is_some()
     }
-	
-	/// returns true if a button or a key is held down
+
+    /// returns true if a button or a key is held down
     pub fn kb_down(&self, code: VirtualKeyCode, button: Button) -> bool {
-		self.key_down(code) || self.button_down(button)
-	}
-	
+        self.key_down(code) || self.button_down(button)
+    }
+
     /// returns true the amount of frames a button or a key has been down for
     pub fn kb_down_frames(&self, code: VirtualKeyCode, button: Button) -> Option<u32> {
-		let mut result = None;
-		
-		if let Some(frames) = self.key_down_frames(code) {
-			result = Some(frames);
-		}
-		
-		if let Some(frames) = self.button_down_frames(button) {
-			if let Some(old_frames) = result {
-				result = Some(old_frames.max(frames));
-			} else {
-				result = Some(frames);
-				}
-		}
-		
-		result
-	}
-	
-	/// returns true if a button or a key is pressed for a single frame
+        let mut result = None;
+
+        if let Some(frames) = self.key_down_frames(code) {
+            result = Some(frames);
+        }
+
+        if let Some(frames) = self.button_down_frames(button) {
+            if let Some(old_frames) = result {
+                result = Some(old_frames.max(frames));
+            } else {
+                result = Some(frames);
+            }
+        }
+
+        result
+    }
+
+    /// returns true if a button or a key is pressed for a single frame
     pub fn kb_pressed(&self, code: VirtualKeyCode, button: Button) -> bool {
-		self.key_pressed(code) || self.button_pressed(button)
-	}
-	
+        self.key_pressed(code) || self.button_pressed(button)
+    }
+
     /// returns an integer in the range wanted
     #[inline]
     pub fn rand_int(&mut self, range: u32) -> i32 {
@@ -271,26 +277,25 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 
         key_downs: HashMap::new(),
         button_downs: HashMap::new(),
-		quads: Vec::new(),
+        quads: Vec::new(),
 
         mouse: Default::default(),
         gen: oorandom::Rand32::new(0),
-	};
+    };
 
     // scripts
-    let mut cursor = Cursor::default();
-
     let mut garbage_system = GarbageSystem::default();
-    let mut combo_highlight = ComboHighlight::default();
-    let mut ui_context = UiContext::default();
-    let mut grid = Grid::new(&mut app);
+    //let mut ui_context = UiContext::default();
+    let mut grids = Vec::new();
+    grids.push(Grid::new(&mut app));
+    grids.push(Grid::new(&mut app));
     let mut debug_info = true;
-	
-	let mut gilrs = match gilrs::GilrsBuilder::new().set_update_state(false).build() {
+
+    let mut gilrs = match gilrs::GilrsBuilder::new().set_update_state(false).build() {
         Ok(g) => g,
         Err(gilrs::Error::NotImplemented(g)) => {
             eprintln!("Current platform is not supported");
-			
+
             g
         }
         Err(e) => {
@@ -298,123 +303,123 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             std::process::exit(-1);
         }
     };
-	
+
     // main loop
     let mut quit = false;
     let mut fixedstep = fixedstep::FixedStep::start(FRAME_AMOUNT);
     while !quit {
         event_loop.run_return(|event, _, control_flow| {
-								  *control_flow = ControlFlow::Wait;
-								  
-								  match event {
-									  Event::MainEventsCleared => {
-										  *control_flow = ControlFlow::Exit;
-									  }
-									  
-									  Event::WindowEvent { event, .. } => match event {
-										  WindowEvent::Resized(size) => {
-											  if size.width != 0 && size.height != 0 {
-												  // recreate swapchain
-												  app.swapchain_desc.width = size.width;
-												  app.swapchain_desc.height = size.height;
-												  swap_chain =
-													  app.device.create_swap_chain(&surface, &app.swapchain_desc);
-												  
-												  depth_texture = create_depth_texture(&app.device, &app.swapchain_desc);
-												  app.depth_texture_view = depth_texture.create_default_view();
-												  
-												  // upload new projection
-												  let projection =
-													  ortho(0., size.width as f32, 0., size.height as f32, -1., 1.);
-												  let temp_buffer = app
-													  .device
-													  .create_buffer_mapped(1, wgpu::BufferUsage::COPY_SRC)
-													  .fill_from_slice(&[projection]);
-												  
-												  let mut init_encoder = app.device.create_command_encoder(
-																										   &wgpu::CommandEncoderDescriptor { todo: 0 },
-																										   );
-												  init_encoder.copy_buffer_to_buffer(
-																					 &temp_buffer,
-																					 0,
-																					 &app.ubo_projection,
-																					 0,
-																					 std::mem::size_of::<M4>() as u64,
-																					 );
-												  init_encoder.finish();
-											  }
-										  }
-										  
-										  WindowEvent::CloseRequested => {
-											  quit = true;
-										  }
-										  
-										  WindowEvent::CursorMoved { position, .. } => {
-											  app.mouse.position = V2::new(position.x as f32, position.y as f32);
-										  }
-										  
-										  WindowEvent::MouseInput { state, button, .. } => {
-											  app.mouse.update_event(state, button);
-										  }
-										  
-										  WindowEvent::KeyboardInput {
-											  input:
-											  KeyboardInput {
-												  virtual_keycode: Some(code),
-												  state,
-												  ..
-											  },
-											  ..
-										  } => {
-											  // add new codes, modify code that is 0 back to 1 if pressed
-											  if state == ElementState::Pressed {
-												  if let Some(value) = app.key_downs.get_mut(&code) {
-													  if *value == 0 {
-														  *value = 1;
-													  }
-												  } else {
-													  app.key_downs.insert(code, 1);
-												  }
-											  }
-											  
-											  if state == ElementState::Released {
-												  if let Some(value) = app.key_downs.get_mut(&code) {
-													  *value = 0;
-												  }
-											  }
-										  }
-										  
-										  _ => (),
-									  },
-									  
-									  _ => (),
-								  }
-							  });
-		
-		// gamepad update
-		while let Some(gilrs::Event { id, event, time }) = gilrs.next_event() {
-			match event {
-				ButtonPressed(btn, code) => {
-						if let Some(value) = app.button_downs.get_mut(&btn) {
-							if *value == 0 {
-							*value = 1;
-							}
-						} else {
-							app.button_downs.insert(btn, 1);
-						}
-					}
-				
-				ButtonReleased(btn, code) => {
-					if let Some(value) = app.button_downs.get_mut(&btn) {
-						*value = 0;
-						}
-				}
-				
-				_ => {}
-			}
-		}
-		
-		// update scope
+            *control_flow = ControlFlow::Wait;
+
+            match event {
+                Event::MainEventsCleared => {
+                    *control_flow = ControlFlow::Exit;
+                }
+
+                Event::WindowEvent { event, .. } => match event {
+                    WindowEvent::Resized(size) => {
+                        if size.width != 0 && size.height != 0 {
+                            // recreate swapchain
+                            app.swapchain_desc.width = size.width;
+                            app.swapchain_desc.height = size.height;
+                            swap_chain =
+                                app.device.create_swap_chain(&surface, &app.swapchain_desc);
+
+                            depth_texture = create_depth_texture(&app.device, &app.swapchain_desc);
+                            app.depth_texture_view = depth_texture.create_default_view();
+
+                            // upload new projection
+                            let projection =
+                                ortho(0., size.width as f32, 0., size.height as f32, -1., 1.);
+                            let temp_buffer = app
+                                .device
+                                .create_buffer_mapped(1, wgpu::BufferUsage::COPY_SRC)
+                                .fill_from_slice(&[projection]);
+
+                            let mut init_encoder = app.device.create_command_encoder(
+                                &wgpu::CommandEncoderDescriptor { todo: 0 },
+                            );
+                            init_encoder.copy_buffer_to_buffer(
+                                &temp_buffer,
+                                0,
+                                &app.ubo_projection,
+                                0,
+                                std::mem::size_of::<M4>() as u64,
+                            );
+                            init_encoder.finish();
+                        }
+                    }
+
+                    WindowEvent::CloseRequested => {
+                        quit = true;
+                    }
+
+                    WindowEvent::CursorMoved { position, .. } => {
+                        app.mouse.position = V2::new(position.x as f32, position.y as f32);
+                    }
+
+                    WindowEvent::MouseInput { state, button, .. } => {
+                        app.mouse.update_event(state, button);
+                    }
+
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                virtual_keycode: Some(code),
+                                state,
+                                ..
+                            },
+                        ..
+                    } => {
+                        // add new codes, modify code that is 0 back to 1 if pressed
+                        if state == ElementState::Pressed {
+                            if let Some(value) = app.key_downs.get_mut(&code) {
+                                if *value == 0 {
+                                    *value = 1;
+                                }
+                            } else {
+                                app.key_downs.insert(code, 1);
+                            }
+                        }
+
+                        if state == ElementState::Released {
+                            if let Some(value) = app.key_downs.get_mut(&code) {
+                                *value = 0;
+                            }
+                        }
+                    }
+
+                    _ => (),
+                },
+
+                _ => (),
+            }
+        });
+
+        // gamepad update
+        while let Some(gilrs::Event { id, event, time }) = gilrs.next_event() {
+            match event {
+                ButtonPressed(btn, code) => {
+                    if let Some(value) = app.button_downs.get_mut(&btn) {
+                        if *value == 0 {
+                            *value = 1;
+                        }
+                    } else {
+                        app.button_downs.insert(btn, 1);
+                    }
+                }
+
+                ButtonReleased(btn, code) => {
+                    if let Some(value) = app.button_downs.get_mut(&btn) {
+                        *value = 0;
+                    }
+                }
+
+                _ => {}
+            }
+        }
+
+        // update scope
         while fixedstep.update() {
             // quit on escape
             if app.key_pressed(VirtualKeyCode::Escape) {
@@ -428,22 +433,27 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 
             if app.kb_pressed(VirtualKeyCode::A, Button::North) {
                 let offset = (app.rand_int(1) * 3) as usize;
-                grid.gen_1d_garbage(&mut garbage_system, 3, offset);
+                grids[0].gen_1d_garbage(&mut garbage_system, 3, offset);
             }
-			
+
             if app.kb_pressed(VirtualKeyCode::Return, Button::West) {
-                grid.gen_2d_garbage(&mut garbage_system, 2);
+                grids[0].gen_2d_garbage(&mut garbage_system, 2);
             }
 
-            if app.key_down(VirtualKeyCode::Space) || app.button_down(Button::LeftTrigger) || app.button_down(Button::RightTrigger) {
-					grid.push_raise = true;
-					}
+            if app.key_down(VirtualKeyCode::Space)
+                || app.button_down(Button::LeftTrigger)
+                || app.button_down(Button::RightTrigger)
+            {
+                grids[0].push_raise = true;
+            }
 
-            cursor.update(&app, &mut grid);
-            grid.update(&mut garbage_system);
-            garbage_system.update(&mut app, &mut grid);
-            grid.push_update(&mut app, &mut garbage_system, &mut cursor);
-			
+            // update all grids
+            for grid in grids.iter_mut() {
+                grid.update(&mut app, &mut garbage_system);
+                grid.push_update(&mut app, &mut garbage_system);
+                garbage_system.update(&mut app, grid);
+            }
+
             // clearing key / mouse input
             {
                 // increase the frame times on the keys
@@ -452,14 +462,14 @@ pub fn run(width: f32, height: f32, title: &'static str) {
                         *value += 1;
                     }
                 }
-				
-				// increase the frame times on the keys
+
+                // increase the frame times on the keys
                 for (_, value) in app.button_downs.iter_mut() {
                     if *value != 0 {
                         *value += 1;
                     }
                 }
-				
+
                 // enable mouse pressing
                 app.mouse.update_frame();
             }
@@ -469,45 +479,8 @@ pub fn run(width: f32, height: f32, title: &'static str) {
         {
             let _delta = fixedstep.render_delta();
 
-            grid.draw(&mut app);
-            combo_highlight.draw(&mut app);
-            cursor.draw(&mut app);
-
-            if debug_info {
-                for x in 0..GRID_WIDTH {
-                    for y in 0..GRID_HEIGHT {
-                        let i = y * GRID_WIDTH + x;
-
-                        if let Component::Block { block, .. } = &grid[i] {
-                            let pos = (
-                                x as f32 * ATLAS_TILE,
-                                y as f32 * ATLAS_TILE + block.offset.y,
-                            );
-							
-							//let text = &format!("{}", i);
-							if let Some(size) = block.saved_chain {
-								let text = &format!("{}", size);
-								
-								app.push_section(Section {
-													 text,
-													 scale: wgpu_glyph::Scale { x: 20., y: 16. },
-													 color: [0., 0., 0., 1.],
-													 screen_position: pos,
-													 ..Default::default()
-												 });
-								
-								app.push_section(Section {
-													 text,
-													 scale: wgpu_glyph::Scale { x: 20., y: 16. },
-													 color: [1., 1., 1., 1.],
-													 screen_position: (pos.0 + 1., pos.1 + 1.),
-													 ..Default::default()
-												 });
-							}
-						}
-                    }
-                }
-            }
+            grids[0].draw(&mut app, V2::new(0., 0.), debug_info);
+            grids[1].draw(&mut app, V2::new(400., 0.), debug_info);
 
             let frame = swap_chain.get_next_texture();
 
@@ -518,25 +491,28 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             // enable mouse pressing
             app.mouse.update_frame();
 
-            let width = app.swapchain_desc.width as f32;
-            let height = app.swapchain_desc.height as f32;
-            UiBuilder::new(
-                &mut app,
-                &mut ui_context,
-                R4::new(width - 200., 0., 200., height),
-                4,
-            )
-            .push_button("reset", |app| {
-                //grid = Grid::new(app);
-            })
-            .push_button("spawn 1d", |app| {
-                let offset = (app.rand_int(1) * 3) as usize;
-                //grid.gen_1d_garbage(&mut garbage_system, 3, offset);
-            })
-            .push_text("-----")
-            .push_button("spawn 2d", |_app| {
-                //grid.gen_2d_garbage(&mut garbage_system, 2);
-            });
+            /*
+                     let width = app.swapchain_desc.width as f32;
+                     let height = app.swapchain_desc.height as f32;
+                     UiBuilder::new(
+                         &mut app,
+                         &mut ui_context,
+                         R4::new(width - 200., 0., 200., height),
+                         4,
+                     )
+                     .push_button("reset", |app| {
+                         grid = Grid::new(app);
+                     })
+                     .push_button("spawn 1d", |app| {
+                         let offset = (app.rand_int(1) * 3) as usize;
+                         grid.gen_1d_garbage(&mut garbage_system, 3, offset);
+                                  println!("called");
+                               })
+                     .push_text("-----")
+                     .push_button("spawn 2d", |_app| {
+                         grid.gen_2d_garbage(&mut garbage_system, 2);
+                     });
+            */
 
             app.draw_sprites(&frame.view, &mut encoder);
 
