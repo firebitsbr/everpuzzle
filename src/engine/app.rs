@@ -232,7 +232,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
     let mut combo_highlight = ComboHighlight::default();
     let mut ui_context = UiContext::default();
     let mut grid = Grid::new(&mut app);
-    let mut debug_info = false;
+    let mut debug_info = true;
 
     // main loop
     let mut quit = false;
@@ -259,11 +259,9 @@ pub fn run(width: f32, height: f32, title: &'static str) {
                 grid.gen_2d_garbage(&mut garbage_system, 2);
             }
 
-            if let Some(frames) = app.key_down_frames(VirtualKeyCode::Space) {
-                if frames == 1 || frames % 50 == 0 {
-                    grid.push_upwards(&mut app, &mut garbage_system, &mut cursor);
-                }
-            }
+            if app.key_down(VirtualKeyCode::Space) {
+					grid.push_raise = true;
+					}
 
             cursor.update(&app, &mut grid);
             grid.update(&mut garbage_system);
@@ -390,23 +388,28 @@ pub fn run(width: f32, height: f32, title: &'static str) {
                                 x as f32 * ATLAS_TILE,
                                 y as f32 * ATLAS_TILE + block.offset.y,
                             );
-
-                            app.push_section(Section {
-                                text: &format!("{}", i),
-                                scale: wgpu_glyph::Scale { x: 20., y: 16. },
-                                color: [0., 0., 0., 1.],
-                                screen_position: pos,
-                                ..Default::default()
-                            });
-
-                            app.push_section(Section {
-                                text: &format!("{}", i),
-                                scale: wgpu_glyph::Scale { x: 20., y: 16. },
-                                color: [1., 1., 1., 1.],
-                                screen_position: (pos.0 + 1., pos.1 + 1.),
-                                ..Default::default()
-                            });
-                        }
+							
+							//let text = &format!("{}", i);
+							if let Some(size) = block.saved_chain {
+								let text = &format!("{}", size);
+								
+								app.push_section(Section {
+													 text,
+													 scale: wgpu_glyph::Scale { x: 20., y: 16. },
+													 color: [0., 0., 0., 1.],
+													 screen_position: pos,
+													 ..Default::default()
+												 });
+								
+								app.push_section(Section {
+													 text,
+													 scale: wgpu_glyph::Scale { x: 20., y: 16. },
+													 color: [1., 1., 1., 1.],
+													 screen_position: (pos.0 + 1., pos.1 + 1.),
+													 ..Default::default()
+												 });
+							}
+						}
                     }
                 }
             }

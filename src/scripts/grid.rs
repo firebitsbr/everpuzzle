@@ -3,9 +3,6 @@ use crate::helpers::*;
 use crate::scripts::*;
 use std::ops::{Index, IndexMut};
 
-/// frame time until the push_counter gets reset
-const PUSH_TIME: u32 = 100;
-
 /// the grid holds all components and updates all the script logic of each component  
 pub struct Grid {
     /// all components that the player can interact with
@@ -15,10 +12,13 @@ pub struct Grid {
     combo_highlight: ComboHighlight,
 
     /// counter till the push_amount is increased
-    push_counter: u32,
-
+    pub push_counter: u32,
+	
     /// pixel amount of y offset of all pushable structs
     pub push_amount: f32,
+	
+	/// manual input sent, till a push_upwards has been called
+	pub push_raise: bool,
 }
 
 impl Default for Grid {
@@ -29,7 +29,8 @@ impl Default for Grid {
 
             push_counter: 0,
             push_amount: 0.,
-        }
+			push_raise: false,
+		}
     }
 }
 
@@ -52,18 +53,18 @@ impl Grid {
     /// inits the grid with randomized blocks (seeded)
     pub fn new(app: &mut App) -> Self {
         let components: Vec<Component> = (0..GRID_TOTAL)
-            .map(|_| {
-                if app.rand_int(1) == 0 {
-                    Component::Empty {
-                        size: 0,
-                        alive: false,
-                    }
-                } else {
+            .map(|i| {
+					 if i >= GRID_WIDTH * 3 {
                     Component::Block {
                         block: Block::random(app),
                         state: BlockState::Idle,
-                    }
-                }
+						 }
+					 } else {
+						 Component::Empty {
+							 size: 0,
+							 alive: false,
+						 }
+					 }
             })
             .collect();
 
@@ -78,11 +79,12 @@ impl Grid {
         app: &mut App,
         garbage_system: &mut GarbageSystem,
         cursor: &mut Cursor,
-    ) {
+							reset: bool,
+							) {
         for x in 0..GRID_WIDTH {
             for y in 0..GRID_HEIGHT {
                 let index = y * GRID_WIDTH + x;
-
+				
                 if y < GRID_HEIGHT - 1 {
                     match &mut self[index + GRID_WIDTH] {
                         Component::Block { block, .. } => block.offset.y = 0.,
@@ -211,8 +213,8 @@ impl Grid {
                         BlockState::Idle => return block.vframe,
 
                         BlockState::Land { counter } => {
-                            if counter == 0 {
-                                return block.vframe;
+								 if counter == 1 {
+									 return block.vframe;
                             }
                         }
 
@@ -270,14 +272,21 @@ impl Grid {
                         start_time: i as u32 * CLEAR_TIME as u32,
                         end_time,
                     };
-
-                    had_chainable = block.saved_chain.or_else(|| None);
+					
+					if let Some(new_size) = block.saved_chain {
+					if let Some(existing_size) = had_chainable {
+							had_chainable = Some(new_size.max(existing_size));
+						} else {
+							had_chainable = Some(new_size);
+						}
+					}
                 }
             }
 
             // push chainable even if count was 3
             if let Some(size) = had_chainable {
-                self.combo_highlight.push_chain(size as u32 + 1);
+                println!("set chainable");
+				self.combo_highlight.push_chain(size as u32 + 1);
             }
 
             // always send combo info
@@ -352,7 +361,7 @@ impl Grid {
                             }
                         }
                     }
-
+					
                     // if child, look it up in any garbage children, set to hang if idle
                     Component::Child(_) => {
                         if above_fall {
@@ -381,16 +390,32 @@ impl Grid {
             for y in (0..GRID_HEIGHT - 1).rev() {
                 let i = y * GRID_WIDTH + x;
 
-                if let Component::Block { state, .. } = &self[i] {
+                if let Component::Block { state, block } = &self[i] {
                     if let BlockState::Fall = state {
-                        if let Component::Empty { .. } = self[i + GRID_WIDTH] {
-                            self.components.swap(i, i + GRID_WIDTH);
+                        let mut saved_chain = None;
+                            let was_saved = block.saved_chain.is_some();
+						
+						if let Component::Empty { alive, size } = &mut self[i + GRID_WIDTH] {
+							if was_saved {
+							*alive = false;
+							}
+							
+							saved_chain = Some(*size);
+							*size = 1;
+							
+							self.components.swap(i, i + GRID_WIDTH);
                         } else {
                             // reset blocks that were in fall and cant fall anymore
                             if let Component::Block { state, .. } = &mut self[i] {
                                 *state = BlockState::Land { counter: 0 };
                             }
                         }
+						
+						if let Some(_) = saved_chain {
+							if let Component::Block { block, .. } = &mut self[i + GRID_WIDTH] {
+								block.saved_chain = saved_chain;
+							}
+						}
                     }
                 }
             }
@@ -595,7 +620,8 @@ impl Grid {
         garbage_system: &mut GarbageSystem,
         cursor: &mut Cursor,
     ) {
-        if self.push_counter < PUSH_TIME {
+        
+		if self.push_counter < PUSH_TIME && !self.push_raise {
             self.push_counter += 1;
         } else {
             self.push_amount += 1.;
@@ -613,7 +639,8 @@ impl Grid {
 
                 cursor.y_offset = -amt;
             } else {
-                self.push_upwards(app, garbage_system, cursor);
+				self.push_upwards(app, garbage_system, cursor, false);
+                self.push_raise = false;
                 self.push_amount = 0.;
             }
         }

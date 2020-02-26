@@ -103,7 +103,7 @@ impl Block {
             }
 
             Idle => {
-                //self.was_chainable = None;
+                self.saved_chain = None;
                 self.hframe = 0;
             }
 

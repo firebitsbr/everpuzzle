@@ -1,13 +1,16 @@
 use crate::helpers::math::*;
 
 /// block and garbage hang time
-pub const HANG_TIME: u32 = 20;
+pub const HANG_TIME: u32 = 60;
 /// block and garbage clear time
-pub const CLEAR_TIME: u32 = 20;
+pub const CLEAR_TIME: u32 = 40;
 /// amount of frames it takes to swap a block
 pub const SWAP_TIME: u32 = 5;
-/// amount of frames it takes to swap a block
+/// amount of frames it takes to land a block, multples of 3!
 pub const LAND_TIME: u32 = 24;
+
+/// frame time until the push_counter gets reset
+pub const PUSH_TIME: u32 = 100;
 
 /// pixel size of each sprite in the texture atlas
 pub const ATLAS_TILE: f32 = 32.;

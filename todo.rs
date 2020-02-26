@@ -1,15 +1,9 @@
 
-Now {
-	Explore better / declaritive scripting {
-		different types of iters,
-		enum for directions above, below?,
-		one iter call with enum variants,
-	}
-}
-
 Bugs {
 	Block {
 		Swap triggers hang to be chainable?,
+		 chain not getting set right,
+		chain vertical not getting set right
 	}
 }
 
@@ -21,9 +15,8 @@ Rendering {
 }
 
 Helpers {
-	builder pattern for block / state checking?,
-	iterator through real blocks, block_states, garbage, garbage_states,
-	[_] Use IV2 on things that dont need float?,
+	[_] iterator through real blocks, block_states, garbage, garbage_states,
+	[x] Use IV2 on things that dont need float?,
 }
 
 General {
@@ -31,6 +24,11 @@ General {
 	multiple players with set controls,
 	rebind keys,
 	gamepad input,
+	
+	ini file for data {
+		hot swapped?,
+		animation data,
+	}
 	
 	extend grid height to 24 {
 		lookup each frame if a block exists in the top space - disable polling in the range if nothing,
@@ -65,7 +63,7 @@ Grid {
 		gen 6 without matches,
 	},
 	
-	y_offset key_down held till one push is done,
+	[!] y_offset key_down held till one push is done,
 	[x] y offset per pixel,
 	[x] clear chain,
 	[_] combo count on each frame,
