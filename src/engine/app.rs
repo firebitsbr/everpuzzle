@@ -70,9 +70,6 @@ pub struct App {
 
     /// mouse handle that which holds left / right button and position info
     pub mouse: Mouse,
-
-    /// random number generator
-    pub gen: oorandom::Rand32,
 }
 
 impl App {
@@ -139,12 +136,6 @@ impl App {
     /// returns true if a button or a key is pressed for a single frame
     pub fn kb_pressed(&self, code: VirtualKeyCode, button: Button) -> bool {
         self.key_pressed(code) || self.button_pressed(button)
-    }
-
-    /// returns an integer in the range wanted
-    #[inline]
-    pub fn rand_int(&mut self, range: u32) -> i32 {
-        (self.gen.rand_float() * range as f32).round() as i32
     }
 
     /// pushes a sprite to the anonymous sprites
@@ -280,17 +271,23 @@ pub fn run(width: f32, height: f32, title: &'static str) {
         quads: Vec::new(),
 
         mouse: Default::default(),
-        gen: oorandom::Rand32::new(0),
     };
 
     // scripts
     let mut garbage_system = GarbageSystem::default();
     //let mut ui_context = UiContext::default();
     let mut grids = Vec::new();
-    grids.push(Grid::new(&mut app));
-    grids.push(Grid::new(&mut app));
+	
+	// generates the same vframes for all the grids at the start
+	let vframes = {
+		let mut temp_random = oorandom::Rand32::new(0);
+			Grid::gen_field(&mut temp_random, 5)
+	};
+	grids.push(Grid::new(&mut app, 1, &vframes));
+    grids.push(Grid::new(&mut app, 2, &vframes));
     let mut debug_info = true;
-
+	
+	// gamepad
     let mut gilrs = match gilrs::GilrsBuilder::new().set_update_state(false).build() {
         Ok(g) => g,
         Err(gilrs::Error::NotImplemented(g)) => {
@@ -432,15 +429,20 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             }
 
             if app.kb_pressed(VirtualKeyCode::A, Button::North) {
-                let offset = (app.rand_int(1) * 3) as usize;
-                grids[0].gen_1d_garbage(&mut garbage_system, 3, offset);
+                grids[0].gen_1d_garbage(&mut garbage_system, 3, 0);
             }
 
             if app.kb_pressed(VirtualKeyCode::Return, Button::West) {
                 grids[0].gen_2d_garbage(&mut garbage_system, 2);
             }
-
-            if app.key_down(VirtualKeyCode::Space)
+			
+			if app.kb_pressed(VirtualKeyCode::Space, Button::Start) {
+				for grid in grids.iter_mut() {
+					grid.reset();
+				}
+				}
+			
+            if app.key_down(VirtualKeyCode::LShift)
                 || app.button_down(Button::LeftTrigger)
                 || app.button_down(Button::RightTrigger)
             {

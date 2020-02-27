@@ -14,7 +14,20 @@ pub enum Component {
 }
 
 impl Component {
-    /// converts the current component into a sprite if it is real, can be turned into a quad
+    pub fn spawn(opt_vframe: Option<u32>) -> Self {
+		match opt_vframe {
+			Some(vframe) => Component::Block {
+				block: Block {
+					vframe,
+					..Default::default()
+				},
+					state: BlockState::Idle,
+			},
+			_ => Component::Empty { size: 0, alive: false }
+		}
+	}
+	
+	/// converts the current component into a sprite if it is real, can be turned into a quad
     pub fn to_sprite(&self, position: V2) -> Option<Sprite> {
         let mut sprite = Sprite {
             position,

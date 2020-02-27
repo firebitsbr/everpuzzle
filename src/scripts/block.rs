@@ -56,17 +56,17 @@ impl Default for Block {
 
 impl Block {
     /// creates a block with a "randomized" vframe
-    pub fn random(app: &mut App) -> Self {
+    pub fn random(gen: &mut oorandom::Rand32) -> Self {
         Self {
-            vframe: (app.rand_int(5) + 3) as u32,
+            vframe: gen.rand_range(3..8),
             ..Default::default()
         }
     }
 
     /// simply creates a vframe designed for the block
-    pub fn random_vframe(app: &mut App) -> u32 {
-        (app.rand_int(5) + 3) as u32
-    }
+    pub fn random_vframe(gen: &mut oorandom::Rand32) -> u32 {
+		gen.rand_range(3..8)
+	}
 
     /// updates the block variables based on each state, mostly animation based
     pub fn update(&mut self, state: &mut BlockState) {

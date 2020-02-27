@@ -313,7 +313,7 @@ impl Garbage {
                                 state: BlockState::Spawned,
                                 block: Block {
                                     offset: V2::new(0., -grid.push_amount),
-                                    vframe: Block::random_vframe(app),
+                                    vframe: Block::random_vframe(&mut grid.rng),
 
                                     // allow chains from garbage
                                     saved_chain: Some(1),

@@ -27,7 +27,7 @@ pub struct Cursor {
 impl Default for Cursor {
     fn default() -> Self {
         Self {
-            position: I2::new(2, 5),
+            position: I2::new(2, 7),
             goal_position: V2::zero(),
             last_position: I2::zero(),
             goal_counter: 0,
@@ -45,7 +45,11 @@ impl Default for Cursor {
 }
 
 impl Cursor {
-    /// input update which controls the movement of the cursor and also swapping of blocks in the grid
+    pub fn reset(&mut self) {
+		self.position = I2::new(2, 7);
+	}
+	
+	/// input update which controls the movement of the cursor and also swapping of blocks in the grid
     pub fn update(&mut self, app: &App, components: &mut Vec<Component>) {
         if self.counter < ANIMATION_TIME - 1 {
             self.counter += 1;

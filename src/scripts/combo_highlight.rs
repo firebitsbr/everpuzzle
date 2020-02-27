@@ -41,7 +41,12 @@ impl Default for ComboHighlight {
 }
 
 impl ComboHighlight {
-    /// pushes a chain onto the vecdeque start, restarts the appear animation
+	/// clears the queue
+    pub fn clear(&mut self) {
+		self.list.clear();
+	}
+	
+	/// pushes a chain onto the vecdeque start, restarts the appear animation
     pub fn push_chain(&mut self, chain_size: u32) {
         self.list.push_front(ComboData {
             size: chain_size,

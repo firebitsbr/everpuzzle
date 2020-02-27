@@ -10,7 +10,7 @@ pub const SWAP_TIME: u32 = 5;
 pub const LAND_TIME: u32 = 24;
 
 /// frame time until the push_counter gets reset
-pub const PUSH_TIME: u32 = 100;
+pub const PUSH_TIME: u32 = 50;
 
 /// pixel size of each sprite in the texture atlas
 pub const ATLAS_TILE: f32 = 32.;

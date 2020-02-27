@@ -23,66 +23,136 @@ pub struct Grid {
 
     /// cursor that the player controls inside the grid
     pub cursor: Cursor,
-}
-
-impl Default for Grid {
-    fn default() -> Self {
-        Self {
-            components: Vec::with_capacity(GRID_TOTAL),
-            combo_highlight: Default::default(),
-
-            push_counter: 0,
-            push_amount: 0.,
-            push_raise: false,
-
-            cursor: Cursor::default(),
-        }
-    }
+	
+	/// random number generator, each grid will have its own generator, which will all use the same seed
+	pub rng: oorandom::Rand32,
 }
 
 impl Grid {
-    /// creates empty grid for testing
-    pub fn empty() -> Self {
-        let components: Vec<Component> = (0..GRID_TOTAL)
-            .map(|_| Component::Empty {
-                size: 0,
-                alive: false,
-            })
-            .collect();
-
-        Self {
-            components,
-            ..Default::default()
-        }
-    }
-
+	/// generates a randomized new line of vframes for blocks
+	/// respects the current bottom row of blocks to not generate the same as the above ones
+	pub fn gen_line(&mut self) -> [u32; 6] {
+		let mut vframes = [0; 6];
+		
+		for (i, index) in (GRID_TOTAL - GRID_WIDTH..GRID_TOTAL).enumerate() {
+			if let Component::Block { block, .. } = &self[index] {
+				let mut new_num = 999;
+				let vframe = block.vframe;
+				
+				loop {
+					 new_num = self.rng.rand_range(3..8);
+					
+					// dont allow new to be the same as above
+					if new_num != vframe {
+						// if history is longer than 2, check not to create a 3x1 line
+						if i > 1 {
+							// if 2 previous were the same and it matches regenrate
+							if vframes[i - 1] == vframes[i - 2] {
+								if vframes[i - 1] != new_num {
+								break;
+								}
+							} else {
+								break;
+							}
+						} else {
+							// simply exit
+							break;
+						}
+					}
+				}
+				
+				vframes[i] = new_num;
+			} else {
+				// simply generate new number if block doesnt exist
+				vframes[i] = self.rng.rand_range(3..8);
+			}
+		}
+		
+		vframes
+	}
+	
+	/// non grid dependant way to generate a new field of vframes
+	pub fn gen_field(rng: &mut oorandom::Rand32, skip_height: usize) -> [Option<u32>; GRID_TOTAL] {
+		let mut vframes = [None; GRID_TOTAL];
+		
+		let mut last = None;
+				let mut num = None;
+		
+		for i in 0..GRID_TOTAL {
+			if i >= skip_height * GRID_WIDTH {
+				loop {
+					num = Some(rng.rand_range(3..8));
+				
+				// skip rand gen if last doesnt equal new
+				if num != last {
+					// only when i is below GRID_WIDTH, check for above number too
+					if i > GRID_WIDTH {
+						if let Some(above) = vframes[i - GRID_WIDTH] {
+								if above != num.unwrap() {
+								break;
+							}
+							} else {
+								if rng.rand_range(0..5) == 1 {
+									num = None;
+								}
+								
+								break;
+						}
+					} else {
+						break;
+					}
+				}
+				}
+				
+				vframes[i] = num;
+				} else {
+				vframes[i] = None;
+				}
+				
+			last = num;
+				}
+		
+		vframes
+	}
+	
     /// inits the grid with randomized blocks (seeded)
-    pub fn new(app: &mut App) -> Self {
+    pub fn new(app: &mut App, seed: u64, vframes: &[Option<u32>; GRID_TOTAL]) -> Self {
         let components: Vec<Component> = (0..GRID_TOTAL)
-            .map(|i| {
-                if i >= GRID_WIDTH * 3 {
-                    Component::Block {
-                        block: Block::random(app),
-                        state: BlockState::Idle,
-                    }
-                } else {
-                    Component::Empty {
-                        size: 0,
-                        alive: false,
-                    }
-                }
-            })
+            .map(|i| Component::spawn(vframes[i]))
             .collect();
-
-        Self {
+		
+		  Self {
             components,
-            ..Default::default()
-        }
+			combo_highlight: Default::default(),
+			
+            push_counter: 0,
+            push_amount: 0.,
+            push_raise: false,
+			
+            cursor: Cursor::default(),
+			rng: oorandom::Rand32::new(seed),
+		}
     }
-
+	
+	/// resets the grid and sets it to a new randomized field
+	pub fn reset(&mut self) {
+		let vframes = Grid::gen_field(&mut self.rng, 5);
+			
+		for i in 0..GRID_TOTAL {
+			self[i] = Component::spawn(vframes[i]);
+		}
+		
+		self.combo_highlight.clear();
+		self.push_raise = false;
+		self.push_counter = 0;
+		self.cursor.reset();
+	}
+	
     /// sets all blocks and childs y_offset to 0, swaps them with below and sets bottom row to randoimized blocks
     pub fn push_upwards(&mut self, app: &mut App, garbage_system: &mut GarbageSystem, reset: bool) {
-        for x in 0..GRID_WIDTH {
+        let vframes = self.gen_line();
+		
+		for x in 0..GRID_WIDTH {
             for y in 0..GRID_HEIGHT {
                 let index = y * GRID_WIDTH + x;
 
@@ -97,7 +167,7 @@ impl Grid {
                 } else {
                     self.components[index] = Component::Block {
                         block: Block {
-                            vframe: Block::random_vframe(app),
+                            vframe: vframes[x],
                             offset: V2::new(0., -self.push_amount),
                             ..Default::default()
                         },
