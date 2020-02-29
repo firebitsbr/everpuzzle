@@ -1,23 +1,23 @@
 use crate::engine::{DEPTH_FORMAT, RENDER_FORMAT, TEXTURE_FORMAT};
-use crate::helpers::{Sprite, ATLAS_SPACING, M4, V2, V3};
+use crate::helpers::{Sprite, Line, PI, ATLAS_TILE, ATLAS_SPACING, M4, V2, V3};
 
 /// data that will be sent to the gpu
 #[derive(Debug, Clone, Copy)]
 pub struct Quad {
     /// model matrix that stores position, offset, scale, dimensions, etc
-    model: M4,
+    pub model: M4,
 
     /// how many tiles the quad texture should use
-    tiles: V2,
+    pub tiles: V2,
 
     /// hframe of the tile in the texture atlas
-    hframe: f32,
+    pub hframe: f32,
 
     /// vframe of the tile in the texture atlas
-    vframe: f32,
+    pub vframe: f32,
 
     /// vframe of the tile in the texture atlas
-    depth: f32,
+    pub depth: f32,
 }
 
 impl Quad {
@@ -26,7 +26,7 @@ impl Quad {
 
     /// byte size of the quad struct
     const SIZE: usize = std::mem::size_of::<Quad>();
-}
+	}
 
 /// converts a sprite into a valid quad
 impl From<Sprite> for Quad {
@@ -51,6 +51,31 @@ impl From<Sprite> for Quad {
             depth: sprite.depth,
         }
     }
+}
+
+/// converts a line into a valid quad
+impl From<Line> for Quad {
+    fn from(line: Line) -> Self {
+        let mut model = M4::identity();
+		let dimensions = V2::new(line.start.distance(line.end), line.thickness);
+		model.scale_3d(V3::new(dimensions.x, dimensions.y, 1.));
+		
+		// always centered
+		model.translate_2d(V2::new(-line.thickness / 2., -line.thickness / 2.));
+		
+		let temp = line.end - line.start;
+		model.rotate_z(-temp.x.atan2(temp.y) + PI / 2.);
+		
+		model.translate_2d(line.start);
+		
+		Quad {
+			model,
+			tiles: V2::new(1., 1.),
+			hframe: line.hframe as f32,
+			vframe: line.vframe as f32,
+			depth: 0.1,
+		}
+	}
 }
 
 /// quad pipeline to draw any sprite / quad

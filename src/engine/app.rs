@@ -46,7 +46,7 @@ pub struct App {
 
     /// pipeline for rendering sprites
     quad_pipeline: quad::Pipeline,
-
+	
     /// queues draw commands
     queue: wgpu::Queue,
 
@@ -67,7 +67,7 @@ pub struct App {
 
     /// data storage for all quads in the frame that you want to draw
     quads: Vec<quad::Quad>,
-
+	
     /// mouse handle that which holds left / right button and position info
     pub mouse: Mouse,
 }
@@ -138,13 +138,27 @@ impl App {
         self.key_pressed(code) || self.button_pressed(button)
     }
 
+    /// pushes a quad to the list of quads to draw
+    pub fn push_quad(&mut self, quad: Quad) {
+        if self.quads.len() < quad::Quad::MAX {
+            self.quads.push(quad);
+        }
+    }
+	
+    /// pushes a line transformed into a quad
+    pub fn push_line(&mut self, line: Line) {
+        if self.quads.len() < quad::Quad::MAX {
+            self.quads.push(line.into());
+        }
+    }
+	
     /// pushes a sprite to the anonymous sprites
     pub fn push_sprite(&mut self, sprite: Sprite) {
         if self.quads.len() < quad::Quad::MAX {
             self.quads.push(sprite.into());
         }
     }
-
+	
     /// draws all acquired sprites and clears the sprites again
     fn draw_sprites(&mut self, view: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) {
         // dont draw anything if sprites havent been set
@@ -162,7 +176,7 @@ impl App {
 
         self.quads.clear();
     }
-
+	
     /// pushes a section of text to be rendered this frame
     pub fn push_section(&mut self, section: Section) {
         self.glyph_brush.queue(section);
@@ -283,8 +297,8 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 		let mut temp_random = oorandom::Rand32::new(0);
 			Grid::gen_field(&mut temp_random, 5)
 	};
-	grids.push(Grid::new(&mut app, 1, &vframes));
-    grids.push(Grid::new(&mut app, 2, &vframes));
+	grids.push(Grid::new(&mut app, 0, 1, &vframes));
+    grids.push(Grid::new(&mut app, 1, 2, &vframes));
     let mut debug_info = true;
 	
 	// gamepad
@@ -427,7 +441,19 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             if app.kb_pressed(VirtualKeyCode::Tab, Button::Select) {
                 debug_info = !debug_info;
             }
-
+			
+			if app.mouse.left_pressed {
+				let pos = I2::new(
+									  ((app.mouse.position.x - 400.) / ATLAS_TILE).floor() as i32,
+									  ((app.mouse.position.y + grids[1].push_amount) / ATLAS_TILE).floor() as i32,
+									  );
+				
+				grids[1].cursor.state = CursorState::Move {
+					counter: 0,
+					goal: pos,
+				};
+			}
+			
             if app.kb_pressed(VirtualKeyCode::A, Button::North) {
                 grids[0].gen_1d_garbage(&mut garbage_system, 3, 0);
             }
@@ -492,7 +518,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 
             // enable mouse pressing
             app.mouse.update_frame();
-
+			
             /*
                      let width = app.swapchain_desc.width as f32;
                      let height = app.swapchain_desc.height as f32;
@@ -517,7 +543,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             */
 
             app.draw_sprites(&frame.view, &mut encoder);
-
+			
             // draws all sections sent into glyph_brush
             app.glyph_brush
                 .draw_queued(

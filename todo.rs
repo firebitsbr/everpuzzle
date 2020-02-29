@@ -113,6 +113,7 @@ Game Modes {
 	recognize fn asd<> as a function too,
 	#[inline] shouldnt indent next text,
 	make brace highlights not highlight indent = 1,
+	allow numbers and _ like 100_000,
 }
 
 marketing {

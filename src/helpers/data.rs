@@ -64,3 +64,25 @@ impl Default for Sprite {
         }
     }
 }
+
+/// data that will be sent to the gpu
+#[derive(Debug, Clone, Copy)]
+pub struct Line {
+	pub start: V2,
+	pub end: V2,
+	pub thickness: f32,
+	pub hframe: u32,
+	pub vframe: u32,
+}
+
+impl Default for Line {
+	fn default() -> Self {
+		Self {
+			start: V2::zero(),
+			end: V2::zero(),
+			thickness: 10.,
+			hframe: 0,
+			vframe: ATLAS_FILL,
+		}
+	}
+}

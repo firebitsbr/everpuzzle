@@ -10,6 +10,17 @@ const FRAME_LIMIT: u32 = 25;
 const ANIMATION_TIME: u32 = 64;
 /// amount of frames it takes to lerp from one to the other cursor position
 const LERP_TIME: u32 = 8;
+/// amount of frames it takes to make an ai step
+const DELAY_TIME: u32 = 1;
+
+pub enum CursorState {
+	Idle,
+	Move {
+		counter: u32, 
+		goal: I2,
+	},
+	Swap,
+}
 
 /// the player controls the cursor, holds sprite and position data
 pub struct Cursor {
@@ -22,6 +33,12 @@ pub struct Cursor {
 
     pub goal_position: V2,
     goal_counter: u32,
+	
+	/// ai state
+	pub state: CursorState,
+	
+	/// delay the ai for lower speed
+	pub delay: u32,
 }
 
 impl Default for Cursor {
@@ -40,7 +57,11 @@ impl Default for Cursor {
                 ..Default::default()
             },
             y_offset: 0.,
-        }
+			
+			// ai
+			state: CursorState::Idle,
+			delay: 0,
+		}
     }
 }
 
@@ -50,13 +71,93 @@ impl Cursor {
 	}
 	
 	/// input update which controls the movement of the cursor and also swapping of blocks in the grid
-    pub fn update(&mut self, app: &App, components: &mut Vec<Component>) {
+    pub fn update(&mut self, app: &App, components: &mut Vec<Component>, ai: bool) {
         if self.counter < ANIMATION_TIME - 1 {
             self.counter += 1;
         } else {
             self.counter = 0;
         }
-
+		
+        // cursor lerp animation
+        {
+            if self.last_position != self.position {
+                self.goal_position.x = self.position.x as f32 * ATLAS_TILE;
+                self.goal_position.y = self.position.y as f32 * ATLAS_TILE;
+                self.goal_counter = LERP_TIME;
+            }
+			
+            if self.goal_counter > 0 {
+                self.goal_counter -= 1;
+            }
+			
+            self.last_position = self.position;
+        }
+		
+		if ai {
+			if self.delay < DELAY_TIME {
+				self.delay += 1;
+				return;
+			} else {
+				self.delay = 0;
+				println!("inside");
+				
+			match self.state {
+				CursorState::Idle => {
+						println!("idle");
+				}
+				
+				CursorState::Move { mut counter, goal } => {
+						println!("move");
+					counter += 1;
+					
+					if counter != 1 && counter < FRAME_LIMIT {
+						// empty
+					} else {
+						if goal.x <= 0 || goal.x > GRID_WIDTH as i32 - 2 || goal.y <= 0 || goal.y >= GRID_HEIGHT as i32 - 1 {
+							println!("skipped");
+							self.state = CursorState::Idle;
+							return;
+						}
+						
+						if self.position.y != goal.y {
+							if self.position.y < goal.y {
+								self.position.y += 1;
+							} else {
+								self.position.y -= 1;
+							}
+							
+							return;
+						}
+						
+						if self.position.x != goal.x {
+							if self.position.x < goal.x {
+								self.position.x += 1;
+							} else {
+								self.position.x -= 1;
+							}
+							
+							return;
+						}
+						
+						if self.position == goal {
+							self.state = CursorState::Swap;
+							//self.state = CursorState::Idle;
+							return;
+						}
+					}
+				}
+				
+				CursorState::Swap => {
+						println!("swap");
+					self.swap_blocks(components);
+					self.state = CursorState::Idle;
+				}
+				}
+			
+			return;
+		}
+		}
+			
         let left = app.kb_down_frames(VirtualKeyCode::Left, Button::DPadLeft);
         let right = app.kb_down_frames(VirtualKeyCode::Right, Button::DPadRight);
         let up = app.kb_down_frames(VirtualKeyCode::Up, Button::DPadUp);
@@ -96,21 +197,6 @@ impl Cursor {
             }
         }
 
-        // cursor lerp animation
-        {
-            if self.last_position != self.position {
-                self.goal_position.x = self.position.x as f32 * ATLAS_TILE;
-                self.goal_position.y = self.position.y as f32 * ATLAS_TILE;
-                self.goal_counter = LERP_TIME;
-            }
-
-            if self.goal_counter > 0 {
-                self.goal_counter -= 1;
-            }
-
-            self.last_position = self.position;
-        }
-
         if app.key_pressed(VirtualKeyCode::S)
             || app.button_pressed(Button::South)
             || app.button_pressed(Button::East)
@@ -139,7 +225,7 @@ impl Cursor {
 
     pub fn swap_blocks(&self, components: &mut Vec<Component>) {
         let i = self.position.to_index();
-
+		
         let right = can_swap(components, i + 1);
         let left = can_swap(components, i);
 
