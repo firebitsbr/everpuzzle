@@ -26,6 +26,10 @@ gilrs = "0.7.4" # gamepad input
 debug = 1 
 lto = false
 incremental = true
+opt-level = 1
 
 [profile.release]
 debug = true
+
+[profile.dev.package."*"]
+opt-level = 2

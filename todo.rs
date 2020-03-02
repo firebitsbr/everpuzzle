@@ -47,6 +47,11 @@ Cursor {
 	[x] frame based smooth movement,
 	[x] dt movement?,
 	[x] smooth animation,
+	
+	Ai {
+		gets stuck sometimes,
+		recalculate goal when something isnt idle,
+	}
 }
 
 Block {
@@ -107,7 +112,7 @@ Garbage System {
 Game Modes {
 	Each level increase get a new grid to manage with the same input,
 }
-
+i
 4coder {
 	add {}, (), [], automatically,
 	recognize fn asd<> as a function too,

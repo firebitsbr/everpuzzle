@@ -478,7 +478,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             // update all grids
             for grid in grids.iter_mut() {
                 grid.update(&mut app, &mut garbage_system);
-                grid.push_update(&mut app, &mut garbage_system);
+                //grid.push_update(&mut app, &mut garbage_system);
                 garbage_system.update(&mut app, grid);
             }
 

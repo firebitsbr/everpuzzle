@@ -3,6 +3,7 @@ use crate::helpers::*;
 use crate::scripts::{BlockState, Component, Grid};
 use gilrs::Button;
 use winit::event::VirtualKeyCode;
+use wgpu_glyph::Section;
 
 /// amount of frames it takes for the fast cursor movement to happen
 const FRAME_LIMIT: u32 = 25;
@@ -11,7 +12,7 @@ const ANIMATION_TIME: u32 = 64;
 /// amount of frames it takes to lerp from one to the other cursor position
 const LERP_TIME: u32 = 8;
 /// amount of frames it takes to make an ai step
-const DELAY_TIME: u32 = 1;
+const DELAY_TIME: u32 = 20;
 
 pub enum CursorState {
 	Idle,
@@ -33,6 +34,8 @@ pub struct Cursor {
 
     pub goal_position: V2,
     goal_counter: u32,
+	
+	pub ai: bool,
 	
 	/// ai state
 	pub state: CursorState,
@@ -61,6 +64,7 @@ impl Default for Cursor {
 			// ai
 			state: CursorState::Idle,
 			delay: 0,
+			ai: false,
 		}
     }
 }
@@ -68,10 +72,17 @@ impl Default for Cursor {
 impl Cursor {
     pub fn reset(&mut self) {
 		self.position = I2::new(2, 7);
+		}
+	
+	pub fn new(ai: bool) -> Self {
+		Self {
+			ai,
+			..Default::default()
+		}
 	}
 	
 	/// input update which controls the movement of the cursor and also swapping of blocks in the grid
-    pub fn update(&mut self, app: &App, components: &mut Vec<Component>, ai: bool) {
+    pub fn update(&mut self, app: &App, components: &mut Vec<Component>) {
         if self.counter < ANIMATION_TIME - 1 {
             self.counter += 1;
         } else {
@@ -93,71 +104,13 @@ impl Cursor {
             self.last_position = self.position;
         }
 		
-		if ai {
-			if self.delay < DELAY_TIME {
-				self.delay += 1;
-				return;
-			} else {
-				self.delay = 0;
-				println!("inside");
-				
-			match self.state {
-				CursorState::Idle => {
-						println!("idle");
-				}
-				
-				CursorState::Move { mut counter, goal } => {
-						println!("move");
-					counter += 1;
-					
-					if counter != 1 && counter < FRAME_LIMIT {
-						// empty
-					} else {
-						if goal.x <= 0 || goal.x > GRID_WIDTH as i32 - 2 || goal.y <= 0 || goal.y >= GRID_HEIGHT as i32 - 1 {
-							println!("skipped");
-							self.state = CursorState::Idle;
-							return;
-						}
-						
-						if self.position.y != goal.y {
-							if self.position.y < goal.y {
-								self.position.y += 1;
-							} else {
-								self.position.y -= 1;
-							}
-							
-							return;
-						}
-						
-						if self.position.x != goal.x {
-							if self.position.x < goal.x {
-								self.position.x += 1;
-							} else {
-								self.position.x -= 1;
-							}
-							
-							return;
-						}
-						
-						if self.position == goal {
-							self.state = CursorState::Swap;
-							//self.state = CursorState::Idle;
-							return;
-						}
-					}
-				}
-				
-				CursorState::Swap => {
-						println!("swap");
-					self.swap_blocks(components);
-					self.state = CursorState::Idle;
-				}
-				}
-			
-			return;
+		match self.ai {
+			true => self.update_ai(app, components),
+			 false => self.update_player(app, components),
 		}
-		}
-			
+	}
+	
+	fn update_player(&mut self, app: &App, components: &mut Vec<Component>) {
         let left = app.kb_down_frames(VirtualKeyCode::Left, Button::DPadLeft);
         let right = app.kb_down_frames(VirtualKeyCode::Right, Button::DPadRight);
         let up = app.kb_down_frames(VirtualKeyCode::Up, Button::DPadUp);
@@ -210,7 +163,61 @@ impl Cursor {
             components.swap(index, index - GRID_WIDTH);
         }
     }
-
+	
+	pub fn update_ai(&mut self, app: &App, components: &mut Vec<Component>) {
+		if self.delay < DELAY_TIME {
+				self.delay += 1;
+			return;
+		}
+			
+			self.delay = 0;
+				
+				match self.state {
+				CursorState::Idle => {
+					//println!("idle");
+				}
+				
+				CursorState::Move { mut counter, goal } => {
+					//println!("move");
+				counter += 1;
+				
+				if counter == 1 || counter > FRAME_LIMIT {
+						if self.position.y != goal.y {
+							if self.position.y < goal.y {
+								self.position.y += 1;
+							} else {
+								self.position.y -= 1;
+							}
+							
+							return;
+						}
+						
+						if self.position.x != goal.x {
+							if self.position.x < goal.x {
+								self.position.x += 1;
+							} else {
+								self.position.x -= 1;
+							}
+							
+							return;
+						}
+						
+						if self.position == goal {
+							self.state = CursorState::Swap;
+							//self.state = CursorState::Idle;
+							return;
+						}
+					}
+				}
+				
+				CursorState::Swap => {
+					//println!("swap");
+					self.swap_blocks(components);
+					self.state = CursorState::Idle;
+				}
+				}
+	}
+	
     // draws the cursor sprite into the app
     pub fn draw(&mut self, app: &mut App, offset: V2) {
         self.sprite.position = V2::lerp(
@@ -221,8 +228,40 @@ impl Cursor {
         self.sprite.hframe = (self.counter as f32 / 32.).floor() as u32 * 3;
         self.sprite.offset = offset + V2::new(-16., self.y_offset - ATLAS_TILE / 2.);
         app.push_sprite(self.sprite);
-    }
-
+		
+		if self.ai {
+			match self.state {
+				CursorState::Move { goal, .. } => {
+					let goal = V2::new(goal.x as f32, goal.y as f32);
+					
+					app.push_line(Line {
+										  start: self.sprite.position + offset,
+										  end: goal * ATLAS_SPACING + offset + ATLAS_SPACING / 2.,
+										  thickness: 15.,
+										  hframe: 8,
+										  ..Default::default()
+									  });
+				}
+				
+				_ => {}
+			}
+			
+			let text = match self.state {
+				CursorState::Idle => "I",
+				CursorState::Move { .. } => "M",
+				CursorState::Swap => "S",
+			};
+		
+		app.push_section(Section {
+									 text,
+									 screen_position: (offset.x + self.sprite.position.x - ATLAS_TILE, offset.y + self.sprite.position.y - ATLAS_TILE),
+								 scale: wgpu_glyph::Scale { x: 40., y: 40. },
+								 color: [0.1, 0.1, 0.1, 1.0],
+								 ..Default::default()
+							 });
+		}
+		}
+	
     pub fn swap_blocks(&self, components: &mut Vec<Component>) {
         let i = self.position.to_index();
 		
