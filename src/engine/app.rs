@@ -294,7 +294,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 	
 	// generates the same vframes for all the grids at the start
 	let vframes = {
-		let mut temp_random = oorandom::Rand32::new(0);
+		let mut temp_random = oorandom::Rand32::new(5);
 			Grid::gen_field(&mut temp_random, 5)
 	};
 	grids.push(Grid::new(&mut app, 0, 1, &vframes));
@@ -448,10 +448,13 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 									  ((app.mouse.position.y + grids[1].push_amount) / ATLAS_TILE).floor() as i32,
 									  );
 				
-				grids[1].cursor.state = CursorState::Move {
+				let cursor_pos = grids[1].cursor.position;
+				grids[1].cursor.states.push_back(CursorState::MoveTransport {
 					counter: 0,
+					reached: false,
+					start: cursor_pos,
 					goal: pos,
-				};
+													 });
 			}
 			
             if app.kb_pressed(VirtualKeyCode::A, Button::North) {

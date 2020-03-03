@@ -82,3 +82,12 @@ impl ToI2 for usize {
 				)
     }
 }
+
+impl ToI2 for i32 {
+    fn to_i2(&self) -> I2 {
+        I2::new(
+				(*self % GRID_WIDTH as i32) as i32,
+				(*self as f32 / GRID_WIDTH as f32).floor() as i32,
+				)
+    }
+}

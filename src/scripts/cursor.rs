@@ -4,6 +4,7 @@ use crate::scripts::{BlockState, Component, Grid};
 use gilrs::Button;
 use winit::event::VirtualKeyCode;
 use wgpu_glyph::Section;
+use std::collections::VecDeque;
 
 /// amount of frames it takes for the fast cursor movement to happen
 const FRAME_LIMIT: u32 = 25;
@@ -11,16 +12,23 @@ const FRAME_LIMIT: u32 = 25;
 const ANIMATION_TIME: u32 = 64;
 /// amount of frames it takes to lerp from one to the other cursor position
 const LERP_TIME: u32 = 8;
-/// amount of frames it takes to make an ai step
-const DELAY_TIME: u32 = 20;
+/// amount of frames it takes to start an ai step
+const START_DELAY_TIME: u32 = 100;
+/// amount of frames it takes after the end of an ai step
+const END_DELAY_TIME: u32 = 100;
 
 pub enum CursorState {
 	Idle,
-	Move {
+	MoveSwap {
 		counter: u32, 
 		goal: I2,
 	},
-	Swap,
+	 MoveTransport {
+		counter: u32, 
+		reached: bool,
+		start: I2,
+		goal: I2,
+	},
 }
 
 /// the player controls the cursor, holds sprite and position data
@@ -38,10 +46,41 @@ pub struct Cursor {
 	pub ai: bool,
 	
 	/// ai state
-	pub state: CursorState,
+	//pub state: CursorState,
+	
+	pub states: VecDeque<CursorState>,
 	
 	/// delay the ai for lower speed
-	pub delay: u32,
+	pub start_delay: u32,
+	pub end_delay: u32,
+}
+
+pub fn move_to(counter: &mut u32, current: &mut I2, goal: I2) -> bool {
+	*counter += 1;
+	
+	if *counter == 1 || *counter > FRAME_LIMIT {
+		if current.y != goal.y {
+				if current.y < goal.y {
+				current.y += 1;
+			} else {
+				current.y -= 1;
+			}
+				
+				return true;
+		}
+		
+		if current.x != goal.x {
+				if current.x < goal.x {
+				current.x += 1;
+			} else {
+				current.x -= 1;
+			}
+				
+				return true;
+		}
+	}
+	
+	false
 }
 
 impl Default for Cursor {
@@ -62,8 +101,9 @@ impl Default for Cursor {
             y_offset: 0.,
 			
 			// ai
-			state: CursorState::Idle,
-			delay: 0,
+			states: VecDeque::new(),
+			start_delay: 0,
+			end_delay: 0,
 			ai: false,
 		}
     }
@@ -165,57 +205,94 @@ impl Cursor {
     }
 	
 	pub fn update_ai(&mut self, app: &App, components: &mut Vec<Component>) {
-		if self.delay < DELAY_TIME {
-				self.delay += 1;
+		if self.end_delay > 0 {
+			self.end_delay -= 1;
 			return;
 		}
+		
+		if self.states.is_empty() {
+			return;
+			}
+		
+		if let Some(state) = self.states.get_mut(0) {
+		if self.start_delay < START_DELAY_TIME {
+				self.start_delay += 1;
+			return;
+			} 
 			
-			self.delay = 0;
-				
-				match self.state {
+			match state {
 				CursorState::Idle => {
+					if self.states.len() == 1 {
+						self.end_delay = END_DELAY_TIME;
+					}
+					
+						self.states.pop_front();
+					
+					self.start_delay = 0;
+					return;
 					//println!("idle");
 				}
 				
-				CursorState::Move { mut counter, goal } => {
-					//println!("move");
-				counter += 1;
+				CursorState::MoveSwap { counter, goal } => {
+				move_to(counter, &mut self.position, *goal);
 				
-				if counter == 1 || counter > FRAME_LIMIT {
-						if self.position.y != goal.y {
-							if self.position.y < goal.y {
-								self.position.y += 1;
-							} else {
-								self.position.y -= 1;
-							}
-							
-							return;
-						}
-						
-						if self.position.x != goal.x {
-							if self.position.x < goal.x {
-								self.position.x += 1;
-							} else {
-								self.position.x -= 1;
-							}
-							
-							return;
-						}
-						
-						if self.position == goal {
-							self.state = CursorState::Swap;
-							//self.state = CursorState::Idle;
-							return;
-						}
-					}
-				}
-				
-				CursorState::Swap => {
-					//println!("swap");
+				if self.position == *goal {
+					*state = CursorState::Idle;
 					self.swap_blocks(components);
-					self.state = CursorState::Idle;
 				}
 				}
+				
+			CursorState::MoveTransport { counter, reached, start, goal } => {
+				let (x_start, y_start) = (start.x, start.y);
+				
+				if !*reached {
+					if self.position == *goal {
+					*reached = true;
+						*counter = 0;
+						self.start_delay = 0;
+					} else {
+						move_to(counter, &mut self.position, *goal);
+					}
+				} else { 
+					if *counter < FRAME_LIMIT {
+							*counter += 1;
+						} else {
+						if self.position == *start {
+							*state = CursorState::Idle;
+							self.swap_blocks(components);
+							return;
+						}
+							
+						*counter = 0;
+							
+								if self.position.y != y_start {
+								self.swap_blocks(components);
+								
+								if self.position.y < y_start {
+										self.position.y += 1;
+									} else {
+										self.position.y -= 1;
+									}
+									
+									return;
+								}
+								
+								if self.position.x != x_start {
+							self.swap_blocks(components);
+								
+								if self.position.x < x_start {
+										self.position.x += 1;
+									} else {
+										self.position.x -= 1;
+									}
+									
+									return ;
+								}
+							}
+				}
+				}
+		}
+	}
 	}
 	
     // draws the cursor sprite into the app
@@ -230,8 +307,9 @@ impl Cursor {
         app.push_sprite(self.sprite);
 		
 		if self.ai {
-			match self.state {
-				CursorState::Move { goal, .. } => {
+			if let Some(state) = self.states.get_mut(0) {
+			match state {
+				CursorState::MoveSwap { goal, .. } => {
 					let goal = V2::new(goal.x as f32, goal.y as f32);
 					
 					app.push_line(Line {
@@ -246,11 +324,11 @@ impl Cursor {
 				_ => {}
 			}
 			
-			let text = match self.state {
+			let text = match state {
 				CursorState::Idle => "I",
-				CursorState::Move { .. } => "M",
-				CursorState::Swap => "S",
-			};
+				CursorState::MoveSwap { .. } => "M",
+				CursorState::MoveTransport { .. } => "T",
+				};
 		
 		app.push_section(Section {
 									 text,
@@ -259,6 +337,7 @@ impl Cursor {
 								 color: [0.1, 0.1, 0.1, 1.0],
 								 ..Default::default()
 							 });
+			}
 		}
 		}
 	

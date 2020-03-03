@@ -31,11 +31,6 @@ pub struct Grid {
 	pub rng: oorandom::Rand32,
 }
 
-pub struct SomeData {
-	pointers: u32,
-	distance: f32,
-}
-
 impl Grid {
 	/// generates a randomized new line of vframes for blocks
 	/// respects the current bottom row of blocks to not generate the same as the above ones
@@ -666,9 +661,11 @@ impl Grid {
     }
 	
 	pub fn solve_format(&mut self, format: &Vec<Vec<u32>>) {
-		match self.cursor.state {
-			CursorState::Idle => {},
-			_ => return
+		if let Some(state) = self.cursor.states.get(0) {
+			match state {
+				CursorState::Idle => {},
+				_ => return
+			}
 		}
 		
 		let width = format[0].len();
@@ -717,21 +714,113 @@ impl Grid {
 					}
 					
 					if goal >= goal_amount {
-						self.cursor.state = CursorState::Move {
+						self.cursor.states.push_back(CursorState::MoveSwap {
 								counter: 0,
 								goal: goal_index.to_i2(),
-							};
-					}
+														 });
+														 }
 					}
 				}
 		}
+	}
+	
+	pub fn cursor_smart_solve(&mut self) {
+		// TODO(Skytrias): reevaluate smallest distance so that states might be reset in favor
+		
+		// wait till delay is finished
+		if self.cursor.states.get(0).is_some() || self.cursor.end_delay != 0 {
+				return
+		}
+		
+		// skip on any clear
+		for i in 0..GRID_TOTAL {
+			if let Component::Block { state, .. } = &self[i] {
+				if let BlockState::Clear { .. } = state {
+					return
+				}
+			}
+		}
+		
+			let goal_amount = 3;
+			let mut smallest_distance: Option<i32> = None;
+				let mut searched_indexes = Vec::new(); 
+		
+		for y in 0..GRID_HEIGHT - 3 {
+			'skip: for x in 0..GRID_WIDTH {
+			for &vframe in &[3, 4, 5, 6, 7] {
+				let mut indexes = Vec::new(); 
+				let mut goal_counter = 0;
+				let mut sum_distance = 0;
+				
+					for y_off in 0..3 {
+					'inner: for x_off in 0..GRID_WIDTH {
+							let i = (y + y_off) * GRID_WIDTH + x;
+							let j = (y + y_off) * GRID_WIDTH + x_off;
+							
+							if let Component::Empty { .. } = &self[i] {
+								break 'skip;
+							}
+							
+						if let Component::Block { block, state } = &self[j] {
+							if let BlockState::Idle = state {
+								if block.vframe == vframe {
+									goal_counter += 1;
+									let distance = x as i32 - x_off as i32;
+									sum_distance += distance.abs();
+									
+									if i != j {
+									indexes.push((i, distance));
+									}
+									
+									break 'inner;
+							}
+							}
+						}
+					}
+					}
+				
+				if goal_counter == goal_amount {
+					if let Some(distance) = smallest_distance.as_mut() {
+						if *distance > sum_distance {
+							*distance = sum_distance;
+							searched_indexes = indexes;
+						}
+					} else {
+						smallest_distance = Some(sum_distance);
+								searched_indexes = indexes;
+					}
+				}
+				}
+				}
+		}
+			
+				if let Some(distance) = smallest_distance {
+				for (start_index, distance) in searched_indexes {
+				println!("{}", distance);
+				
+				let goal = if distance > 0 {
+					println!("bigger");
+					start_index as i32 - distance
+				} else {
+					println!("smaller");
+					start_index as i32 - (distance + 1) 
+				};
+				
+				self.cursor.states.push_back(CursorState::MoveTransport {
+												 counter: 0,
+												 reached: false,
+													 start: start_index.to_i2(),
+													 goal: goal.to_i2(),
+											 });
+			}
+			}
 	}
 	
     /// updates all components in the grid and the garbage system
     pub fn update(&mut self, app: &mut App, garbage_system: &mut GarbageSystem) {
         debug_assert!(!self.components.is_empty());
 		
-		if self.id == 1 {
+		if false {
 			// 3ds solvers
 			let format = vec![
 							  vec![1, 0],
@@ -813,10 +902,15 @@ impl Grid {
 			self.solve_format(&format);
 		  */
    }
-		 
-		   self.cursor.update(app, &mut self.components);
-		   self.update_components();
-   
+		
+		self.cursor.update(app, &mut self.components);
+		
+		if self.id == 1 {
+			self.cursor_smart_solve();
+		}
+		
+		self.update_components();
+		
 		   // NOTE(Skytrias): always do resolves before detects so there is 1 frame at minimum delay
 		   self.block_resolve_swap();
    
@@ -842,7 +936,7 @@ impl Grid {
 		   // resolve any clear
 		   self.block_detect_clear();
 		   self.garbage_detect_clear(garbage_system);
-	  }
+		}
    
 	   /// updates the push / raise data which offsets the grid components
 	   pub fn push_update(&mut self, app: &mut App, garbage_system: &mut GarbageSystem) {
