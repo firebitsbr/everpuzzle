@@ -63,8 +63,9 @@ impl Default for Child {
 
 impl Child {
     /// temporary way to generate the hframes / vframes dependand on height
-    pub fn gen_2d_frames(x: usize, y: usize, height: usize) -> (u32, u32) {
-        debug_assert!(height >= 1);
+    pub fn gen_2d_frames(x: usize, y: usize, mut height: usize) -> (u32, u32) {
+        height = height.max(1);
+		//debug_assert!(height >= 1);
 
         if height != 1 {
             let hframe = {
@@ -138,15 +139,20 @@ impl Default for GarbageSystem {
 impl GarbageSystem {
     /// calls the update event on each garbage
     pub fn update(&mut self, app: &mut App, grid: &mut Grid) {
-        for garbage in self.list.iter_mut() {
-            garbage.update(app, grid);
+		for garbage in self.list.iter_mut() {
+			if grid.id == garbage.parent_id {
+				garbage.update(app, grid);
+			}
         }
     }
 }
 
 /// garbage that holds N indexes to garbage children in the list
 pub struct Garbage {
-    /// list of children indexes that exist in the grid
+    /// will only update, when parent grid is calling update
+	pub parent_id: usize,
+	
+	/// list of children indexes that exist in the grid
     pub children: Vec<usize>,
 
     /// list of children removed in clear, that have to be idled
@@ -162,28 +168,18 @@ pub struct Garbage {
     pub state: GarbageState,
 }
 
-impl Default for Garbage {
-    fn default() -> Self {
-        Self {
-            children: Vec::new(),
-            count: 0,
-            state: Idle,
-            is_2d: false,
-            removed_children: Vec::new(),
-        }
-    }
-}
-
 impl Garbage {
     /// creates a garbage with an array of indexes that match the grid garbage children that were spawned
-    pub fn new(children: Vec<usize>) -> Self {
+    pub fn new(parent_id: usize, children: Vec<usize>) -> Self {
         let count = children.len();
 
         Self {
-            children,
+			parent_id,
+			children,
             count,
+            state: Idle,
             is_2d: count > GRID_WIDTH,
-            ..Default::default()
+            removed_children: Vec::new(),
         }
     }
 

@@ -1,25 +1,14 @@
 
 Now {
-	
+	[!] clear from bottom to up garbage,
+	grid randomization have chips of empty,
 }
 
 Bugs {
 	Block {
 		Swap triggers hang to be chainable?,
-		 chain not getting set right,
 		chain vertical not getting set right
 	}
-}
-
-Rendering {
-	clipping,
-	chaching,
-	[x] move to instanced rendering + indices,
-}
-
-Helpers {
-	[_] iterator through real blocks, block_states, garbage, garbage_states,
-	[x] Use IV2 on things that dont need float?,
 }
 
  Option / Nice to have {
@@ -31,7 +20,7 @@ Helpers {
 }
 
 General {
-	multiple grids,
+	[x] multiple grids,
 	multiple players with set controls,
 	[x] gamepad input singleplayer,
 	
@@ -49,9 +38,50 @@ Cursor {
 	[x] smooth animation,
 	
 	Ai {
-		gets stuck sometimes,
-		recalculate goal when something isnt idle,
+		solve_vertically {
+			[x] 1x3 works,
+			[x] 1x4 works,
+			
+			could make it so it starts trying at 1x5 till 1x3,
+			1x2 doesnt work - since no clear happens - always,
+			make more than 3 go to smallest, biggest, then middle ones,
+		}
 	}
+	
+	Ai Priority - the higher the more urgent {
+		Clear garbage {
+			1x3 beneath,
+			else move blocks flat,
+			else chain below,
+		},
+		
+		[x] Low amount of blocks {
+			[x] raise,
+		},
+		
+		[x] High block peaks {
+			[x] move blocks down,
+			[x] solve_vertically in the y position,
+		},
+		
+		While garbage clear {
+			1x2 at highest peaks according to result of garbage,
+			else wait?,
+			else chain could destroy set ups,
+			else move towards next goal - reevaluate later,
+		}
+		
+		Randomly {
+			chain {
+				dependant on difficulty? noobs will rather do combos instead of chains,
+				},
+			
+			1x4,
+			1x5,
+			2x6,
+			L - J etc shapes,
+		}
+		}
 }
 
 Block {
@@ -70,9 +100,9 @@ Block {
 Grid {
 	lose at top,
 	
-	Randomization {
-	randomization dont let combos happen at spawn,
-		gen 6 without matches,
+	[x] Randomization {
+	[x] randomization dont let combos happen at spawn,
+		[x] gen 6 without matches,
 	},
 	
 	[x] y_offset key_down held till one push is done,
@@ -82,6 +112,7 @@ Grid {
 }
 
 Garbage System {
+	[!] clear from bottom to up,
 	delay garbage spawn,
 	draw new block already when clearing child - till it gets added as real component,
 	
@@ -112,28 +143,17 @@ Garbage System {
 Game Modes {
 	Each level increase get a new grid to manage with the same input,
 }
-i
+
+Rendering {
+	clipping,
+	chaching,
+	[x] move to instanced rendering + indices,
+}
+
 4coder {
 	add {}, (), [], automatically,
 	recognize fn asd<> as a function too,
 	#[inline] shouldnt indent next text,
 	make brace highlights not highlight indent = 1,
 	allow numbers and _ like 100_000,
-}
-
-marketing {
-	[x] Video explaining everpuzzle and rebuilt,
-	
-	Support {
-		Play / Feedback / Follow Development,
-		Add Github Issues,
-		Pull Requests,
-		Donations - streams,
-	},
-	
-	[x] Readme {
-		[x] gifs,
-		[x] goal,
-		how to help,
-	},
 }

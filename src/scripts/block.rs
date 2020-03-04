@@ -65,8 +65,8 @@ impl Block {
 
     /// simply creates a vframe designed for the block
     pub fn random_vframe(gen: &mut oorandom::Rand32) -> u32 {
-		gen.rand_range(3..8)
-	}
+        gen.rand_range(3..8)
+    }
 
     /// updates the block variables based on each state, mostly animation based
     pub fn update(&mut self, state: &mut BlockState) {

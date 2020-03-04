@@ -46,7 +46,7 @@ pub struct App {
 
     /// pipeline for rendering sprites
     quad_pipeline: quad::Pipeline,
-	
+
     /// queues draw commands
     queue: wgpu::Queue,
 
@@ -67,7 +67,7 @@ pub struct App {
 
     /// data storage for all quads in the frame that you want to draw
     quads: Vec<quad::Quad>,
-	
+
     /// mouse handle that which holds left / right button and position info
     pub mouse: Mouse,
 }
@@ -144,21 +144,21 @@ impl App {
             self.quads.push(quad);
         }
     }
-	
+
     /// pushes a line transformed into a quad
     pub fn push_line(&mut self, line: Line) {
         if self.quads.len() < quad::Quad::MAX {
             self.quads.push(line.into());
         }
     }
-	
+
     /// pushes a sprite to the anonymous sprites
     pub fn push_sprite(&mut self, sprite: Sprite) {
         if self.quads.len() < quad::Quad::MAX {
             self.quads.push(sprite.into());
         }
     }
-	
+
     /// draws all acquired sprites and clears the sprites again
     fn draw_sprites(&mut self, view: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) {
         // dont draw anything if sprites havent been set
@@ -176,7 +176,7 @@ impl App {
 
         self.quads.clear();
     }
-	
+
     /// pushes a section of text to be rendered this frame
     pub fn push_section(&mut self, section: Section) {
         self.glyph_brush.queue(section);
@@ -291,17 +291,17 @@ pub fn run(width: f32, height: f32, title: &'static str) {
     let mut garbage_system = GarbageSystem::default();
     //let mut ui_context = UiContext::default();
     let mut grids = Vec::new();
-	
-	// generates the same vframes for all the grids at the start
-	let vframes = {
-		let mut temp_random = oorandom::Rand32::new(5);
-			Grid::gen_field(&mut temp_random, 5)
-	};
-	grids.push(Grid::new(&mut app, 0, 1, &vframes));
+
+    // generates the same vframes for all the grids at the start
+    let vframes = {
+        let mut temp_random = oorandom::Rand32::new(5);
+        Grid::gen_field(&mut temp_random, 5)
+    };
+    grids.push(Grid::new(&mut app, 0, 1, &vframes));
     grids.push(Grid::new(&mut app, 1, 2, &vframes));
     let mut debug_info = true;
-	
-	// gamepad
+
+    // gamepad
     let mut gilrs = match gilrs::GilrsBuilder::new().set_update_state(false).build() {
         Ok(g) => g,
         Err(gilrs::Error::NotImplemented(g)) => {
@@ -441,22 +441,26 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             if app.kb_pressed(VirtualKeyCode::Tab, Button::Select) {
                 debug_info = !debug_info;
             }
-			
-			if app.mouse.left_pressed {
-				let pos = I2::new(
-									  ((app.mouse.position.x - 400.) / ATLAS_TILE).floor() as i32,
-									  ((app.mouse.position.y + grids[1].push_amount) / ATLAS_TILE).floor() as i32,
-									  );
-				
-				let cursor_pos = grids[1].cursor.position;
-				grids[1].cursor.states.push_back(CursorState::MoveTransport {
-					counter: 0,
-					reached: false,
-					start: cursor_pos,
-					goal: pos,
-													 });
-			}
-			
+
+            if app.mouse.left_pressed {
+                let pos = I2::new(
+                    ((app.mouse.position.x - 400.) / ATLAS_TILE).floor() as i32,
+                    ((app.mouse.position.y + grids[1].push_amount) / ATLAS_TILE).floor() as i32,
+                );
+
+                let cursor_pos = grids[1].cursor.position;
+                grids[1]
+                    .cursor
+                    .states
+                    .push_back(CursorState::MoveTransport {
+                        counter: 0,
+								   reached: false,
+								   swap_end: true,
+                        start: cursor_pos,
+                        goal: pos,
+                    });
+            }
+
             if app.kb_pressed(VirtualKeyCode::A, Button::North) {
                 grids[0].gen_1d_garbage(&mut garbage_system, 3, 0);
             }
@@ -464,27 +468,47 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             if app.kb_pressed(VirtualKeyCode::Return, Button::West) {
                 grids[0].gen_2d_garbage(&mut garbage_system, 2);
             }
-			
-			if app.kb_pressed(VirtualKeyCode::Space, Button::Start) {
-				for grid in grids.iter_mut() {
-					grid.reset();
-				}
-				}
-			
+
+            if app.kb_pressed(VirtualKeyCode::Space, Button::Start) {
+                for grid in grids.iter_mut() {
+                    grid.reset();
+                }
+            }
+
             if app.key_down(VirtualKeyCode::LShift)
                 || app.button_down(Button::LeftTrigger)
                 || app.button_down(Button::RightTrigger)
             {
                 grids[0].push_raise = true;
             }
-
+			
             // update all grids
-            for grid in grids.iter_mut() {
-                grid.update(&mut app, &mut garbage_system);
-                //grid.push_update(&mut app, &mut garbage_system);
-                garbage_system.update(&mut app, grid);
+			let len = grids.len();
+            for i in 0..len {
+				grids[i].update(&mut app, &mut garbage_system);
+				
+				 for combo_index in 0..grids[i].combo_highlight.list.len() {
+					// TODO(Skytrias): creates copies, might be bad cuz of performance
+					if !grids[i].combo_highlight.list[combo_index].sent {
+					let combo_data = grids[i].combo_highlight.list[combo_index];
+					
+					for j in (i + 1)..len {
+								match combo_data.variant {
+							ComboVariant::Combo => println!("combo"),
+							ComboVariant::Chain => println!("chain"),
+						}
+						
+						grids[j].gen_2d_garbage(&mut garbage_system, 2);
+					}
+					
+					grids[i].combo_highlight.list[combo_index].sent = true;
+					}
+				}
+				
+				garbage_system.update(&mut app, &mut grids[i]);
+				grids[i].push_update(&mut app, &mut garbage_system);
             }
-
+				
             // clearing key / mouse input
             {
                 // increase the frame times on the keys
@@ -521,7 +545,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
 
             // enable mouse pressing
             app.mouse.update_frame();
-			
+
             /*
                      let width = app.swapchain_desc.width as f32;
                      let height = app.swapchain_desc.height as f32;
@@ -546,7 +570,7 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             */
 
             app.draw_sprites(&frame.view, &mut encoder);
-			
+
             // draws all sections sent into glyph_brush
             app.glyph_brush
                 .draw_queued(

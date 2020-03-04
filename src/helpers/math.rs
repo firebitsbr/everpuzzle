@@ -64,9 +64,9 @@ impl ToV2 for usize {
 impl ToV2 for i32 {
     fn to_v2(&self) -> V2 {
         V2::new(
-				(*self % GRID_WIDTH as i32) as f32,
-				(*self as f32 / GRID_WIDTH as f32).floor(),
-				)
+            (*self % GRID_WIDTH as i32) as f32,
+            (*self as f32 / GRID_WIDTH as f32).floor(),
+        )
     }
 }
 
@@ -77,17 +77,17 @@ pub trait ToI2 {
 impl ToI2 for usize {
     fn to_i2(&self) -> I2 {
         I2::new(
-				(*self % GRID_WIDTH) as i32,
-				(*self as f32 / GRID_WIDTH as f32).floor() as i32,
-				)
+            (*self % GRID_WIDTH) as i32,
+            (*self as f32 / GRID_WIDTH as f32).floor() as i32,
+        )
     }
 }
 
 impl ToI2 for i32 {
     fn to_i2(&self) -> I2 {
         I2::new(
-				(*self % GRID_WIDTH as i32) as i32,
-				(*self as f32 / GRID_WIDTH as f32).floor() as i32,
-				)
+            (*self % GRID_WIDTH as i32) as i32,
+            (*self as f32 / GRID_WIDTH as f32).floor() as i32,
+        )
     }
 }

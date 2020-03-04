@@ -8,7 +8,8 @@ const COMBO_DISAPPEAR_START: u32 = 10;
 const COMBO_DISAPPEAR_TIME: u32 = 500;
 
 /// Types of combos
-enum ComboVariant {
+#[derive(Copy, Clone)]
+pub enum ComboVariant {
     /// wether a combo is the type
     Combo,
 
@@ -17,15 +18,17 @@ enum ComboVariant {
 }
 
 /// Data each combo requries
-struct ComboData {
-    size: u32,
+#[derive(Copy, Clone)]
+pub struct ComboData {
+    pub size: u32,
     counter: u32,
-    variant: ComboVariant,
+    pub variant: ComboVariant,
+	pub sent: bool,
 }
 
 /// list of combo data and draw info
 pub struct ComboHighlight {
-    list: VecDeque<ComboData>,
+    pub list: VecDeque<ComboData>,
     dimensions: V2,
     y_offset: u32,
 }
@@ -41,17 +44,18 @@ impl Default for ComboHighlight {
 }
 
 impl ComboHighlight {
-	/// clears the queue
+    /// clears the queue
     pub fn clear(&mut self) {
-		self.list.clear();
-	}
-	
-	/// pushes a chain onto the vecdeque start, restarts the appear animation
+        self.list.clear();
+    }
+
+    /// pushes a chain onto the vecdeque start, restarts the appear animation
     pub fn push_chain(&mut self, chain_size: u32) {
         self.list.push_front(ComboData {
             size: chain_size,
             counter: 0,
-            variant: ComboVariant::Chain,
+									 variant: ComboVariant::Chain,
+									 sent: false,
         });
         self.y_offset = COMBO_APPEAR_TIME;
     }
@@ -61,7 +65,8 @@ impl ComboHighlight {
         self.list.push_front(ComboData {
             size: combo_size,
             counter: 0,
-            variant: ComboVariant::Combo,
+									 variant: ComboVariant::Combo,
+									 sent: false,
         });
         self.y_offset = COMBO_APPEAR_TIME;
     }
