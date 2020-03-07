@@ -5,6 +5,7 @@ use gilrs::Button;
 use std::collections::VecDeque;
 use wgpu_glyph::Section;
 use winit::event::VirtualKeyCode;
+use ultraviolet::Lerp;
 
 /// amount of frames it takes for the fast cursor movement to happen
 const FRAME_LIMIT: u32 = 25;
@@ -322,8 +323,7 @@ impl Cursor {
 
     // draws the cursor sprite into the app
     pub fn draw(&mut self, app: &mut App, offset: V2) {
-        self.sprite.position = V2::lerp(
-            self.goal_position,
+        self.sprite.position = self.goal_position.lerp(
             self.sprite.position,
             self.goal_counter as f32 / LERP_TIME as f32,
         );

@@ -15,7 +15,7 @@ pub const PUSH_TIME: u32 = 100;
 /// pixel size of each sprite in the texture atlas
 pub const ATLAS_TILE: f32 = 32.;
 /// pixel dimensions of each sprite in the texture atlas
-pub const ATLAS_SPACING: V2 = V2::new(ATLAS_TILE, ATLAS_TILE);
+pub const ATLAS_SPACING: V2 = V2 { x: ATLAS_TILE, y: ATLAS_TILE };
 
 /// vframe position of a white texture, can be used as a rectangle replacement
 pub const ATLAS_FILL: u32 = 0;

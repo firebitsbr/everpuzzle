@@ -13,7 +13,7 @@ readme = "../README.md"
 [dependencies]
 wgpu = "0.4" # rendering
 winit = "0.21" # window loading 
-vek = "0.9.11" # math & utility 
+ultraviolet = "0.4.5" # math & utility 
 png_pong = "0.1" # png loading
 pix = "0.7.0"  
 fixedstep = "0.3" # main loop at specified fps

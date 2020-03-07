@@ -1,35 +1,50 @@
 use crate::helpers::{GRID_HEIGHT, GRID_WIDTH};
-use vek::geom::repr_c::Rect;
-use vek::geom::FrustumPlanes;
-use vek::mat::repr_c::Mat4;
-use vek::vec::repr_c::{Vec2, Vec3, Vec4};
-
+use ultraviolet::{
+	vec::{Vec2, Vec3, Vec4},
+	int::Vec2i,
+	mat::Mat4,
+	projection::lh_yup::orthographic_gl,
+	transform::Similarity3,
+	rotor::Rotor3,
+};
+	
 /// easy access to pi when using math helpers
 pub const PI: f32 = std::f32::consts::PI;
 /// matrix4 f32 type
-pub type M4 = Mat4<f32>;
-/// vector2 f32 type
-pub type V2 = Vec2<f32>;
-/// vector2 f32 type
-pub type I2 = Vec2<i32>;
-/// vector3 f32 type
-pub type V3 = Vec3<f32>;
-/// vector4 f32 type
-pub type V4 = Vec4<f32>;
-/// 2 f32 vectors in rectangle
-pub type R4 = Rect<f32, f32>;
+pub type M4 = Mat4;
+/// vector2 type with 2 f32
+pub type V2 = Vec2;
+/// vector2 type with 2 i32
+pub type I2 = Vec2i;
+/// vector3 type with 3 f32
+pub type V3 = Vec3;
+/// vector4 type with 4 f32
+pub type V4 = Vec4;
+
+#[inline]
+pub fn v2(x: f32, y: f32) -> V2 {
+	V2::new(x, y)
+}
+
+#[inline]
+pub fn v3(x: f32, y: f32, z: f32) -> V3 {
+	V3::new(x, y, z)
+}
+
+#[inline]
+pub fn v4(x: f32, y: f32, z: f32, w: f32) -> V4 {
+	V4::new(x, y, z, w)
+}
+
+#[inline]
+pub fn i2(x: i32, y: i32) -> I2 {
+	I2::new(x, y)
+}
 
 /// wrapper for calling into vek orthographic_lh_zo more easily
 #[inline]
 pub fn ortho(left: f32, right: f32, bottom: f32, top: f32, near: f32, far: f32) -> M4 {
-    M4::orthographic_lh_zo(FrustumPlanes {
-        left,
-        right,
-        bottom,
-        top,
-        near,
-        far,
-    })
+    orthographic_gl(left, right, bottom, top, near, far)
 }
 
 #[inline]
