@@ -3,6 +3,7 @@ use crate::helpers::*;
 
 /// data that will be sent to the gpu
 #[derive(Debug, Clone, Copy)]
+#[repr(C)]
 pub struct Quad {
     /// model matrix that stores position, offset, scale, dimensions, etc
     pub model: M4,

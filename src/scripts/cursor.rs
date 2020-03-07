@@ -3,9 +3,8 @@ use crate::helpers::*;
 use crate::scripts::{BlockState, Component, Grid};
 use gilrs::Button;
 use std::collections::VecDeque;
-use wgpu_glyph::Section;
-use winit::event::VirtualKeyCode;
 use ultraviolet::Lerp;
+use miniquad::KeyCode;
 
 /// amount of frames it takes for the fast cursor movement to happen
 const FRAME_LIMIT: u32 = 25;
@@ -152,10 +151,10 @@ impl Cursor {
     }
 
     fn update_player(&mut self, app: &App, components: &mut Vec<Component>) {
-        let left = app.kb_down_frames(VirtualKeyCode::Left, Button::DPadLeft);
-        let right = app.kb_down_frames(VirtualKeyCode::Right, Button::DPadRight);
-        let up = app.kb_down_frames(VirtualKeyCode::Up, Button::DPadUp);
-        let down = app.kb_down_frames(VirtualKeyCode::Down, Button::DPadDown);
+        let left = app.kb_down_frames(KeyCode::Left, Button::DPadLeft);
+        let right = app.kb_down_frames(KeyCode::Right, Button::DPadRight);
+        let up = app.kb_down_frames(KeyCode::Up, Button::DPadUp);
+        let down = app.kb_down_frames(KeyCode::Down, Button::DPadDown);
 
         // movement dependant on how long a key down has been held for in frames
 
@@ -191,7 +190,7 @@ impl Cursor {
             }
         }
 
-        if app.key_pressed(VirtualKeyCode::S)
+        if app.key_pressed(KeyCode::S)
             || app.button_pressed(Button::South)
             || app.button_pressed(Button::East)
         {
@@ -199,7 +198,7 @@ impl Cursor {
         }
 
         // TODO(Skytrias): REMOVE ON RELEASE, only used for debugging faster
-        if app.key_pressed(VirtualKeyCode::A) {
+        if app.key_pressed(KeyCode::A) {
             let index = self.position.to_index();
             components.swap(index, index - GRID_WIDTH);
         }
@@ -354,66 +353,69 @@ impl Cursor {
                     CursorState::MoveSwap { .. } => "M",
                     CursorState::MoveTransport { .. } => "T",
                 };
-
-                app.push_section(Section {
-                    text,
-                    screen_position: (
-                        offset.x + self.sprite.position.x - ATLAS_TILE,
-                        offset.y + self.sprite.position.y - ATLAS_TILE,
-                    ),
-                    scale: wgpu_glyph::Scale { x: 40., y: 40. },
-                    color: [0.1, 0.1, 0.1, 1.0],
-                    ..Default::default()
-                });
-            }
-        }
-    }
-
-    pub fn swap_blocks(&self, components: &mut Vec<Component>) {
-        let i = self.position.to_index();
-
-        let right = can_swap(components, i + 1);
-        let left = can_swap(components, i);
-
-        if right {
-            if let Component::Block { state, .. } = &mut components[i] {
-                if let BlockState::Idle = state {
-                    *state = BlockState::Swap {
-                        counter: 0,
-                        direction: 1,
-                    };
-                }
-            }
-        }
-
-        if left {
-            if let Component::Block { state, .. } = &mut components[i + 1] {
-                if let BlockState::Idle = state {
-                    *state = BlockState::Swap {
-                        counter: 0,
-                        direction: -1,
-                    };
-                }
-            }
-        }
-    }
-}
-
-/// helper to detect if a block is currently swappable - in idle state or empty
-fn can_swap(components: &Vec<Component>, index: usize) -> bool {
-    match &components[index] {
-        Component::Block { state, .. } => {
-            if let BlockState::Idle = state {
-                return true;
-            }
-        }
-
-        Component::Empty { .. } => {
-            return true;
-        }
-
-        _ => return false,
-    }
-
-    false
-}
+				
+				/*
+					app.push_section(Section {
+						text,
+						screen_position: (
+							offset.x + self.sprite.position.x - ATLAS_TILE,
+							offset.y + self.sprite.position.y - ATLAS_TILE,
+						),
+						scale: wgpu_glyph::Scale { x: 40., y: 40. },
+						color: [0.1, 0.1, 0.1, 1.0],
+						..Default::default()
+					});
+				*/
+	}
+			}
+		}
+	
+		pub fn swap_blocks(&self, components: &mut Vec<Component>) {
+			let i = self.position.to_index();
+	
+			let right = can_swap(components, i + 1);
+			let left = can_swap(components, i);
+	
+			if right {
+				if let Component::Block { state, .. } = &mut components[i] {
+					if let BlockState::Idle = state {
+						*state = BlockState::Swap {
+							counter: 0,
+							direction: 1,
+						};
+					}
+				}
+			}
+	
+			if left {
+				if let Component::Block { state, .. } = &mut components[i + 1] {
+					if let BlockState::Idle = state {
+						*state = BlockState::Swap {
+							counter: 0,
+							direction: -1,
+						};
+					}
+				}
+			}
+		}
+	}
+	
+	/// helper to detect if a block is currently swappable - in idle state or empty
+	fn can_swap(components: &Vec<Component>, index: usize) -> bool {
+		match &components[index] {
+			Component::Block { state, .. } => {
+				if let BlockState::Idle = state {
+					return true;
+				}
+			}
+	
+			Component::Empty { .. } => {
+				return true;
+			}
+	
+			_ => return false,
+		}
+	
+		false
+	}
+	

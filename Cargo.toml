@@ -11,16 +11,14 @@ documentation = "https://docs.rs/everpuzzle"
 readme = "../README.md"
 
 [dependencies]
-wgpu = "0.4" # rendering
-winit = "0.21" # window loading 
 ultraviolet = "0.4.5" # math & utility 
 png_pong = "0.1" # png loading
 pix = "0.7.0"  
 fixedstep = "0.3" # main loop at specified fps
 oorandom = "11.1" # random number generator
-wgpu_glyph = "0.6" # text renddering
 bitflags = "1.2.1" # flags 
 gilrs = "0.7.4" # gamepad input
+miniquad = "0.2.36"
 
 [profile.dev] 
 debug = 1 

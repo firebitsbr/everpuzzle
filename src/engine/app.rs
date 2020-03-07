@@ -6,85 +6,164 @@ use gilrs::{
     Button,
 };
 use std::collections::HashMap;
-use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder, HorizontalAlign, Layout, Section, VerticalAlign};
-use winit::{
-    event::*,
-    event_loop::{ControlFlow, EventLoop},
-    platform::desktop::EventLoopExtDesktop,
-    window::WindowBuilder,
-};
-
-/// wgpu depth const
-pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
-pub const TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
-pub const RENDER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
+use miniquad::*;
 
 // TODO(Skytrias): set to monitor framerate
 const FRAME_AMOUNT: f64 = 120.;
 const FPS: u64 = (1. / FRAME_AMOUNT * 1000.) as u64;
 
-/// helper for recreating a depth texture
-fn create_depth_texture(
-    device: &wgpu::Device,
-    swapchain_desc: &wgpu::SwapChainDescriptor,
-) -> wgpu::Texture {
-    let desc = wgpu::TextureDescriptor {
-        format: DEPTH_FORMAT,
-        usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-        ..swapchain_desc.to_texture_desc()
-    };
-    device.create_texture(&desc)
+/// data that will be sent to the gpu
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct Quad {
+    /// model matrix that stores position, offset, scale, dimensions, etc
+    pub model: M4,
+	
+    /// how many tiles the quad texture should use
+    pub tiles: V2,
+	
+    /// hframe of the tile in the texture atlas
+    pub hframe: f32,
+	
+    /// vframe of the tile in the texture atlas
+    pub vframe: f32,
+	
+    /// vframe of the tile in the texture atlas
+    pub depth: f32,
+}
+
+impl Quad {
+    /// max number of quads that can be rendered
+    pub const MAX: usize = 1000;
+	
+    /// byte size of the quad struct
+    const SIZE: usize = std::mem::size_of::<Quad>();
+}
+
+/// converts a sprite into a valid quad
+impl From<Sprite> for Quad {
+    fn from(sprite: Sprite) -> Self {
+		let dimensions = sprite.tiles * ATLAS_SPACING;
+		
+		let mut model = M4::from_translation(v3(
+												sprite.position.x + sprite.offset.x,
+												sprite.position.y + sprite.offset.y,
+												0.,
+												));
+		
+		model = model * M4::from_nonuniform_scale(v4(sprite.scale.x, sprite.scale.y, 1., 1.));
+		model = model * M4::from_nonuniform_scale(v4(dimensions.x, dimensions.y, 1., 1.));
+		
+		if sprite.centered {
+			model = model * M4::from_translation(v3(
+													-0.5,
+													-0.5,
+													0.,
+													));
+		}
+		
+        Quad {
+            model,
+			tiles: sprite.tiles,
+            hframe: sprite.hframe as f32,
+            vframe: sprite.vframe as f32,
+            depth: sprite.depth,
+        }
+    }
 }
 
 /// state of the Application, includes drawing, input, generators
 pub struct App {
-    /// wgpu device
-    device: wgpu::Device,
-
-    /// projection ubo buffer, resends ortho on resize
-    ubo_projection: wgpu::Buffer,
-
-    /// pipeline for rendering sprites
-    quad_pipeline: quad::Pipeline,
-
-    /// queues draw commands
-    queue: wgpu::Queue,
-
-    /// description of the swapchain containing width / height
-    swapchain_desc: wgpu::SwapChainDescriptor,
-
-    /// depth texture access for depth checking
-    depth_texture_view: wgpu::TextureView,
-
-    /// data storage to draw texts
-    glyph_brush: GlyphBrush<'static, ()>,
-
     /// data storage for each key that was pressed with the frame time
-    key_downs: HashMap<VirtualKeyCode, u32>,
+    key_downs: HashMap<KeyCode, u32>,
 
     /// data storage for each button that was pressed with the frame time
     button_downs: HashMap<Button, u32>,
 
     /// data storage for all quads in the frame that you want to draw
-    quads: Vec<quad::Quad>,
+    quads: Vec<Quad>,
 
-    /// mouse handle that which holds left / right button and position info
-    pub mouse: Mouse,
+    // mouse handle that which holds left / right button and position info
+    //pub mouse: Mouse,
+	
+	pipeline: Pipeline,
+	bindings: Bindings,
 }
 
 impl App {
-    /// returns true if a key is held down
-    pub fn key_down(&self, code: VirtualKeyCode) -> bool {
+    pub fn new(ctx: &mut Context) -> Self {
+        #[rustfmt::skip]
+		let vertices = &[
+							0., 0.,
+							1., 0.,
+							1., 1.,
+							0., 1.,
+							];
+		let vertex_buffer = Buffer::immutable(ctx, BufferType::VertexBuffer, vertices);
+		
+		#[rustfmt::skip]
+		let indices = &[
+							0, 1, 3,
+							1, 2, 3,
+							];
+		let index_buffer = Buffer::immutable(ctx, BufferType::IndexBuffer, indices);
+		
+		let instance_buffer = Buffer::stream(
+													 ctx,
+													 BufferType::VertexBuffer,
+												 Quad::MAX * Quad::SIZE,
+													 );
+		  
+        let bindings = Bindings {
+            vertex_buffers: vec![vertex_buffer, instance_buffer],
+            index_buffer: index_buffer,
+            images: vec![],
+        };
+		  
+		let shader = Shader::new(ctx, shader::VERTEX, shader::FRAGMENT, shader::META);
+		
+        let pipeline = Pipeline::new(
+									 ctx,
+									 &[
+									   BufferLayout::default(),
+									   BufferLayout {
+										   step_func: VertexStep::PerInstance,
+										   ..Default::default()
+									   },
+									   ],
+									 &[
+									   VertexAttribute::with_buffer("v_pos", VertexFormat::Float2, 0),
+									   VertexAttribute::with_buffer("i_model", VertexFormat::Mat4, 1),
+									   VertexAttribute::with_buffer("i_tiles", VertexFormat::Float2, 1),
+									   VertexAttribute::with_buffer("i_hframe", VertexFormat::Float1, 1),
+									   VertexAttribute::with_buffer("i_vframe", VertexFormat::Float1, 1),
+									   VertexAttribute::with_buffer("i_depth", VertexFormat::Float1, 1),
+									   ],
+									 shader,
+										 );
+		
+		Self {
+			key_downs: HashMap::new(),
+			button_downs: HashMap::new(),
+			quads: Vec::new(),
+			
+			pipeline,
+			bindings,
+		}
+	}
+	
+	/// returns true if a key is held down
+    pub fn key_down(&self, code: KeyCode) -> bool {
         self.key_downs.get(&code).filter(|&&v| v != 0).is_some()
     }
 
     /// returns true the amount of frames a key has been down for
-    pub fn key_down_frames(&self, code: VirtualKeyCode) -> Option<u32> {
+    pub fn key_down_frames(&self, code: KeyCode) -> Option<u32> {
         self.key_downs.get(&code).filter(|&&v| v != 0).copied()
     }
 
     /// returns true if a key is pressed for a single frame
-    pub fn key_pressed(&self, code: VirtualKeyCode) -> bool {
+    pub fn key_pressed(&self, code: KeyCode) -> bool {
         self.key_downs.get(&code).filter(|&&v| v == 1).is_some()
     }
 
@@ -110,12 +189,12 @@ impl App {
     }
 
     /// returns true if a button or a key is held down
-    pub fn kb_down(&self, code: VirtualKeyCode, button: Button) -> bool {
+    pub fn kb_down(&self, code: KeyCode, button: Button) -> bool {
         self.key_down(code) || self.button_down(button)
     }
 
     /// returns true the amount of frames a button or a key has been down for
-    pub fn kb_down_frames(&self, code: VirtualKeyCode, button: Button) -> Option<u32> {
+    pub fn kb_down_frames(&self, code: KeyCode, button: Button) -> Option<u32> {
         let mut result = None;
 
         if let Some(frames) = self.key_down_frames(code) {
@@ -134,458 +213,130 @@ impl App {
     }
 
     /// returns true if a button or a key is pressed for a single frame
-    pub fn kb_pressed(&self, code: VirtualKeyCode, button: Button) -> bool {
+    pub fn kb_pressed(&self, code: KeyCode, button: Button) -> bool {
         self.key_pressed(code) || self.button_pressed(button)
     }
 
     /// pushes a quad to the list of quads to draw
     pub fn push_quad(&mut self, quad: Quad) {
-        if self.quads.len() < quad::Quad::MAX {
+        if self.quads.len() < Quad::MAX {
             self.quads.push(quad);
         }
     }
 
     /// pushes a line transformed into a quad
     pub fn push_line(&mut self, line: Line) {
-        if self.quads.len() < quad::Quad::MAX {
-            self.quads.push(line.into());
+        if self.quads.len() < Quad::MAX {
+            //self.quads.push(line.into());
         }
     }
 
     /// pushes a sprite to the anonymous sprites
     pub fn push_sprite(&mut self, sprite: Sprite) {
-        if self.quads.len() < quad::Quad::MAX {
+        if self.quads.len() < Quad::MAX {
             self.quads.push(sprite.into());
         }
     }
+	}
 
-    /// draws all acquired sprites and clears the sprites again
-    fn draw_sprites(&mut self, view: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) {
-        // dont draw anything if sprites havent been set
-        if self.quads.len() == 0 {
-            return;
-        }
-
-        self.quad_pipeline.draw(
-            &mut self.device,
-            encoder,
-            &self.depth_texture_view,
-            view,
-            &self.quads,
-        );
-
-        self.quads.clear();
-    }
-
-    /// pushes a section of text to be rendered this frame
-    pub fn push_section(&mut self, section: Section) {
-        self.glyph_brush.queue(section);
-    }
-
-    /// pushes a specified text aligned to a rectangle at the specified position with dimensions
-    pub fn push_text_sprite<'a>(
-        &mut self,
-        position: V2,
-        dimensions: V2,
-        text: &'a str,
-        hframe: u32,
-    ) {
-        self.push_sprite(Sprite {
-            position,
-            hframe,
-            scale: dimensions / ATLAS_SPACING,
-            ..Default::default()
-        });
-
-        // TODO(Skytrias): implement from(f32, f32) for V2
-        self.push_section(Section {
-            text,
-            screen_position: (
-                position.x + dimensions.x / 2.,
-                position.y + dimensions.y / 2.,
-            ),
-            layout: Layout::default()
-                .h_align(HorizontalAlign::Center)
-                .v_align(VerticalAlign::Center),
-            ..Default::default()
-        });
-    }
+impl EventHandler for App {
+	fn update(&mut self, ctx: &mut Context) {
+		if self.key_pressed(KeyCode::Escape) {
+			ctx.quit();
+		}
+		
+		self.push_sprite(Sprite {
+							 position: v2(100., 100.),
+							 ..Default::default()
+						 });
+		
+		self.push_sprite(Sprite {
+							 position: v2(0., 0.),
+							 ..Default::default()
+						 });
+		
+		self.push_sprite(Sprite {
+							 position: v2(10., 10.),
+							 ..Default::default()
+						 });
+		
+		self.bindings.vertex_buffers[1].update(ctx, &self.quads[..]);
+		self.quads.clear();
+	}
+	
+	fn draw(&mut self, ctx: &mut Context) {
+		let (width, height) = ctx.screen_size();
+		let projection = ortho(0., width, 0., height, -1., 1.);
+		
+		  ctx.begin_default_pass(Default::default());
+		
+        ctx.apply_pipeline(&self.pipeline);
+        ctx.apply_bindings(&self.bindings);
+        ctx.apply_uniforms(&shader::Uniforms { projection });
+        ctx.draw(0, 6, Quad::MAX as i32);
+        ctx.end_render_pass();
+		
+        ctx.commit_frame();
+	}
+	
+	fn key_down_event(&mut self, _: &mut Context, keycode: KeyCode, _: KeyMods, _: bool) {
+		if let Some(value) = self.key_downs.get_mut(&keycode) {
+				if *value == 0 {
+				*value = 1;
+				}
+		} else {
+				self.key_downs.insert(keycode, 1);
+		}
+	}
+	
+	fn key_up_event(&mut self, _: &mut Context, keycode: KeyCode, _: KeyMods) {
+		if let Some(value) = self.key_downs.get_mut(&keycode) {
+				*value = 0;
+		}
+	}
 }
 
-/// main loop of the game, loads the window && all script objects
-pub fn run(width: f32, height: f32, title: &'static str) {
-    // winit init
-    let mut event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
-        .with_title(title)
-        .with_inner_size(winit::dpi::LogicalSize::new(width, height))
-        .build(&event_loop)
-        .unwrap();
-
-    // wgpu init
-    let surface = wgpu::Surface::create(&window);
-    let adapter = wgpu::Adapter::request(&wgpu::RequestAdapterOptions {
-        power_preference: wgpu::PowerPreference::Default,
-        // NOTE(Skytrias): use vulkan by default
-        backends: wgpu::BackendBit::VULKAN,
-    })
-    .unwrap();
-    let (mut device, mut queue) = adapter.request_device(&wgpu::DeviceDescriptor {
-        extensions: wgpu::Extensions {
-            anisotropic_filtering: false,
+mod shader {
+    use miniquad::*;
+	use crate::helpers::M4;
+	
+    pub const VERTEX: &str = r#"#version 100
+		attribute vec2 v_pos;
+	
+	// wgpu doesnt support VertexFormat Mat4, so i piece them together
+	attribute mat4 i_model;
+	attribute vec2 i_tiles;
+	attribute float i_hframe;
+	attribute float i_vframe;
+	attribute float i_depth;
+	
+    uniform mat4 projection;
+    
+	void main() {
+		vec2 test = i_tiles;
+		 float test2 = i_hframe;
+		 float test4 = i_vframe;
+		 float test3 = i_depth;
+		
+         gl_Position = projection * i_model * vec4(v_pos, 0.5, 1.);
+    }
+    "#;
+		
+		pub const FRAGMENT: &str = r#"#version 100
+		void main() {
+        gl_FragColor = vec4(1., 0., 0., 1.);
+    }
+    "#;
+		
+		pub const META: ShaderMeta = ShaderMeta {
+        images: &[],
+        uniforms: UniformBlockLayout {
+            uniforms: &[("projection", UniformType::Mat4)],
         },
-        limits: wgpu::Limits::default(),
-    });
-
-    // projection matrix ubo
-    let ubo_projection = {
-        let projection = ortho(0., width, 0., height, -1., 1.);
-        device
-            .create_buffer_mapped(1, wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST)
-            .fill_from_slice(&[projection])
     };
-
-    // swapchain
-    let (mut swap_chain, swapchain_desc) = {
-        let desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8UnormSrgb,
-            width: width as u32,
-            height: height as u32,
-            present_mode: wgpu::PresentMode::Vsync,
-        };
-
-        (device.create_swap_chain(&surface, &desc), desc)
-    };
-
-    // depth texture
-    let mut depth_texture = create_depth_texture(&device, &swapchain_desc);
-    let depth_texture_view = depth_texture.create_default_view();
-
-    // first pipeline
-    let quad_pipeline = quad::Pipeline::new(&mut device, &mut queue, &ubo_projection);
-
-    let font = load_file!("fonts/JetBrainsMono-Regular.ttf");
-    let glyph_brush = GlyphBrushBuilder::using_font_bytes(font).build(&mut device, RENDER_FORMAT);
-
-    // initializse the app itself
-    let mut app = App {
-        device,
-
-        ubo_projection,
-        quad_pipeline,
-        glyph_brush,
-
-        queue,
-        swapchain_desc,
-        depth_texture_view,
-
-        key_downs: HashMap::new(),
-        button_downs: HashMap::new(),
-        quads: Vec::new(),
-
-        mouse: Default::default(),
-    };
-
-    // scripts
-    let mut garbage_system = GarbageSystem::default();
-    //let mut ui_context = UiContext::default();
-    let mut grids = Vec::new();
-
-    // generates the same vframes for all the grids at the start
-    let vframes = {
-        let mut temp_random = oorandom::Rand32::new(5);
-        Grid::gen_field(&mut temp_random, 5)
-    };
-    grids.push(Grid::new(&mut app, 0, 1, &vframes));
-    grids.push(Grid::new(&mut app, 1, 2, &vframes));
-    let mut debug_info = true;
-
-    // gamepad
-    let mut gilrs = match gilrs::GilrsBuilder::new().set_update_state(false).build() {
-        Ok(g) => g,
-        Err(gilrs::Error::NotImplemented(g)) => {
-            eprintln!("Current platform is not supported");
-
-            g
-        }
-        Err(e) => {
-            eprintln!("Failed to create gilrs context: {}", e);
-            std::process::exit(-1);
-        }
-    };
-
-    // main loop
-    let mut quit = false;
-    let mut fixedstep = fixedstep::FixedStep::start(FRAME_AMOUNT);
-    while !quit {
-        event_loop.run_return(|event, _, control_flow| {
-            *control_flow = ControlFlow::Wait;
-
-            match event {
-                Event::MainEventsCleared => {
-                    *control_flow = ControlFlow::Exit;
-                }
-
-                Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::Resized(size) => {
-                        if size.width != 0 && size.height != 0 {
-                            // recreate swapchain
-                            app.swapchain_desc.width = size.width;
-                            app.swapchain_desc.height = size.height;
-                            swap_chain =
-                                app.device.create_swap_chain(&surface, &app.swapchain_desc);
-
-                            depth_texture = create_depth_texture(&app.device, &app.swapchain_desc);
-                            app.depth_texture_view = depth_texture.create_default_view();
-
-                            // upload new projection
-                            let projection =
-                                ortho(0., size.width as f32, 0., size.height as f32, -1., 1.);
-                            let temp_buffer = app
-                                .device
-                                .create_buffer_mapped(1, wgpu::BufferUsage::COPY_SRC)
-                                .fill_from_slice(&[projection]);
-
-                            let mut init_encoder = app.device.create_command_encoder(
-                                &wgpu::CommandEncoderDescriptor { todo: 0 },
-                            );
-                            init_encoder.copy_buffer_to_buffer(
-                                &temp_buffer,
-                                0,
-                                &app.ubo_projection,
-                                0,
-                                std::mem::size_of::<M4>() as u64,
-                            );
-                            init_encoder.finish();
-                        }
-                    }
-
-                    WindowEvent::CloseRequested => {
-                        quit = true;
-                    }
-
-                    WindowEvent::CursorMoved { position, .. } => {
-                        app.mouse.position = V2::new(position.x as f32, position.y as f32);
-                    }
-
-                    WindowEvent::MouseInput { state, button, .. } => {
-                        app.mouse.update_event(state, button);
-                    }
-
-                    WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                virtual_keycode: Some(code),
-                                state,
-                                ..
-                            },
-                        ..
-                    } => {
-                        // add new codes, modify code that is 0 back to 1 if pressed
-                        if state == ElementState::Pressed {
-                            if let Some(value) = app.key_downs.get_mut(&code) {
-                                if *value == 0 {
-                                    *value = 1;
-                                }
-                            } else {
-                                app.key_downs.insert(code, 1);
-                            }
-                        }
-
-                        if state == ElementState::Released {
-                            if let Some(value) = app.key_downs.get_mut(&code) {
-                                *value = 0;
-                            }
-                        }
-                    }
-
-                    _ => (),
-                },
-
-                _ => (),
-            }
-        });
-
-        // gamepad update
-        while let Some(gilrs::Event { id, event, time }) = gilrs.next_event() {
-            match event {
-                ButtonPressed(btn, code) => {
-                    if let Some(value) = app.button_downs.get_mut(&btn) {
-                        if *value == 0 {
-                            *value = 1;
-                        }
-                    } else {
-                        app.button_downs.insert(btn, 1);
-                    }
-                }
-
-                ButtonReleased(btn, code) => {
-                    if let Some(value) = app.button_downs.get_mut(&btn) {
-                        *value = 0;
-                    }
-                }
-
-                _ => {}
-            }
-        }
-
-        // update scope
-        while fixedstep.update() {
-            // quit on escape
-            if app.key_pressed(VirtualKeyCode::Escape) {
-                quit = true;
-            }
-
-            // show debug info
-            if app.kb_pressed(VirtualKeyCode::Tab, Button::Select) {
-                debug_info = !debug_info;
-            }
-
-            if app.mouse.left_pressed {
-                let pos = I2::new(
-                    ((app.mouse.position.x - 400.) / ATLAS_TILE).floor() as i32,
-                    ((app.mouse.position.y + grids[1].push_amount) / ATLAS_TILE).floor() as i32,
-                );
-
-                let cursor_pos = grids[1].cursor.position;
-                grids[1]
-                    .cursor
-                    .states
-                    .push_back(CursorState::MoveSwap {
-                        counter: 0,
-                        goal: pos,
-                    });
-            }
-
-            if app.kb_pressed(VirtualKeyCode::A, Button::North) {
-                grids[1].gen_1d_garbage(&mut garbage_system, 6);
-            }
-
-            if app.kb_pressed(VirtualKeyCode::Return, Button::West) {
-                grids[1].gen_2d_garbage(&mut garbage_system, 2);
-            }
-
-            if app.kb_pressed(VirtualKeyCode::Space, Button::Start) {
-                for grid in grids.iter_mut() {
-                    grid.reset();
-                }
-            }
-
-            if app.key_down(VirtualKeyCode::LShift)
-                || app.button_down(Button::LeftTrigger)
-                || app.button_down(Button::RightTrigger)
-            {
-                grids[0].push_raise = true;
-            }
-			
-            // update all grids
-			let len = grids.len();
-            for i in 0..len {
-				grids[i].update(&mut app, &mut garbage_system);
-				
-				// spawns garbage on other grids if a new combo arrives
-				 for combo_index in 0..grids[i].combo_highlight.list.len() {
-					// TODO(Skytrias): creates copies, might be bad cuz of performance
-					if !grids[i].combo_highlight.list[combo_index].sent {
-					let combo_data = grids[i].combo_highlight.list[combo_index];
-					
-					for j in 0..len {
-							// skip on the same grid as the goal
-							if i == j {
-								continue;
-							}
-							
-							match combo_data.variant {
-								ComboVariant::Combo => grids[j].gen_1d_garbage(&mut garbage_system, combo_data.size as usize),
-							ComboVariant::Chain => grids[j].gen_2d_garbage(&mut garbage_system, combo_data.size as usize),
-							}
-						}
-					
-					grids[i].combo_highlight.list[combo_index].sent = true;
-					}
-				}
-				
-				garbage_system.update(&mut app, &mut grids[i]);
-				grids[i].push_update(&mut app, &mut garbage_system);
-            }
-				
-            // clearing key / mouse input
-            {
-                // increase the frame times on the keys
-                for (_, value) in app.key_downs.iter_mut() {
-                    if *value != 0 {
-                        *value += 1;
-                    }
-                }
-
-                // increase the frame times on the keys
-                for (_, value) in app.button_downs.iter_mut() {
-                    if *value != 0 {
-                        *value += 1;
-                    }
-                }
-
-                // enable mouse pressing
-                app.mouse.update_frame();
-            }
-        }
-
-        // render scope
-        {
-            let _delta = fixedstep.render_delta();
-
-            grids[0].draw(&mut app, V2::new(0., 0.), debug_info);
-            grids[1].draw(&mut app, V2::new(400., 0.), debug_info);
-
-            let frame = swap_chain.get_next_texture();
-
-            let mut encoder = app
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-
-            // enable mouse pressing
-            app.mouse.update_frame();
-
-            /*
-                     let width = app.swapchain_desc.width as f32;
-                     let height = app.swapchain_desc.height as f32;
-                     UiBuilder::new(
-                         &mut app,
-                         &mut ui_context,
-                         R4::new(width - 200., 0., 200., height),
-                         4,
-                     )
-                     .push_button("reset", |app| {
-                         grid = Grid::new(app);
-                     })
-                     .push_button("spawn 1d", |app| {
-                         let offset = (app.rand_int(1) * 3) as usize;
-                         grid.gen_1d_garbage(&mut garbage_system, 3, offset);
-                                  println!("called");
-                               })
-                     .push_text("-----")
-                     .push_button("spawn 2d", |_app| {
-                         grid.gen_2d_garbage(&mut garbage_system, 2);
-                     });
-            */
-
-            app.draw_sprites(&frame.view, &mut encoder);
-
-            // draws all sections sent into glyph_brush
-            app.glyph_brush
-                .draw_queued(
-                    &mut app.device,
-                    &mut encoder,
-                    &frame.view,
-                    app.swapchain_desc.width,
-                    app.swapchain_desc.height,
-                )
-                .expect("GLYPH BRUSH: failed to render text");
-
-            app.queue.submit(&[encoder.finish()]);
-        }
-
-        std::thread::sleep(std::time::Duration::from_millis(FPS));
+	
+    #[repr(C)]
+		pub struct Uniforms {
+        pub projection: M4,
     }
 }

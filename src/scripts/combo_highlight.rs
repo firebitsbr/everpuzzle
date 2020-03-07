@@ -1,7 +1,6 @@
 use crate::engine::App;
 use crate::helpers::{Sprite, ATLAS_SPACING, GRID_HEIGHT, GRID_WIDTH, V2};
 use std::collections::VecDeque;
-use wgpu_glyph::{HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 const COMBO_APPEAR_TIME: u32 = 5;
 const COMBO_DISAPPEAR_START: u32 = 10;
@@ -105,7 +104,8 @@ impl ComboHighlight {
                 ComboVariant::Combo => format!("{}", combo.size),
                 ComboVariant::Chain => format!("x{}", combo.size),
             };
-
+			
+			/*
             // TODO(Skytrias): implement from(f32, f32) for V2
             app.push_section(Section {
                 text: &text,
@@ -119,7 +119,8 @@ impl ComboHighlight {
                 scale: Scale::uniform(16. * stupid_scale),
                 ..Default::default()
             });
-
+   */
+			
             offset.y -= self.dimensions.y;
 
             if combo.counter < COMBO_DISAPPEAR_TIME {

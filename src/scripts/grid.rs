@@ -3,7 +3,6 @@ use crate::helpers::*;
 use crate::scripts::*;
 use std::collections::HashMap;
 use std::ops::{Index, IndexMut, Range};
-use wgpu_glyph::Section;
 
 /// the grid holds all components and updates all the script logic of each component  
 pub struct Grid {
@@ -1329,13 +1328,15 @@ impl Grid {
 							 vframe,
 							 ..Default::default()
 						 });
-	 
+					
+					/*
 						 app.push_section(Section {
 							 text: &format!("{}", amt),
 							 screen_position: pos,
 							 ..Default::default()
 						 });
-	 
+		 */
+					
 						 y_offset += 1;
 					 }
 				 
@@ -1343,173 +1344,177 @@ impl Grid {
 											8. * ATLAS_TILE + offset.x,
 											y_offset as f32 * ATLAS_TILE + offset.y,
 											);
-									
-									app.push_section(Section {
-													text: &format!("{}", sum),
-													screen_position: pos,
-													..Default::default()
-												 });
-				 }
-	 
+				
+				/*
+							   app.push_section(Section {
+										   text: &format!("{}", sum),
+										   screen_position: pos,
+										   ..Default::default()
+										 });
+				 */
+	}
+		
 				 // debug info numbers
 				 for x in 0..GRID_WIDTH {
-					 for y in 0..GRID_HEIGHT {
-						 let i = y * GRID_WIDTH + x;
-	 
-						 if let Component::Block { block, .. } = &self[i] {
-							 let pos = (
-								 x as f32 * ATLAS_TILE + offset.x,
-								 y as f32 * ATLAS_TILE + block.offset.y + offset.y,
-							 );
-	 
-							 let text = &format!("{}", i);
-							 //let text = "0";
-	 
-							 app.push_section(Section {
-								 text,
-								 scale: wgpu_glyph::Scale { x: 20., y: 16. },
-								 color: [0., 0., 0., 1.],
-								 screen_position: pos,
-								 ..Default::default()
-							 });
-	 
-							 app.push_section(Section {
-								 text,
-								 scale: wgpu_glyph::Scale { x: 20., y: 16. },
-								 color: [1., 1., 1., 1.],
-								 screen_position: (pos.0 + 1., pos.1 + 1.),
-								 ..Default::default()
-							 });
-						 }
+					for y in 0..GRID_HEIGHT {
+					   let i = y * GRID_WIDTH + x;
+		
+					   if let Component::Block { block, .. } = &self[i] {
+						  let pos = (
+							 x as f32 * ATLAS_TILE + offset.x,
+							 y as f32 * ATLAS_TILE + block.offset.y + offset.y,
+						  );
+		
+						  let text = &format!("{}", i);
+						  //let text = "0";
+						
+						/*
+						  app.push_section(Section {
+						   text,
+						   scale: wgpu_glyph::Scale { x: 20., y: 16. },
+						   color: [0., 0., 0., 1.],
+						   screen_position: pos,
+						   ..Default::default()
+						  });
+			   
+						  app.push_section(Section {
+						   text,
+						   scale: wgpu_glyph::Scale { x: 20., y: 16. },
+						   color: [1., 1., 1., 1.],
+						   screen_position: (pos.0 + 1., pos.1 + 1.),
+						   ..Default::default()
+						  });
+						*/
+	  }
+					  }
 					 }
-				 }
-			 }
-		 }
-	 }
-	 
-	 impl Index<usize> for Grid {
-		 type Output = Component;
-	 
-		 fn index(&self, index: usize) -> &Self::Output {
-			 &self.components[index]
-		 }
-	 }
-	 
-	 impl IndexMut<usize> for Grid {
-		 fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-			 &mut self.components[index]
-		 }
-	 }
-	 
-	 /// state transition tests
-	 #[cfg(test)]
-	 mod tests {
-		 use super::*;
-	 
-		 /// showcase gen_1d working
-		 #[test]
-		 fn grid_gen_1d() {
-			 let mut grid = Grid::empty();
-			 let mut garbage_system = GarbageSystem::default();
-	 
-			 grid.gen_1d_garbage(&mut garbage_system, 3, 0);
-			 assert!(grid[0].is_garbage());
-			 assert!(grid[1].is_garbage());
-			 assert!(grid[2].is_garbage());
-			 assert!(grid[3].is_empty());
-	 
-			 grid.gen_1d_garbage(&mut garbage_system, 4, 0);
-			 assert!(grid[0].is_garbage());
-			 assert!(grid[1].is_garbage());
-			 assert!(grid[2].is_garbage());
-			 assert!(grid[3].is_garbage());
-			 assert!(grid[4].is_empty());
-	 
-			 grid = Grid::empty();
-			 grid.gen_1d_garbage(&mut garbage_system, 3, 1);
-			 assert!(grid[0].is_empty());
-			 assert!(grid[1].is_garbage());
-			 assert!(grid[2].is_garbage());
-			 assert!(grid[3].is_garbage());
-			 assert!(grid[4].is_empty());
-		 }
-	 
-		 /// check if hang to fall works in the wanted frame times
-		 #[test]
-		 fn block_hang_and_fall() {
-			 let mut grid = Grid::empty();
-			 let mut garbage_system = GarbageSystem::default();
-			 grid[0] = Component::Normal(Block::default());
-	 
-			 // hang state setting
-			 grid.assert_state(0, |s| s.is_idle());
-			 if let Some(state) = grid.block_state_mut(0) {
-				 state.to_hang();
-			 } else {
-				 assert!(false);
-			 }
-			 grid.assert_state(0, |s| s.is_hang());
-			 grid.assert_state(0, |s| s.hang_started());
-	 
-			 // hang state updating
-			 for i in 0..HANG_TIME {
-				 grid.update_components();
-	 
-				 grid.block_resolve_fall();
-				 grid.block_resolve_hang(&mut garbage_system);
-			 }
-	 
-			 // is in fall state now
-			 grid.assert_state(0, |s| s.is_fall());
-	 
-			 // check if fall succeeds to swap components around
-			 assert!(grid[0].is_block());
-			 assert!(grid[GRID_WIDTH].is_empty());
-			 grid.update_components();
-			 grid.block_resolve_fall();
-			 assert!(grid[0].is_empty());
-			 assert!(grid[GRID_WIDTH].is_block());
-		 }
-	 
-		 /// check if swap to idle works in the wanted frame times
-		 #[test]
-		 fn block_swap() {
-			 let mut grid = Grid::empty();
-			 let mut cursor = Cursor::default();
-			 cursor.position = V2::new(0., 0.);
-	 
-			 assert!(grid[0].is_empty());
-			 assert!(grid[1].is_empty());
-			 cursor.swap_blocks(&mut grid);
-			 assert!(grid[0].is_empty());
-			 assert!(grid[1].is_empty());
-	 
-			 grid[0] = Component::Normal(Block::default());
-	 
-			 assert!(grid[0].is_block());
-			 assert!(grid[1].is_empty());
-			 cursor.swap_blocks(&mut grid);
-			 assert!(grid[0].is_block());
-			 assert!(grid[1].is_empty());
-			 grid.assert_state(0, |s| s.is_swap());
-	 
-			 // swap state updating
-			 for i in 0..SWAP_TIME {
-				 grid.update_components();
-			 }
-	 
-			 grid.assert_state(0, |s| s.swap_finished());
-			 grid.update_components();
-	 
-			 // NOTE(Skytrias): matches the resolve / detect grid.update
-			 grid.block_resolve_swap();
-			 grid.block_detect_hang();
-	 
-			 assert!(grid[0].is_empty());
-			 assert!(grid[1].is_block());
-	 
-			 // block should transition to hang immediatly
-			 grid.assert_state(1, |s| s.is_hang());
-		 }
-	 }
-	 
+				   }
+				  }
+			   }
+			   
+			   impl Index<usize> for Grid {
+				  type Output = Component;
+			   
+				  fn index(&self, index: usize) -> &Self::Output {
+				   &self.components[index]
+				  }
+			   }
+			   
+			   impl IndexMut<usize> for Grid {
+				  fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+				   &mut self.components[index]
+				  }
+			   }
+			   
+			   /// state transition tests
+			   #[cfg(test)]
+			   mod tests {
+				  use super::*;
+			   
+				  /// showcase gen_1d working
+				  #[test]
+				  fn grid_gen_1d() {
+				   let mut grid = Grid::empty();
+				   let mut garbage_system = GarbageSystem::default();
+			   
+				   grid.gen_1d_garbage(&mut garbage_system, 3, 0);
+				   assert!(grid[0].is_garbage());
+				   assert!(grid[1].is_garbage());
+				   assert!(grid[2].is_garbage());
+				   assert!(grid[3].is_empty());
+			   
+				   grid.gen_1d_garbage(&mut garbage_system, 4, 0);
+				   assert!(grid[0].is_garbage());
+				   assert!(grid[1].is_garbage());
+				   assert!(grid[2].is_garbage());
+				   assert!(grid[3].is_garbage());
+				   assert!(grid[4].is_empty());
+			   
+				   grid = Grid::empty();
+				   grid.gen_1d_garbage(&mut garbage_system, 3, 1);
+				   assert!(grid[0].is_empty());
+				   assert!(grid[1].is_garbage());
+				   assert!(grid[2].is_garbage());
+				   assert!(grid[3].is_garbage());
+				   assert!(grid[4].is_empty());
+				  }
+			   
+				  /// check if hang to fall works in the wanted frame times
+				  #[test]
+				  fn block_hang_and_fall() {
+				   let mut grid = Grid::empty();
+				   let mut garbage_system = GarbageSystem::default();
+				   grid[0] = Component::Normal(Block::default());
+			   
+				   // hang state setting
+				   grid.assert_state(0, |s| s.is_idle());
+				   if let Some(state) = grid.block_state_mut(0) {
+					 state.to_hang();
+				   } else {
+					 assert!(false);
+				   }
+				   grid.assert_state(0, |s| s.is_hang());
+				   grid.assert_state(0, |s| s.hang_started());
+			   
+				   // hang state updating
+				   for i in 0..HANG_TIME {
+					 grid.update_components();
+			   
+					 grid.block_resolve_fall();
+					 grid.block_resolve_hang(&mut garbage_system);
+				   }
+			   
+				   // is in fall state now
+				   grid.assert_state(0, |s| s.is_fall());
+			   
+				   // check if fall succeeds to swap components around
+				   assert!(grid[0].is_block());
+				   assert!(grid[GRID_WIDTH].is_empty());
+				   grid.update_components();
+				   grid.block_resolve_fall();
+				   assert!(grid[0].is_empty());
+				   assert!(grid[GRID_WIDTH].is_block());
+				  }
+			   
+				  /// check if swap to idle works in the wanted frame times
+				  #[test]
+				  fn block_swap() {
+				   let mut grid = Grid::empty();
+				   let mut cursor = Cursor::default();
+				   cursor.position = V2::new(0., 0.);
+			   
+				   assert!(grid[0].is_empty());
+				   assert!(grid[1].is_empty());
+				   cursor.swap_blocks(&mut grid);
+				   assert!(grid[0].is_empty());
+				   assert!(grid[1].is_empty());
+			   
+				   grid[0] = Component::Normal(Block::default());
+			   
+				   assert!(grid[0].is_block());
+				   assert!(grid[1].is_empty());
+				   cursor.swap_blocks(&mut grid);
+				   assert!(grid[0].is_block());
+				   assert!(grid[1].is_empty());
+				   grid.assert_state(0, |s| s.is_swap());
+			   
+				   // swap state updating
+				   for i in 0..SWAP_TIME {
+					 grid.update_components();
+				   }
+			   
+				   grid.assert_state(0, |s| s.swap_finished());
+				   grid.update_components();
+			   
+				   // NOTE(Skytrias): matches the resolve / detect grid.update
+				   grid.block_resolve_swap();
+				   grid.block_detect_hang();
+			   
+				   assert!(grid[0].is_empty());
+				   assert!(grid[1].is_block());
+			   
+				   // block should transition to hang immediatly
+				   grid.assert_state(1, |s| s.is_hang());
+				  }
+			   }
+			   

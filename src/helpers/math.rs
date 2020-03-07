@@ -4,8 +4,6 @@ use ultraviolet::{
 	int::Vec2i,
 	mat::Mat4,
 	projection::lh_yup::orthographic_gl,
-	transform::Similarity3,
-	rotor::Rotor3,
 };
 	
 /// easy access to pi when using math helpers
