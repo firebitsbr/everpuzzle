@@ -145,6 +145,53 @@ impl GarbageSystem {
 			}
         }
     }
+	
+	pub fn lowest_idle(&mut self, grid: &Grid) -> Option<usize> {
+		let mut min_y = 100_000;
+		
+		// TODO(Skytrias): loops through all garbage
+		for garbage in self.list.iter() {
+				// leave early if all children are gone
+			if garbage.children.is_empty() {
+				return None;
+			}
+			
+			if garbage.parent_id == grid.id {
+				if let GarbageState::Idle = garbage.state {
+					min_y = min_y.min(garbage.lowest_y());
+				}
+		}
+		}
+		
+		if min_y != 100_000 {
+			Some(min_y)
+		} else {
+			None
+		}
+	}
+	
+	pub fn lowest_clear(&mut self, grid: &Grid) -> Option<usize> {
+		let mut min_y = 100_000;
+		
+		for garbage in self.list.iter() {
+				// leave early if all children are gone
+			if garbage.children.is_empty() {
+				return None;
+			}
+			
+			if garbage.parent_id == grid.id {
+				if let GarbageState::Clear { .. } = garbage.state {
+					min_y = min_y.min(garbage.lowest_y());
+				}
+			}
+		}
+		
+		if min_y != 100_000 {
+			Some(min_y)
+		} else {
+			None
+		}
+	}
 }
 
 /// garbage that holds N indexes to garbage children in the list
@@ -177,7 +224,7 @@ impl Garbage {
 			parent_id,
 			children,
             count,
-            state: Idle,
+            state: Fall,
             is_2d: count > GRID_WIDTH,
             removed_children: Vec::new(),
         }
@@ -213,7 +260,7 @@ impl Garbage {
             self.highest()
         }
     }
-
+	
     /// checks wether the lowest blocks below are all empty
     pub fn lowest_empty(&self, grid: &Grid) -> bool {
         let mut can_hang = true;
@@ -228,7 +275,7 @@ impl Garbage {
 
         can_hang
     }
-
+	
     /// returns the highest existing children, will always work
     pub fn highest(&self) -> Vec<usize> {
         self.children
@@ -238,12 +285,16 @@ impl Garbage {
             .map(|(_, num)| *num)
             .collect()
     }
-
+	
+	fn lowest_y(&self) -> usize {
+		(self.lowest()[0] as f32 / GRID_WIDTH as f32).floor() as usize
+	}
+	
     /// updates the garbage variables based on each state, mostly animation based
     pub fn update(&mut self, app: &mut App, grid: &mut Grid) {
         match &mut self.state {
             Hang { counter } => *counter += 1,
-
+			
             Clear {
                 counter,
                 end_time,
@@ -316,7 +367,8 @@ impl Garbage {
                                     ..Default::default()
                                 },
                             };
-                            remove = Some(i);
+							println!("{} hi", *child_index);
+							remove = Some(i);
                             break;
                         }
                     }

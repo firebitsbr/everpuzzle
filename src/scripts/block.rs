@@ -22,7 +22,7 @@ pub enum BlockState {
         end_time: u32,
     },
     Spawned,
-}
+	}
 
 /// block data used for unique block rendering and unique state
 pub struct Block {

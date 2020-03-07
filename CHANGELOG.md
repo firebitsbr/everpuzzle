@@ -1,5 +1,13 @@
 # Everpuzzle 0.1.2:
 
+AI:
+* Grid::solve_vertically(), limited to x / y range, looks for specified goal amount of vframes vertically
+* Grid::solve_horizontally(), limited to y_axis, looks for any 3 blocks that can be matched by vframes
+* Grid::solve_spawn_vertically(), if garbage is clearing - prepare peaks for incoming chains to counter
+* Grid::detect_difference(), get difference in height peaks
+* Grid::remove_peaks(), remove any found peaks by cursor swapping blocks
+* detect low amount of blocks - raise automatically
+
 New:
 * Same fields for all grids at start, different randomization afterwards
 * Randomization can be linked between grids
@@ -19,6 +27,7 @@ Fixes:
 * Disallow cursor.swap_blocks if left / right above state is hang
 
 Improvements:
+* Grid::gen_1d_field() now randomizes offset by default
 * Bottom row randomization cares
 * Removed BoundIterator
 * Removed BoundIndex, switched to using raw usizes, i32 when going outside of bounds

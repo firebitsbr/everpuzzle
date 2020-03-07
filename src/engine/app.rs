@@ -452,21 +452,18 @@ pub fn run(width: f32, height: f32, title: &'static str) {
                 grids[1]
                     .cursor
                     .states
-                    .push_back(CursorState::MoveTransport {
+                    .push_back(CursorState::MoveSwap {
                         counter: 0,
-								   reached: false,
-								   swap_end: true,
-                        start: cursor_pos,
                         goal: pos,
                     });
             }
 
             if app.kb_pressed(VirtualKeyCode::A, Button::North) {
-                grids[0].gen_1d_garbage(&mut garbage_system, 3, 0);
+                grids[1].gen_1d_garbage(&mut garbage_system, 6);
             }
 
             if app.kb_pressed(VirtualKeyCode::Return, Button::West) {
-                grids[0].gen_2d_garbage(&mut garbage_system, 2);
+                grids[1].gen_2d_garbage(&mut garbage_system, 2);
             }
 
             if app.kb_pressed(VirtualKeyCode::Space, Button::Start) {
@@ -487,19 +484,23 @@ pub fn run(width: f32, height: f32, title: &'static str) {
             for i in 0..len {
 				grids[i].update(&mut app, &mut garbage_system);
 				
+				// spawns garbage on other grids if a new combo arrives
 				 for combo_index in 0..grids[i].combo_highlight.list.len() {
 					// TODO(Skytrias): creates copies, might be bad cuz of performance
 					if !grids[i].combo_highlight.list[combo_index].sent {
 					let combo_data = grids[i].combo_highlight.list[combo_index];
 					
-					for j in (i + 1)..len {
-								match combo_data.variant {
-							ComboVariant::Combo => println!("combo"),
-							ComboVariant::Chain => println!("chain"),
+					for j in 0..len {
+							// skip on the same grid as the goal
+							if i == j {
+								continue;
+							}
+							
+							match combo_data.variant {
+								ComboVariant::Combo => grids[j].gen_1d_garbage(&mut garbage_system, combo_data.size as usize),
+							ComboVariant::Chain => grids[j].gen_2d_garbage(&mut garbage_system, combo_data.size as usize),
+							}
 						}
-						
-						grids[j].gen_2d_garbage(&mut garbage_system, 2);
-					}
 					
 					grids[i].combo_highlight.list[combo_index].sent = true;
 					}
