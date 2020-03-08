@@ -1,4 +1,3 @@
-use crate::engine::App;
 use crate::helpers::*;
 use crate::scripts::{Block, BlockState, Component, Grid};
 use GarbageState::*;
@@ -65,7 +64,7 @@ impl Child {
     /// temporary way to generate the hframes / vframes dependand on height
     pub fn gen_2d_frames(x: usize, y: usize, mut height: usize) -> (u32, u32) {
         height = height.max(1);
-		//debug_assert!(height >= 1);
+        //debug_assert!(height >= 1);
 
         if height != 1 {
             let hframe = {
@@ -77,29 +76,23 @@ impl Child {
                     } else {
                         8
                     }
-                } else {
-                    if y == 0 {
-                        if x == GRID_WIDTH - 1 {
-                            3
-                        } else {
-                            5
-                        }
+                } else if y == 0 {
+                    if x == GRID_WIDTH - 1 {
+                        3
                     } else {
-                        if x == GRID_WIDTH - 1 {
-                            if y == height - 1 {
-                                4
-                            } else {
-                                6
-                            }
-                        } else {
-                            if y == height - 1 {
-                                7
-                            } else {
-                                // midle pieces
-                                0
-                            }
-                        }
+                        5
                     }
+                } else if x == GRID_WIDTH - 1 {
+                    if y == height - 1 {
+                        4
+                    } else {
+                        6
+                    }
+                } else if y == height - 1 {
+                    7
+                } else {
+                    // midle pieces
+                    0
                 }
             };
 
@@ -139,67 +132,67 @@ impl Default for GarbageSystem {
 impl GarbageSystem {
     /// calls the update event on each garbage
     pub fn update(&mut self, grid: &mut Grid) {
-		for garbage in self.list.iter_mut() {
-			if grid.id == garbage.parent_id {
-				garbage.update(grid);
-			}
+        for garbage in self.list.iter_mut() {
+            if grid.id == garbage.parent_id {
+                garbage.update(grid);
+            }
         }
     }
-	
-	pub fn lowest_idle(&mut self, grid: &Grid) -> Option<usize> {
-		let mut min_y = 100_000;
-		
-		// TODO(Skytrias): loops through all garbage
-		for garbage in self.list.iter() {
-				// leave early if all children are gone
-			if garbage.children.is_empty() {
-				return None;
-			}
-			
-			if garbage.parent_id == grid.id {
-				if let GarbageState::Idle = garbage.state {
-					min_y = min_y.min(garbage.lowest_y());
-				}
-		}
-		}
-		
-		if min_y != 100_000 {
-			Some(min_y)
-		} else {
-			None
-		}
-	}
-	
-	pub fn lowest_clear(&mut self, grid: &Grid) -> Option<usize> {
-		let mut min_y = 100_000;
-		
-		for garbage in self.list.iter() {
-				// leave early if all children are gone
-			if garbage.children.is_empty() {
-				return None;
-			}
-			
-			if garbage.parent_id == grid.id {
-				if let GarbageState::Clear { .. } = garbage.state {
-					min_y = min_y.min(garbage.lowest_y());
-				}
-			}
-		}
-		
-		if min_y != 100_000 {
-			Some(min_y)
-		} else {
-			None
-		}
-	}
+
+    pub fn lowest_idle(&mut self, grid: &Grid) -> Option<usize> {
+        let mut min_y = 100_000;
+
+        // TODO(Skytrias): loops through all garbage
+        for garbage in self.list.iter() {
+            // leave early if all children are gone
+            if garbage.children.is_empty() {
+                return None;
+            }
+
+            if garbage.parent_id == grid.id {
+                if let GarbageState::Idle = garbage.state {
+                    min_y = min_y.min(garbage.lowest_y());
+                }
+            }
+        }
+
+        if min_y != 100_000 {
+            Some(min_y)
+        } else {
+            None
+        }
+    }
+
+    pub fn lowest_clear(&mut self, grid: &Grid) -> Option<usize> {
+        let mut min_y = 100_000;
+
+        for garbage in self.list.iter() {
+            // leave early if all children are gone
+            if garbage.children.is_empty() {
+                return None;
+            }
+
+            if garbage.parent_id == grid.id {
+                if let GarbageState::Clear { .. } = garbage.state {
+                    min_y = min_y.min(garbage.lowest_y());
+                }
+            }
+        }
+
+        if min_y != 100_000 {
+            Some(min_y)
+        } else {
+            None
+        }
+    }
 }
 
 /// garbage that holds N indexes to garbage children in the list
 pub struct Garbage {
     /// will only update, when parent grid is calling update
-	pub parent_id: usize,
-	
-	/// list of children indexes that exist in the grid
+    pub parent_id: usize,
+
+    /// list of children indexes that exist in the grid
     pub children: Vec<usize>,
 
     /// list of children removed in clear, that have to be idled
@@ -221,8 +214,8 @@ impl Garbage {
         let count = children.len();
 
         Self {
-			parent_id,
-			children,
+            parent_id,
+            children,
             count,
             state: Fall,
             is_2d: count > GRID_WIDTH,
@@ -230,37 +223,36 @@ impl Garbage {
         }
     }
 
-    // NOTE(Skytrias): shouldnt be called when its 1d
-    /// removes the lowest children and returns them if the garbage is still 2d
-    pub fn drain_lowest(&mut self) -> Vec<usize> {
-        let skip = (self.count / GRID_WIDTH - 1) * GRID_WIDTH;
+    /*
+       // NOTE(Skytrias): shouldnt be called when its 1d
+       /// removes the lowest children and returns them if the garbage is still 2d
+       pub fn drain_lowest(&mut self) -> Vec<usize> {
+           let skip = (self.count / GRID_WIDTH - 1) * GRID_WIDTH;
 
-        self.count = self.children.len() - GRID_WIDTH;
-        self.is_2d = self.count > GRID_WIDTH;
+           self.count = self.children.len() - GRID_WIDTH;
+           self.is_2d = self.count > GRID_WIDTH;
 
-        self.children.drain(skip..).collect()
-    }
+           self.children.drain(skip..).collect()
+       }
+    */
 
     /// returns all the lowest children indexes, if 2d skip to the bottom 6 children
     pub fn lowest(&self) -> Vec<usize> {
         if self.is_2d {
             let skip = (self.count / GRID_WIDTH - 1) * GRID_WIDTH;
 
-            let result = self
-                .children
+            self.children
                 .iter()
                 .skip(skip)
                 .enumerate()
                 .take_while(|(i, _)| *i < GRID_WIDTH)
                 .map(|(_, num)| *num)
-                .collect();
-
-            result
+                .collect()
         } else {
             self.highest()
         }
     }
-	
+
     /// checks wether the lowest blocks below are all empty
     pub fn lowest_empty(&self, grid: &Grid) -> bool {
         let mut can_hang = true;
@@ -275,7 +267,7 @@ impl Garbage {
 
         can_hang
     }
-	
+
     /// returns the highest existing children, will always work
     pub fn highest(&self) -> Vec<usize> {
         self.children
@@ -285,16 +277,16 @@ impl Garbage {
             .map(|(_, num)| *num)
             .collect()
     }
-	
-	fn lowest_y(&self) -> usize {
-		(self.lowest()[0] as f32 / GRID_WIDTH as f32).floor() as usize
-	}
-	
+
+    fn lowest_y(&self) -> usize {
+        (self.lowest()[0] as f32 / GRID_WIDTH as f32).floor() as usize
+    }
+
     /// updates the garbage variables based on each state, mostly animation based
     pub fn update(&mut self, grid: &mut Grid) {
         match &mut self.state {
             Hang { counter } => *counter += 1,
-			
+
             Clear {
                 counter,
                 end_time,
@@ -359,7 +351,7 @@ impl Garbage {
                             grid[*child_index] = Component::Block {
                                 state: BlockState::Spawned,
                                 block: Block {
-                                    offset: V2::new(0., -grid.push_amount),
+                                    offset: v2(0., -grid.push_amount),
                                     vframe: Block::random_vframe(&mut grid.rng),
 
                                     // allow chains from garbage
@@ -367,8 +359,8 @@ impl Garbage {
                                     ..Default::default()
                                 },
                             };
-							println!("{} hi", *child_index);
-							remove = Some(i);
+                            println!("{} hi", *child_index);
+                            remove = Some(i);
                             break;
                         }
                     }

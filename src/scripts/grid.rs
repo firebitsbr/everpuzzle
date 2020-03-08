@@ -1,8 +1,7 @@
 use crate::engine::*;
 use crate::helpers::*;
 use crate::scripts::*;
-use std::collections::HashMap;
-use std::ops::{Index, IndexMut, Range};
+use std::ops::{Index, IndexMut};
 
 /// the grid holds all components and updates all the script logic of each component  
 pub struct Grid {
@@ -133,7 +132,7 @@ impl Grid {
             push_amount: 0.,
             push_raise: false,
 
-            cursor: Cursor::new(if id == 1 { true } else { false }),
+            cursor: Cursor::new(id == 1),
             rng: oorandom::Rand32::new(seed),
         }
     }
@@ -153,7 +152,7 @@ impl Grid {
     }
 
     /// sets all blocks and childs y_offset to 0, swaps them with below and sets bottom row to randoimized blocks
-    pub fn push_upwards(&mut self, garbage_system: &mut GarbageSystem, reset: bool) {
+    pub fn push_upwards(&mut self, garbage_system: &mut GarbageSystem) {
         let vframes = self.gen_line();
 
         for x in 0..GRID_WIDTH {
@@ -172,7 +171,7 @@ impl Grid {
                     self.components[index] = Component::Block {
                         block: Block {
                             vframe: vframes[x],
-                            offset: V2::new(0., -self.push_amount),
+                            offset: v2(0., -self.push_amount),
                             ..Default::default()
                         },
                         state: BlockState::Idle,
@@ -185,10 +184,10 @@ impl Grid {
         // shift up the garbage children indexes
         for garbage in garbage_system.list.iter_mut() {
             if garbage.parent_id == self.id {
-				for child_index in garbage.children.iter_mut() {
-                *child_index -= GRID_WIDTH;
-					}
-			}
+                for child_index in garbage.children.iter_mut() {
+                    *child_index -= GRID_WIDTH;
+                }
+            }
         }
 
         // shift up the cursor if still in grid range
@@ -201,23 +200,19 @@ impl Grid {
     }
 
     /// generates a line of garbage at the top of the grid
-    pub fn gen_1d_garbage(
-        &mut self,
-							  garbage_system: &mut GarbageSystem,
-        width: usize,
-    ) {
-		let offset = self.rng.rand_range(0..(GRID_WIDTH - width + 1) as u32) as usize;
-        
-		debug_assert!(width >= 3);
+    pub fn gen_1d_garbage(&mut self, garbage_system: &mut GarbageSystem, width: usize) {
+        let offset = self.rng.rand_range(0..(GRID_WIDTH - width + 1) as u32) as usize;
+
+        debug_assert!(width >= 3);
         debug_assert!(offset < GRID_WIDTH);
-		
+
         let children: Vec<usize> = (offset..offset + width).collect();
 
         for (i, index) in children.iter().enumerate() {
             let (hframe, vframe) = Child::gen_1d_frames(i, width);
             self.components[*index] = Component::Child(Child {
                 hframe,
-															   vframe,
+                vframe,
                 ..Default::default()
             });
         }
@@ -269,7 +264,7 @@ impl Grid {
                     }
                 }
 
-                if let Some(index) = any {
+                if any.is_some() {
                     if let Component::Block { state, block } = &mut self[i] {
                         *state = BlockState::Idle;
                         block.offset.x = 0.;
@@ -333,7 +328,7 @@ impl Grid {
             }
         }
 
-        if list.len() != 0 {
+        if !list.is_empty() {
             // clear duplicates and sort
             list.sort();
             list.dedup();
@@ -397,7 +392,7 @@ impl Grid {
     pub fn block_detect_hang(&mut self) {
         for i in 0..GRID_TOTAL - GRID_WIDTH {
             if let Component::Empty { .. } = &self[i + GRID_WIDTH] {
-                if let Component::Block { state, block } = &mut self[i] {
+                if let Component::Block { state, .. } = &mut self[i] {
                     if let BlockState::Idle = state {
                         *state = BlockState::Hang { counter: 0 };
                     }
@@ -447,12 +442,12 @@ impl Grid {
                         if above_fall {
                             for g in garbage_system.list.iter_mut() {
                                 if g.parent_id == self.id {
-									if let GarbageState::Idle = g.state {
-                                    if g.children.iter().any(|index| *index == i) {
-                                        g.state = GarbageState::Fall;
+                                    if let GarbageState::Idle = g.state {
+                                        if g.children.iter().any(|index| *index == i) {
+                                            g.state = GarbageState::Fall;
+                                        }
                                     }
                                 }
-                            }
                             }
                         }
                     }
@@ -493,7 +488,7 @@ impl Grid {
                             }
                         }
 
-                        if let Some(_) = saved_chain {
+                        if saved_chain.is_some() {
                             if let Component::Block { block, .. } = &mut self[i + GRID_WIDTH] {
                                 block.saved_chain = saved_chain;
                             }
@@ -525,13 +520,13 @@ impl Grid {
     pub fn garbage_detect_hang(&mut self, garbage_system: &mut GarbageSystem) {
         for g in garbage_system.list.iter_mut() {
             if g.parent_id == self.id {
-				if let GarbageState::Idle = g.state {
-                if g.lowest_empty(self) {
-                    g.state = GarbageState::Hang { counter: 0 };
-                } else {
+                if let GarbageState::Idle = g.state {
+                    if g.lowest_empty(self) {
+                        g.state = GarbageState::Hang { counter: 0 };
+                    } else {
 
-                    // TODO(Skytrias): set to idle?
-                }
+                        // TODO(Skytrias): set to idle?
+                    }
                 }
             }
         }
@@ -541,11 +536,11 @@ impl Grid {
     pub fn garbage_resolve_hang(&mut self, garbage_system: &mut GarbageSystem) {
         for g in garbage_system.list.iter_mut() {
             if g.parent_id == self.id {
-				if let GarbageState::Hang { counter } = g.state {
-                if counter >= HANG_TIME - 1 {
-                    g.state = GarbageState::Fall;
+                if let GarbageState::Hang { counter } = g.state {
+                    if counter >= HANG_TIME - 1 {
+                        g.state = GarbageState::Fall;
+                    }
                 }
-            }
             }
         }
     }
@@ -553,36 +548,21 @@ impl Grid {
     /// garbage fall, loop through garbages, if fall and below stil empty, swap components and increase index stored in .children
     pub fn garbage_resolve_fall(&mut self, garbage_system: &mut GarbageSystem) {
         for g in garbage_system.list.iter_mut() {
-			if g.parent_id == self.id {
-            if let GarbageState::Fall = g.state {
-                if g.lowest_empty(self) {
-                    for index in g.children.iter_mut().rev() {
-                        self.components.swap(*index, *index + GRID_WIDTH);
-                        *index += GRID_WIDTH;
+            if g.parent_id == self.id {
+                if let GarbageState::Fall = g.state {
+                    if g.lowest_empty(self) {
+                        for index in g.children.iter_mut().rev() {
+                            self.components.swap(*index, *index + GRID_WIDTH);
+                            *index += GRID_WIDTH;
+                        }
+                    } else {
+                        g.state = GarbageState::Idle;
                     }
-                } else {
-                    g.state = GarbageState::Idle;
                 }
             }
-				}
-			}
-    }
-	
-    /// returns true if if a clear has started in the index
-    fn any_clears_started(&self) -> bool {
-		for i in 0..GRID_TOTAL {
-                if let Component::Block { state, .. } = &self[i] {
-                    if let BlockState::Clear { counter, .. } = state {
-                        if *counter == 0 {
-                            return true;
-						}
-                    }
-            }
         }
-		
-        false
     }
-	
+
     /// returns true if if a clear has started in the index
     fn clears_started(&self, indexes: &[i32]) -> Vec<bool> {
         let mut results = Vec::with_capacity(indexes.len());
@@ -611,63 +591,63 @@ impl Grid {
     /// garbage detect clear on multiple blocks, dependant on 2d factor
     pub fn garbage_detect_clear(&mut self, garbage_system: &mut GarbageSystem) {
         for g in garbage_system.list.iter_mut().rev() {
-			if g.parent_id == self.id {
-            if let GarbageState::Idle = g.state {
-                let clear_found = g.children.iter().any(|&i| {
-                    // TODO(Skytrias): better way to avoid 0 - 1 on usize
-                    let neighbors = {
-                        // TODO(Skytrias): REFACTOR
-                        if g.is_2d {
-                            // above, below
-                            self.clears_started(&[
-                                i as i32 + GRID_WIDTH as i32,
-                                i as i32 - GRID_WIDTH as i32,
-                            ])
-                        } else {
-                            // above, below, right, left
-                            self.clears_started(&[
-                                i as i32 + GRID_WIDTH as i32,
-                                i as i32 - GRID_WIDTH as i32,
-                                i as i32 + 1 as i32,
-                                i as i32 - 1 as i32,
-                            ])
-                        }
-                    };
-
-                    neighbors.iter().any(|b| *b)
-                });
-
-                if clear_found {
-                    let len = g.children.len() as usize;
-                    let lowest = g.lowest();
-
-						for j in 0..len {
-                        let child_index = g.children[j];
-
-                        if let Component::Child(child) = &mut self[child_index] {
-                            // set clear hframe on each garbage child
+            if g.parent_id == self.id {
+                if let GarbageState::Idle = g.state {
+                    let clear_found = g.children.iter().any(|&i| {
+                        // TODO(Skytrias): better way to avoid 0 - 1 on usize
+                        let neighbors = {
+                            // TODO(Skytrias): REFACTOR
                             if g.is_2d {
-                                child.hframe = 9;
+                                // above, below
+                                self.clears_started(&[
+                                    i as i32 + GRID_WIDTH as i32,
+                                    i as i32 - GRID_WIDTH as i32,
+                                ])
                             } else {
-                                child.hframe = 3;
+                                // above, below, right, left
+                                self.clears_started(&[
+                                    i as i32 + GRID_WIDTH as i32,
+                                    i as i32 - GRID_WIDTH as i32,
+                                    i as i32 + 1 as i32,
+                                    i as i32 - 1 as i32,
+                                ])
                             }
+                        };
 
-                            child.counter = 0;
-                            child.finished = false;
-								child.start_time = (len - 1 - j) as u32 * CLEAR_TIME;
-                            child.randomize_at_end =
-                                lowest.iter().any(|&index| index == child_index);
+                        neighbors.iter().any(|b| *b)
+                    });
+
+                    if clear_found {
+                        let len = g.children.len() as usize;
+                        let lowest = g.lowest();
+
+                        for j in 0..len {
+                            let child_index = g.children[j];
+
+                            if let Component::Child(child) = &mut self[child_index] {
+                                // set clear hframe on each garbage child
+                                if g.is_2d {
+                                    child.hframe = 9;
+                                } else {
+                                    child.hframe = 3;
+                                }
+
+                                child.counter = 0;
+                                child.finished = false;
+                                child.start_time = (len - 1 - j) as u32 * CLEAR_TIME;
+                                child.randomize_at_end =
+                                    lowest.iter().any(|&index| index == child_index);
+                            }
                         }
-                    }
 
-                    g.state = GarbageState::Clear {
-                        counter: 0,
-                        end_time: (len as u32 + 1) * CLEAR_TIME,
-                        finished: false,
-                    };
+                        g.state = GarbageState::Clear {
+                            counter: 0,
+                            end_time: (len as u32 + 1) * CLEAR_TIME,
+                            finished: false,
+                        };
+                    }
                 }
             }
-        }
         }
     }
 
@@ -675,21 +655,21 @@ impl Grid {
     pub fn garbage_resolve_clear(&mut self, garbage_system: &mut GarbageSystem) {
         for (i, garbage) in garbage_system.list.iter_mut().enumerate() {
             if garbage.parent_id == self.id {
-				if let GarbageState::Clear { finished, .. } = garbage.state {
-                if finished {
-                    garbage.state = GarbageState::Idle;
+                if let GarbageState::Clear { finished, .. } = garbage.state {
+                    if finished {
+                        garbage.state = GarbageState::Idle;
 
-                    if garbage.children.is_empty() {
-                        garbage_system.list.remove(i);
-                        break;
+                        if garbage.children.is_empty() {
+                            garbage_system.list.remove(i);
+                            break;
+                        }
                     }
-                }
                 }
             }
         }
     }
 
-    pub fn solve_format(&mut self, format: &Vec<Vec<u32>>) {
+    pub fn solve_format(&mut self, format: &[Vec<u32>]) {
         if let Some(state) = self.cursor.states.get(0) {
             match state {
                 CursorState::Idle => {}
@@ -732,10 +712,8 @@ impl Grid {
 
                             if let Component::Block { block, state } = &self[i] {
                                 if let BlockState::Idle = state {
-                                    if num == 1 || num == 2 {
-                                        if block.vframe == vframe {
-                                            goal += 1;
-                                        }
+                                    if (num == 1 || num == 2) && block.vframe == vframe {
+                                        goal += 1;
                                     }
                                 }
                             }
@@ -752,24 +730,31 @@ impl Grid {
             }
         }
     }
-	
-    pub fn solve_vertically(&mut self, goal_amount: usize, x_start: usize, x_end: usize, y_start: usize, y_end: usize) {
+
+    pub fn solve_vertically(
+        &mut self,
+        goal_amount: usize,
+        x_start: usize,
+        x_end: usize,
+        y_start: usize,
+        y_end: usize,
+    ) {
         debug_assert!(goal_amount != 0);
 
         // TODO(Skytrias): reevaluate smallest distance so that states might be reset in favor
 
         let mut smallest_distance: Option<i32> = None;
         let mut searched_indexes = Vec::new();
-		
+
         for y in y_start..y_end - goal_amount {
             'skip: for x in x_start..x_end {
                 // TODO(Skytrias): modify if more / less vframes exist
-				for &vframe in &[3, 4, 5, 6, 7] {
+                for &vframe in &[3, 4, 5, 6, 7] {
                     // TODO(Skytrias): not great
-					let mut indexes = Vec::new();
+                    let mut indexes = Vec::new();
                     let mut goal_counter = 0;
                     let mut sum_distance = 0;
-					
+
                     for y_off in 0..goal_amount {
                         'inner: for x_off in 0..GRID_WIDTH {
                             let i = (y + y_off) * GRID_WIDTH + x;
@@ -778,9 +763,9 @@ impl Grid {
                             if let Component::Empty { .. } = &self[i] {
                                 break 'skip;
                             }
-							
+
                             if let Component::Block { block, state } = &self[j] {
-								if let BlockState::Idle = state {
+                                if let BlockState::Idle = state {
                                     if block.vframe == vframe {
                                         goal_counter += 1;
                                         let distance = x as i32 - x_off as i32;
@@ -789,7 +774,7 @@ impl Grid {
                                         if i != j {
                                             indexes.push((i, distance));
                                         }
-										
+
                                         break 'inner;
                                     }
                                 }
@@ -812,163 +797,170 @@ impl Grid {
             }
         }
 
-        if let Some(distance) = smallest_distance {
+        if let Some(smallest) = smallest_distance {
             for (start_index, distance) in searched_indexes {
-				// move to index, dependant on the direction move further
+                // move to index, dependant on the direction move further
                 let goal = if distance > 0 {
-                    start_index as i32 - distance
+                    start_index as i32 - smallest
                 } else {
-                    start_index as i32 - (distance + 1)
+                    start_index as i32 - (smallest + 1)
                 };
 
                 self.cursor.states.push_back(CursorState::MoveTransport {
                     counter: 0,
-													 reached: false,
-													 swap_end: true,
+                    reached: false,
+                    swap_end: true,
                     start: start_index.to_i2(),
                     goal: goal.to_i2(),
                 });
             }
         }
     }
-	
-	// checks wether an x path has any empty or clearing block
-	pub fn path_has_empty(&self, x_start: usize, x_end: usize, y_axis: usize) -> bool {
-		let min = x_start.min(x_end);
-		let max = x_start.max(x_end);
-		
-		for x in min..max {
-			let i = y_axis * GRID_WIDTH + x;
-			
-			if let Component::Empty { .. } = &self[i] {
-				if i < GRID_TOTAL - GRID_WIDTH {
-			if let Component::Empty { .. } = &self[i + GRID_WIDTH] {
-						return true;
-				}
-				}
-			}
-			
-			if let Component::Block { state, block } = &self[i] {
-				match state {
-					BlockState::Clear { .. } => return true,
-					_ => {}
-				}
-				}
-		}
-		
-		false
-	}
-	
+
+    // checks wether an x path has any empty or clearing block
+    pub fn path_has_empty(&self, x_start: usize, x_end: usize, y_axis: usize) -> bool {
+        let min = x_start.min(x_end);
+        let max = x_start.max(x_end);
+
+        for x in min..max {
+            let i = y_axis * GRID_WIDTH + x;
+
+            if let Component::Empty { .. } = &self[i] {
+                if i < GRID_TOTAL - GRID_WIDTH {
+                    if let Component::Empty { .. } = &self[i + GRID_WIDTH] {
+                        return true;
+                    }
+                }
+            }
+
+            if let Component::Block { state, .. } = &self[i] {
+                if let BlockState::Clear { .. } = state {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+
+        false
+    }
+
     pub fn solve_spawn_vertically(&mut self, y_start: usize) {
         // TODO(Skytrias): reevaluate smallest distance so that states might be reset in favor
-		
-		// only allow 3x1 pairs
-		'search: for x in 0..GRID_WIDTH {
-                let i = y_start * GRID_WIDTH + x;
-			let mut indexes = Vec::new();
-			let mut goal_counter = 0;
-			
-			if let Component::Block { block, state } = &self[i] {
-		if let BlockState::Spawned = state {
-								// search for others nearby on the next y positions below
-					for y_off in 1..3 {
-						// if below is already the same, skip
-						if let Component::Block { block: below_block, .. } = &self[(y_start + y_off) * GRID_WIDTH + x] {
-							if below_block.vframe == block.vframe {
-								continue;
-							}
-						}
-						
-						'next: for x_off in 0..GRID_WIDTH {
-										let j = (y_start + y_off) * GRID_WIDTH + x_off; 
-							
-							if let Component::Block { block: below_block, state: below_state } = &self[j] {
-											if self.path_has_empty(x_off, x, y_start + y_off) {
-												continue;
-											}
-											
-											if below_block.vframe == block.vframe {
-												goal_counter += 1;
-												indexes.push(((y_start + y_off) * GRID_WIDTH + x, j));
-												
-												if goal_counter > 1 {
-													for (start, end) in &indexes {
-														let goal = {
-															let pos = end.to_i2();
-															
-															if pos.x < self.cursor.position.x {
-																pos
-															} else {
-																I2::new(pos.x, pos.y)
-															}
-														};
-														
-														self.cursor.states.push_back(CursorState::MoveTransport {
-																						 counter: 0,
-																						 reached: false,
-																						 swap_end: false,
-																						 start: start.to_i2(),
-																						 goal,
-																					 });
-													}
-													
-													break 'search;
-												}
-												
-												break 'next;
-											}
-									
-								}
-							}
-							}
-				}
-			} 
+
+        // only allow 3x1 pairs
+        'search: for x in 0..GRID_WIDTH {
+            let i = y_start * GRID_WIDTH + x;
+            let mut indexes = Vec::new();
+            let mut goal_counter = 0;
+
+            if let Component::Block { block, state } = &self[i] {
+                if let BlockState::Spawned = state {
+                    // search for others nearby on the next y positions below
+                    for y_off in 1..3 {
+                        // if below is already the same, skip
+                        if let Component::Block {
+                            block: below_block, ..
+                        } = &self[(y_start + y_off) * GRID_WIDTH + x]
+                        {
+                            if below_block.vframe == block.vframe {
+                                continue;
+                            }
+                        }
+
+                        'next: for x_off in 0..GRID_WIDTH {
+                            let j = (y_start + y_off) * GRID_WIDTH + x_off;
+
+                            if let Component::Block {
+                                block: below_block, ..
+                            } = &self[j]
+                            {
+                                if self.path_has_empty(x_off, x, y_start + y_off) {
+                                    continue;
+                                }
+
+                                if below_block.vframe == block.vframe {
+                                    goal_counter += 1;
+                                    indexes.push(((y_start + y_off) * GRID_WIDTH + x, j));
+
+                                    if goal_counter > 1 {
+                                        for (start, end) in &indexes {
+                                            let goal = {
+                                                let pos = end.to_i2();
+
+                                                if pos.x < self.cursor.position.x {
+                                                    pos
+                                                } else {
+                                                    i2(pos.x, pos.y)
+                                                }
+                                            };
+
+                                            self.cursor.states.push_back(
+                                                CursorState::MoveTransport {
+                                                    counter: 0,
+                                                    reached: false,
+                                                    swap_end: false,
+                                                    start: start.to_i2(),
+                                                    goal,
+                                                },
+                                            );
+                                        }
+
+                                        break 'search;
+                                    }
+
+                                    break 'next;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
-		}
-	
+    }
+
     pub fn solve_horizontally(&mut self, goal_amount: usize, y_start: usize, y_end: usize) {
         debug_assert!(goal_amount != 0);
-		
+
         // TODO(Skytrias): reevaluate smallest distance so that states might be reset in favor
-		
+
         let mut smallest_distance: Option<i32> = None;
         let mut searched_indexes = Vec::new();
-		
-		for &vframe in &[3, 4, 5, 6, 7] {
-		for y in y_start..y_end {
-			for x in 0..GRID_WIDTH - goal_amount {
-				// TODO(Skytrias): skip if x axis doesnt contain goal_amount of vframe
-				
-					
-					// TODO(Skytrias): not great
-					let mut indexes = Vec::new();
+
+        for &vframe in &[3, 4, 5, 6, 7] {
+            for y in y_start..y_end {
+                for x in 0..GRID_WIDTH - goal_amount {
+                    // TODO(Skytrias): skip if x axis doesnt contain goal_amount of vframe
+
+                    // TODO(Skytrias): not great
+                    let mut indexes = Vec::new();
                     let mut goal_counter = 0;
                     let mut sum_distance = 0;
-					
-					for x_off in 0..GRID_WIDTH {
-					let i = y * GRID_WIDTH + x;
-						let j = y * GRID_WIDTH + x_off;
-						
-						// TODO(Skytrias): skip if somewhere below has a empty
-						// TODO(Skytrias): skip if x axis has clear?
-						
-						if let Component::Block { block, state } = &self[j] {
-							if let BlockState::Idle = state {
-								if block.vframe == vframe {
-									goal_counter += 1;
-									let distance = x as i32 - x_off as i32;
-									sum_distance += distance.abs();
-									
-									// skip if i is the same as j, the start of the search
-									if i != j {
-										indexes.push((i, distance));
-									}
-								}
-							}
-						}
-					}
-					
-					// if goal reached, check if smaller
+
+                    for x_off in 0..GRID_WIDTH {
+                        let i = y * GRID_WIDTH + x;
+                        let j = y * GRID_WIDTH + x_off;
+
+                        // TODO(Skytrias): skip if somewhere below has a empty
+                        // TODO(Skytrias): skip if x axis has clear?
+
+                        if let Component::Block { block, state } = &self[j] {
+                            if let BlockState::Idle = state {
+                                if block.vframe == vframe {
+                                    goal_counter += 1;
+                                    let distance = x as i32 - x_off as i32;
+                                    sum_distance += distance.abs();
+
+                                    // skip if i is the same as j, the start of the search
+                                    if i != j {
+                                        indexes.push((i, distance));
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // if goal reached, check if smaller
                     if goal_counter == goal_amount {
                         if let Some(distance) = smallest_distance.as_mut() {
                             if *distance > sum_distance {
@@ -980,100 +972,100 @@ impl Grid {
                             searched_indexes = indexes;
                         }
                     }
-				}
-			}
-		}
-			
-        if let Some(distance) = smallest_distance {
+                }
+            }
+        }
+
+        if let Some(smallest) = smallest_distance {
             for (start_index, distance) in searched_indexes {
-				// move to index, dependant on the direction move further
+                // move to index, dependant on the direction move further
                 let goal = if distance > 0 {
-                    start_index as i32 - distance
+                    start_index as i32 - smallest
                 } else {
-                    start_index as i32 - (distance + 1)
+                    start_index as i32 - (smallest + 1)
                 };
-				
+
                 self.cursor.states.push_back(CursorState::MoveTransport {
-												 counter: 0,
-													 reached: false,
-													 swap_end: false,
-												 start: start_index.to_i2(),
-												 goal: goal.to_i2(),
-											 });
+                    counter: 0,
+                    reached: false,
+                    swap_end: false,
+                    start: start_index.to_i2(),
+                    goal: goal.to_i2(),
+                });
             }
         }
     }
-	
-	// TODO(Skytrias): TAKE AVERAGE 
-	/// detects the highest and lowest block y peak and returns true if the difference equals the height_difference 
-	pub fn detect_difference(&self, height_difference: i32) -> Option<usize> {
-		let mut y_min = GRID_HEIGHT;
-		let mut y_max = 0;
-		let mut x_axis = 0;
-		
-		for x in 0..GRID_WIDTH {
-				for y in 0..GRID_HEIGHT {
-				let i = y * GRID_WIDTH + x;
-				
-				if let Component::Block { .. } = &self[i] {
-					y_max = y_max.max(y);
-					
-					if y_min > y {
-						y_min = y;
-						x_axis = x;
-					}
-					
-					break;
-				}
-			}
-		}
-		
-		if (y_min as i32 - y_max as i32).abs() > height_difference {
-			Some(x_axis)
-		} else {
-			None
-		}
-	}
-	
-	pub fn remove_peaks(&mut self, x_axis: usize) {
+
+    // TODO(Skytrias): TAKE AVERAGE
+    /// detects the highest and lowest block y peak and returns true if the difference equals the height_difference
+    pub fn detect_difference(&self, height_difference: i32) -> Option<usize> {
+        let mut y_min = GRID_HEIGHT;
+        let mut y_max = 0;
+        let mut x_axis = 0;
+
+        for x in 0..GRID_WIDTH {
+            for y in 0..GRID_HEIGHT {
+                let i = y * GRID_WIDTH + x;
+
+                if let Component::Block { .. } = &self[i] {
+                    y_max = y_max.max(y);
+
+                    if y_min > y {
+                        y_min = y;
+                        x_axis = x;
+                    }
+
+                    break;
+                }
+            }
+        }
+
+        if (y_min as i32 - y_max as i32).abs() > height_difference {
+            Some(x_axis)
+        } else {
+            None
+        }
+    }
+
+    pub fn remove_peaks(&mut self, x_axis: usize) {
         for y in 0..GRID_HEIGHT - 1 {
-			let i = y * GRID_WIDTH + x_axis;
-			
-			// TODO(Skytrias): move based on cursor pos
-			if let Component::Block { .. } = &mut self[i] {
+            let i = y * GRID_WIDTH + x_axis;
+
+            // TODO(Skytrias): move based on cursor pos
+            if let Component::Block { .. } = &mut self[i] {
                 let goal = if self.cursor.position.x <= x_axis as i32 {
-					i
-				} else {
-					i
-				}.to_i2();
-				
-				self.cursor.states.push_back(CursorState::MoveSwap {
-												 counter: 0,
-													 goal,
-												 });
-				return;
-			}
-		}
-	}
-	
-	fn nearest_hole(&self, y_axis: usize) -> Option<usize> {
-		// TODO(Skytrias): if y == GRID_HEIGHT - 1
-		
-		for x in 0..GRID_WIDTH {
-			let i = y_axis * GRID_WIDTH + x;
-			
-			if let Component::Empty { .. } = &self[i] {
-				if i < GRID_TOTAL - GRID_WIDTH {
-					if let Component::Empty { .. } = &self[i + GRID_WIDTH] {
-								return Some(i);
-					}
-				}
-			}
-		}
-		
-		None
-	}
-	
+                    i
+                } else {
+                    i
+                }
+                .to_i2();
+
+                self.cursor
+                    .states
+                    .push_back(CursorState::MoveSwap { counter: 0, goal });
+                return;
+            }
+        }
+    }
+
+    fn nearest_hole(&self, y_axis: usize) -> Option<usize> {
+        // TODO(Skytrias): if y == GRID_HEIGHT - 1
+
+        for x in 0..GRID_WIDTH {
+            let i = y_axis * GRID_WIDTH + x;
+
+            if let Component::Empty { .. } = &self[i] {
+                if i < GRID_TOTAL - GRID_WIDTH {
+                    if let Component::Empty { .. } = &self[i + GRID_WIDTH] {
+                        return Some(i);
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
     /// updates all components in the grid and the garbage system
     pub fn update(&mut self, input: &Input, garbage_system: &mut GarbageSystem) {
         debug_assert!(!self.components.is_empty());
@@ -1115,394 +1107,401 @@ impl Grid {
               self.solve_format(&format);
             */
         }
-		
+
         self.cursor.update(input, &mut self.components);
-		
-		// ai update, priority dependant
+
+        // ai update, priority dependant
         if self.id == 1 && !(self.cursor.states.get(0).is_some() || self.cursor.end_delay != 0) {
-			// if total block amount is lower than 3 lines of blocks, raise once
-			let amt = self.components
-				.iter()
-				.filter(|c| if let Component::Block { .. } = c { true } else { false })
-				.count();
-			if amt <= GRID_WIDTH * 4 {
-				self.push_raise = true;
-			}
-			
-			// if top has big peaks, solve them by trying vertical solves
-			if let Some(x) = self.detect_difference(5) {
-				self.remove_peaks(x);
-				let x = (x as i32 - 1).max(0) as usize;
-				self.solve_vertically(3, x, x + 1, 0, GRID_HEIGHT);
-			}
-			
-			if let Some(y) = garbage_system.lowest_clear(self) {
-				// prefer spawn chain preperation
-				self.solve_spawn_vertically(y + 1);
-			}else if let Some(y) = garbage_system.lowest_idle(self) {
-			// solve garbage vertically by 3 if possible, else remove peaks,
-				let max = y + 2;
-				
-				// NOTE(Skytrias): hardcoded offsets
-				self.solve_horizontally(3, y + 1, y + 2);
-				self.solve_vertically(3, 0, GRID_WIDTH, y, max + 3);
-				
-				if let Some(start_index) = self.nearest_hole(y + 1) {
-				for x in 1..GRID_WIDTH  {
-					let i = (y + 1) * GRID_WIDTH + x;
-					
-					if let Component::Empty { .. } = &self[i] {
-						continue;
-					}
-					
-					if let Component::Block { .. } = &self[i] {
-						let goal = if self.cursor.position.x <= x as i32 {
-							i - 1
-						} else {
-							i
-						}.to_i2();
-						
-						self.cursor.states.push_back(CursorState::MoveTransport {
-																 counter: 0,
-																 reached: false,
-																 swap_end: true,
-																 start: start_index.to_i2(),
-																 goal,
-															 });
-						break;
-					}
-				}
-				} else {
-					// solve normally
-					self.solve_horizontally(3, 0, GRID_HEIGHT - 1);
-					self.solve_vertically(4, 0, GRID_WIDTH, 0, GRID_HEIGHT);
-					self.solve_vertically(3, 0, GRID_WIDTH, 0, GRID_HEIGHT);
-				}
-					
-					// else panic and do usual stuff?
-					/*
-					*/
-			} else {
-				 // solve normally
-				 //self.solve_horizontally(3, 0, GRID_HEIGHT - 1);
-				 //self.solve_vertically(4, 0, GRID_WIDTH, 0, GRID_HEIGHT);
-				 //self.solve_vertically(3, 0, GRID_WIDTH, 0, GRID_HEIGHT);
-				 }
-			  }
-		
-		self.update_components();
-		
-			 // NOTE(Skytrias): always do resolves before detects so there is 1 frame at minimum delay
-			 self.block_resolve_swap();
-	 
-			 // resolve any lands
-			 self.block_resolve_land();
-	 
-			 // resolve any falls
-			 self.block_resolve_fall();
-			 self.garbage_resolve_fall(garbage_system);
-	 
-			 // resolve any hangs
-			 self.block_resolve_hang(garbage_system);
-			 self.garbage_resolve_hang(garbage_system);
-	 
-			 // detect any hangs
-			 self.block_detect_hang();
-			 self.garbage_detect_hang(garbage_system);
-	 
-			 // detect any clears
-			 self.block_resolve_clear();
-			 self.garbage_resolve_clear(garbage_system);
-	 
-			 // resolve any clear
-			 self.block_detect_clear();
-			 self.garbage_detect_clear(garbage_system);
-		 }
-	 
-		 /// updates the push / raise data which offsets the grid components
-		 pub fn push_update(&mut self, garbage_system: &mut GarbageSystem) {
-			 // stop pushing if any block is
-			 for i in 0..GRID_TOTAL {
-				 if let Component::Block { state, .. } = &self[i] {
-					 if let BlockState::Clear { .. } = state {
-						 self.push_raise = false;
-						 return;
-					 }
-				 }
-			 }
-	 
-			 if self.push_counter < PUSH_TIME && !self.push_raise {
-				 self.push_counter += 1;
-			 } else {
-				 self.push_amount += 1.;
-				 let amt = self.push_amount;
-				 self.push_counter = 0;
-	 
-				 if amt < ATLAS_TILE {
-					 for i in 0..GRID_TOTAL {
-						 match &mut self[i] {
-							 Component::Block { block, .. } => block.offset.y = -amt,
-							 Component::Child(g) => g.y_offset = -amt,
-							 _ => {}
-						 }
-					 }
-	 
-					 self.cursor.y_offset = -amt;
-				 } else {
-					 self.push_upwards(garbage_system, false);
-					 self.push_raise = false;
-					 self.push_amount = 0.;
-				 }
-			 }
-		 }
-	 
-		 /// updates all non empty components in the grid
-		 pub fn update_components(&mut self) {
-			 for component in self.components.iter_mut() {
-				 match component {
-					 Component::Block { block, state } => block.update(state),
-					 _ => {}
-				 }
-			 }
-		 }
-	 
-		 /// draws all the grid components as sprite / quads
-		 pub fn draw(&mut self, sprites: &mut Sprites, offset: V2, debug: bool) {
-			 self.combo_highlight.draw(sprites, offset);
-			 self.cursor.draw(sprites, offset);
-	 
-			 // ai debug draw
-		if self.id == 0 {
-			let pos = V2::new(self.cursor.position.x as f32, self.cursor.position.y as f32);
-			
-			/*
-			app.push_line(Line {
-							 start: pos * ATLAS_SPACING + offset,
-							 end: V2::new(6., 4.) * ATLAS_SPACING + offset,
-							 ..Default::default()
-						  });
-		  */
-   }
-	   
-			 // draw all grid components
-			 for y in 0..GRID_HEIGHT {
-				for x in 0..GRID_WIDTH {
-				   let i = y * GRID_WIDTH + x;
-	   
-				   // set bottom row to darkened
-				   if y == GRID_HEIGHT - 1 {
-					  if let Component::Block { block, .. } = &mut self[i] {
-						 block.hframe = 2;
-					  }
-				   }
-	   
-				   let position = V2::new(x as f32, y as f32) * ATLAS_SPACING + offset;
-				   if let Some(sprite) = self[i].to_sprite(position) {
-					  sprites.push(sprite.into());
-				   }
-				}
-			 }
-	   
-			 // draw some debug info text
-			 if debug {
-				// draw visual count information
-				{
-				   let mut sum = 0;
-				let mut y_offset = 0;
-				   for &vframe in [3, 4, 5, 6, 7].iter() {
-					  let mut amt = 0;
-					  for i in 0..GRID_TOTAL {
-						 if let Component::Block { block, state } = &self[i] {
-							if block.vframe == vframe {
-							   amt += 1;
-						 sum += 1;
-					   }
-						 }
-					  }
-	   
-					  let position = v2(
-						 8. * ATLAS_TILE + offset.x,
-						 y_offset as f32 * ATLAS_TILE + offset.y,
-					  );
-	   
-					  sprites.push(Sprite {
-						 position: v2(position.x - ATLAS_TILE, position.y),
-						 vframe,
-						 ..Default::default()
-					  });
-				  
-					  sprites.text(Text {
-						 content: &format!("{}", amt),
-						 position,
-						 ..Default::default()
-					  });
-					
-						 y_offset += 1;
-					 }
-				 
-									let position = v2(
-											8. * ATLAS_TILE + offset.x,
-											y_offset as f32 * ATLAS_TILE + offset.y,
-											);
-				
-							   sprites.text(Text {
-										   content: &format!("{}", sum),
-										   position,
-										   ..Default::default()
-										 });
-	}
-		
-				 // debug info numbers
-				 for x in 0..GRID_WIDTH {
-					for y in 0..GRID_HEIGHT {
-					   let i = y * GRID_WIDTH + x;
-		
-					   if let Component::Block { block, .. } = &self[i] {
-						  let position = v2(
-							 x as f32 * ATLAS_TILE + offset.x + 4.,
-							 y as f32 * ATLAS_TILE + block.offset.y + offset.y + 8.,
-						  );
-		
-						  let text = &format!("{}", i);
-						  //let text = "0";
-						
-						  sprites.text(Text {
-											 content: text,
-											 scale: v2(0.3, 0.3),
-											 //scale: wgpu_glyph::Scale { x: 20., y: 16. },
-						   position,
-						   ..Default::default()
-						  });
-					}
-					  }
-					 }
-				   }
-				  }
-			   }
-			   
-			   impl Index<usize> for Grid {
-				  type Output = Component;
-			   
-				  fn index(&self, index: usize) -> &Self::Output {
-				   &self.components[index]
-				  }
-			   }
-			   
-			   impl IndexMut<usize> for Grid {
-				  fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-				   &mut self.components[index]
-				  }
-			   }
-			   
-			   /// state transition tests
-			   #[cfg(test)]
-			   mod tests {
-				  use super::*;
-			   
-				  /// showcase gen_1d working
-				  #[test]
-				  fn grid_gen_1d() {
-				   let mut grid = Grid::empty();
-				   let mut garbage_system = GarbageSystem::default();
-			   
-				   grid.gen_1d_garbage(&mut garbage_system, 3, 0);
-				   assert!(grid[0].is_garbage());
-				   assert!(grid[1].is_garbage());
-				   assert!(grid[2].is_garbage());
-				   assert!(grid[3].is_empty());
-			   
-				   grid.gen_1d_garbage(&mut garbage_system, 4, 0);
-				   assert!(grid[0].is_garbage());
-				   assert!(grid[1].is_garbage());
-				   assert!(grid[2].is_garbage());
-				   assert!(grid[3].is_garbage());
-				   assert!(grid[4].is_empty());
-			   
-				   grid = Grid::empty();
-				   grid.gen_1d_garbage(&mut garbage_system, 3, 1);
-				   assert!(grid[0].is_empty());
-				   assert!(grid[1].is_garbage());
-				   assert!(grid[2].is_garbage());
-				   assert!(grid[3].is_garbage());
-				   assert!(grid[4].is_empty());
-				  }
-			   
-				  /// check if hang to fall works in the wanted frame times
-				  #[test]
-				  fn block_hang_and_fall() {
-				   let mut grid = Grid::empty();
-				   let mut garbage_system = GarbageSystem::default();
-				   grid[0] = Component::Normal(Block::default());
-			   
-				   // hang state setting
-				   grid.assert_state(0, |s| s.is_idle());
-				   if let Some(state) = grid.block_state_mut(0) {
-					 state.to_hang();
-				   } else {
-					 assert!(false);
-				   }
-				   grid.assert_state(0, |s| s.is_hang());
-				   grid.assert_state(0, |s| s.hang_started());
-			   
-				   // hang state updating
-				   for i in 0..HANG_TIME {
-					 grid.update_components();
-			   
-					 grid.block_resolve_fall();
-					 grid.block_resolve_hang(&mut garbage_system);
-				   }
-			   
-				   // is in fall state now
-				   grid.assert_state(0, |s| s.is_fall());
-			   
-				   // check if fall succeeds to swap components around
-				   assert!(grid[0].is_block());
-				   assert!(grid[GRID_WIDTH].is_empty());
-				   grid.update_components();
-				   grid.block_resolve_fall();
-				   assert!(grid[0].is_empty());
-				   assert!(grid[GRID_WIDTH].is_block());
-				  }
-			   
-				  /// check if swap to idle works in the wanted frame times
-				  #[test]
-				  fn block_swap() {
-				   let mut grid = Grid::empty();
-				   let mut cursor = Cursor::default();
-				   cursor.position = V2::new(0., 0.);
-			   
-				   assert!(grid[0].is_empty());
-				   assert!(grid[1].is_empty());
-				   cursor.swap_blocks(&mut grid);
-				   assert!(grid[0].is_empty());
-				   assert!(grid[1].is_empty());
-			   
-				   grid[0] = Component::Normal(Block::default());
-			   
-				   assert!(grid[0].is_block());
-				   assert!(grid[1].is_empty());
-				   cursor.swap_blocks(&mut grid);
-				   assert!(grid[0].is_block());
-				   assert!(grid[1].is_empty());
-				   grid.assert_state(0, |s| s.is_swap());
-			   
-				   // swap state updating
-				   for i in 0..SWAP_TIME {
-					 grid.update_components();
-				   }
-			   
-				   grid.assert_state(0, |s| s.swap_finished());
-				   grid.update_components();
-			   
-				   // NOTE(Skytrias): matches the resolve / detect grid.update
-				   grid.block_resolve_swap();
-				   grid.block_detect_hang();
-			   
-				   assert!(grid[0].is_empty());
-				   assert!(grid[1].is_block());
-			   
-				   // block should transition to hang immediatly
-				   grid.assert_state(1, |s| s.is_hang());
-				  }
-			   }
-			   
+            // if total block amount is lower than 3 lines of blocks, raise once
+            let amt = self
+                .components
+                .iter()
+                .filter(|c| {
+                    if let Component::Block { .. } = c {
+                        true
+                    } else {
+                        false
+                    }
+                })
+                .count();
+            if amt <= GRID_WIDTH * 4 {
+                self.push_raise = true;
+            }
+
+            // if top has big peaks, solve them by trying vertical solves
+            if let Some(x) = self.detect_difference(5) {
+                self.remove_peaks(x);
+                let x = (x as i32 - 1).max(0) as usize;
+                self.solve_vertically(3, x, x + 1, 0, GRID_HEIGHT);
+            }
+
+            if let Some(y) = garbage_system.lowest_clear(self) {
+                // prefer spawn chain preperation
+                self.solve_spawn_vertically(y + 1);
+            } else if let Some(y) = garbage_system.lowest_idle(self) {
+                // solve garbage vertically by 3 if possible, else remove peaks,
+                let max = y + 2;
+
+                // NOTE(Skytrias): hardcoded offsets
+                self.solve_horizontally(3, y + 1, y + 2);
+                self.solve_vertically(3, 0, GRID_WIDTH, y, max + 3);
+
+                if let Some(start_index) = self.nearest_hole(y + 1) {
+                    for x in 1..GRID_WIDTH {
+                        let i = (y + 1) * GRID_WIDTH + x;
+
+                        if let Component::Empty { .. } = &self[i] {
+                            continue;
+                        }
+
+                        if let Component::Block { .. } = &self[i] {
+                            let goal = if self.cursor.position.x <= x as i32 {
+                                i - 1
+                            } else {
+                                i
+                            }
+                            .to_i2();
+
+                            self.cursor.states.push_back(CursorState::MoveTransport {
+                                counter: 0,
+                                reached: false,
+                                swap_end: true,
+                                start: start_index.to_i2(),
+                                goal,
+                            });
+                            break;
+                        }
+                    }
+                } else {
+                    // solve normally
+                    self.solve_horizontally(3, 0, GRID_HEIGHT - 1);
+                    self.solve_vertically(4, 0, GRID_WIDTH, 0, GRID_HEIGHT);
+                    self.solve_vertically(3, 0, GRID_WIDTH, 0, GRID_HEIGHT);
+                }
+
+            // else panic and do usual stuff?
+            /*
+            	*/
+            } else {
+                // solve normally
+                //self.solve_horizontally(3, 0, GRID_HEIGHT - 1);
+                //self.solve_vertically(4, 0, GRID_WIDTH, 0, GRID_HEIGHT);
+                //self.solve_vertically(3, 0, GRID_WIDTH, 0, GRID_HEIGHT);
+            }
+        }
+
+        self.update_components();
+
+        // NOTE(Skytrias): always do resolves before detects so there is 1 frame at minimum delay
+        self.block_resolve_swap();
+
+        // resolve any lands
+        self.block_resolve_land();
+
+        // resolve any falls
+        self.block_resolve_fall();
+        self.garbage_resolve_fall(garbage_system);
+
+        // resolve any hangs
+        self.block_resolve_hang(garbage_system);
+        self.garbage_resolve_hang(garbage_system);
+
+        // detect any hangs
+        self.block_detect_hang();
+        self.garbage_detect_hang(garbage_system);
+
+        // detect any clears
+        self.block_resolve_clear();
+        self.garbage_resolve_clear(garbage_system);
+
+        // resolve any clear
+        self.block_detect_clear();
+        self.garbage_detect_clear(garbage_system);
+    }
+
+    /// updates the push / raise data which offsets the grid components
+    pub fn push_update(&mut self, garbage_system: &mut GarbageSystem) {
+        // stop pushing if any block is
+        for i in 0..GRID_TOTAL {
+            if let Component::Block { state, .. } = &self[i] {
+                if let BlockState::Clear { .. } = state {
+                    self.push_raise = false;
+                    return;
+                }
+            }
+        }
+
+        if self.push_counter < PUSH_TIME && !self.push_raise {
+            self.push_counter += 1;
+        } else {
+            self.push_amount += 1.;
+            let amt = self.push_amount;
+            self.push_counter = 0;
+
+            if amt < ATLAS_TILE {
+                for i in 0..GRID_TOTAL {
+                    match &mut self[i] {
+                        Component::Block { block, .. } => block.offset.y = -amt,
+                        Component::Child(g) => g.y_offset = -amt,
+                        _ => {}
+                    }
+                }
+
+                self.cursor.y_offset = -amt;
+            } else {
+                self.push_upwards(garbage_system);
+                self.push_raise = false;
+                self.push_amount = 0.;
+            }
+        }
+    }
+
+    /// updates all non empty components in the grid
+    pub fn update_components(&mut self) {
+        for component in self.components.iter_mut() {
+            if let Component::Block { block, state } = component {
+                block.update(state);
+            }
+        }
+    }
+
+    /// draws all the grid components as sprite / quads
+    pub fn draw(&mut self, sprites: &mut Sprites, offset: V2, debug: bool) {
+        self.combo_highlight.draw(sprites, offset);
+        self.cursor.draw(sprites, offset);
+
+        // ai debug draw
+        if self.id == 0 {
+            // TODO(Skytrias): asdasd
+            //let pos = v2(self.cursor.position.x as f32, self.cursor.position.y as f32);
+
+            /*
+              app.push_line(Line {
+                               start: pos * ATLAS_SPACING + offset,
+                               end: v2(6., 4.) * ATLAS_SPACING + offset,
+                               ..Default::default()
+                            });
+            */
+        }
+
+        // draw all grid components
+        for y in 0..GRID_HEIGHT {
+            for x in 0..GRID_WIDTH {
+                let i = y * GRID_WIDTH + x;
+
+                // set bottom row to darkened
+                if y == GRID_HEIGHT - 1 {
+                    if let Component::Block { block, .. } = &mut self[i] {
+                        block.hframe = 2;
+                    }
+                }
+
+                let position = v2(x as f32, y as f32) * ATLAS_SPACING + offset;
+                if let Some(sprite) = self[i].to_sprite(position) {
+                    sprites.push(sprite);
+                }
+            }
+        }
+
+        // draw some debug info text
+        if debug {
+            // draw visual count information
+            {
+                let mut sum = 0;
+                let mut y_offset = 0;
+                for &vframe in [3, 4, 5, 6, 7].iter() {
+                    let mut amt = 0;
+                    for i in 0..GRID_TOTAL {
+                        if let Component::Block { block, .. } = &self[i] {
+                            if block.vframe == vframe {
+                                amt += 1;
+                                sum += 1;
+                            }
+                        }
+                    }
+
+                    let position = v2(
+                        8. * ATLAS_TILE + offset.x,
+                        y_offset as f32 * ATLAS_TILE + offset.y,
+                    );
+
+                    sprites.push(Sprite {
+                        position: v2(position.x - ATLAS_TILE, position.y),
+                        vframe,
+                        ..Default::default()
+                    });
+
+                    sprites.text(Text {
+                        content: &format!("{}", amt),
+                        position,
+                        ..Default::default()
+                    });
+
+                    y_offset += 1;
+                }
+
+                let position = v2(
+                    8. * ATLAS_TILE + offset.x,
+                    y_offset as f32 * ATLAS_TILE + offset.y,
+                );
+
+                sprites.text(Text {
+                    content: &format!("{}", sum),
+                    position,
+                    ..Default::default()
+                });
+            }
+
+            // debug info numbers
+            for x in 0..GRID_WIDTH {
+                for y in 0..GRID_HEIGHT {
+                    let i = y * GRID_WIDTH + x;
+
+                    if let Component::Block { block, .. } = &self[i] {
+                        let position = v2(
+                            x as f32 * ATLAS_TILE + offset.x + 4.,
+                            y as f32 * ATLAS_TILE + block.offset.y + offset.y + 8.,
+                        );
+
+                        let text = &format!("{}", i);
+                        //let text = "0";
+
+                        sprites.text(Text {
+                            content: text,
+                            scale: v2(0.3, 0.3),
+                            //scale: wgpu_glyph::Scale { x: 20., y: 16. },
+                            position,
+                            ..Default::default()
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl Index<usize> for Grid {
+    type Output = Component;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.components[index]
+    }
+}
+
+impl IndexMut<usize> for Grid {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.components[index]
+    }
+}
+
+/// state transition tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// showcase gen_1d working
+    #[test]
+    fn grid_gen_1d() {
+        let mut grid = Grid::empty();
+        let mut garbage_system = GarbageSystem::default();
+
+        grid.gen_1d_garbage(&mut garbage_system, 3, 0);
+        assert!(grid[0].is_garbage());
+        assert!(grid[1].is_garbage());
+        assert!(grid[2].is_garbage());
+        assert!(grid[3].is_empty());
+
+        grid.gen_1d_garbage(&mut garbage_system, 4, 0);
+        assert!(grid[0].is_garbage());
+        assert!(grid[1].is_garbage());
+        assert!(grid[2].is_garbage());
+        assert!(grid[3].is_garbage());
+        assert!(grid[4].is_empty());
+
+        grid = Grid::empty();
+        grid.gen_1d_garbage(&mut garbage_system, 3, 1);
+        assert!(grid[0].is_empty());
+        assert!(grid[1].is_garbage());
+        assert!(grid[2].is_garbage());
+        assert!(grid[3].is_garbage());
+        assert!(grid[4].is_empty());
+    }
+
+    /// check if hang to fall works in the wanted frame times
+    #[test]
+    fn block_hang_and_fall() {
+        let mut grid = Grid::empty();
+        let mut garbage_system = GarbageSystem::default();
+        grid[0] = Component::Normal(Block::default());
+
+        // hang state setting
+        grid.assert_state(0, |s| s.is_idle());
+        if let Some(state) = grid.block_state_mut(0) {
+            state.to_hang();
+        } else {
+            assert!(false);
+        }
+        grid.assert_state(0, |s| s.is_hang());
+        grid.assert_state(0, |s| s.hang_started());
+
+        // hang state updating
+        for i in 0..HANG_TIME {
+            grid.update_components();
+
+            grid.block_resolve_fall();
+            grid.block_resolve_hang(&mut garbage_system);
+        }
+
+        // is in fall state now
+        grid.assert_state(0, |s| s.is_fall());
+
+        // check if fall succeeds to swap components around
+        assert!(grid[0].is_block());
+        assert!(grid[GRID_WIDTH].is_empty());
+        grid.update_components();
+        grid.block_resolve_fall();
+        assert!(grid[0].is_empty());
+        assert!(grid[GRID_WIDTH].is_block());
+    }
+
+    /// check if swap to idle works in the wanted frame times
+    #[test]
+    fn block_swap() {
+        let mut grid = Grid::empty();
+        let mut cursor = Cursor::default();
+        cursor.position = v2(0., 0.);
+
+        assert!(grid[0].is_empty());
+        assert!(grid[1].is_empty());
+        cursor.swap_blocks(&mut grid);
+        assert!(grid[0].is_empty());
+        assert!(grid[1].is_empty());
+
+        grid[0] = Component::Normal(Block::default());
+
+        assert!(grid[0].is_block());
+        assert!(grid[1].is_empty());
+        cursor.swap_blocks(&mut grid);
+        assert!(grid[0].is_block());
+        assert!(grid[1].is_empty());
+        grid.assert_state(0, |s| s.is_swap());
+
+        // swap state updating
+        for i in 0..SWAP_TIME {
+            grid.update_components();
+        }
+
+        grid.assert_state(0, |s| s.swap_finished());
+        grid.update_components();
+
+        // NOTE(Skytrias): matches the resolve / detect grid.update
+        grid.block_resolve_swap();
+        grid.block_detect_hang();
+
+        assert!(grid[0].is_empty());
+        assert!(grid[1].is_block());
+
+        // block should transition to hang immediatly
+        grid.assert_state(1, |s| s.is_hang());
+    }
+}

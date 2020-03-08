@@ -1,4 +1,4 @@
-use crate::helpers::{Sprite, ATLAS_SPACING, V2};
+use crate::helpers::*;
 use crate::scripts::{Block, BlockState, Child};
 
 /// variants that live in each grid space
@@ -51,7 +51,7 @@ impl Component {
                 sprite.scale = child.scale;
                 sprite.vframe = child.vframe;
                 sprite.hframe = child.hframe;
-                sprite.offset = V2::new(0., child.y_offset) + ATLAS_SPACING / 2.;
+                sprite.offset = v2(0., child.y_offset) + ATLAS_SPACING / 2.;
                 Some(sprite)
             }
 

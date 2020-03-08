@@ -21,7 +21,7 @@ use miniquad::*;
 
 /// starts the entire game
 fn main() {
-	miniquad::start(conf::Conf::default(), |mut ctx| {
-							UserData::owning(engine::App::new(&mut ctx), ctx)
-					});
+    miniquad::start(conf::Conf::default(), |mut ctx| {
+        UserData::owning(engine::App::new(&mut ctx), ctx)
+    });
 }

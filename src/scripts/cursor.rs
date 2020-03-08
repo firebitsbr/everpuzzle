@@ -1,10 +1,10 @@
 use crate::engine::*;
 use crate::helpers::*;
-use crate::scripts::{BlockState, Component, Grid};
+use crate::scripts::{BlockState, Component};
 use gilrs::Button;
+use miniquad::KeyCode;
 use std::collections::VecDeque;
 use ultraviolet::Lerp;
-use miniquad::KeyCode;
 
 /// amount of frames it takes for the fast cursor movement to happen
 const FRAME_LIMIT: u32 = 25;
@@ -27,7 +27,7 @@ pub enum CursorState {
         counter: u32,
         reached: bool,
         swap_end: bool,
-		start: I2,
+        start: I2,
         goal: I2,
     },
 }
@@ -86,14 +86,14 @@ pub fn move_to(counter: &mut u32, current: &mut I2, goal: I2) -> bool {
 impl Default for Cursor {
     fn default() -> Self {
         Self {
-            position: I2::new(2, 7),
+            position: i2(2, 7),
             goal_position: V2::zero(),
             last_position: I2::zero(),
             goal_counter: 0,
             counter: 0,
             sprite: Sprite {
-                tiles: V2::new(3., 2.),
-                offset: V2::new(-16., -16.),
+                tiles: v2(3., 2.),
+                offset: v2(-16., -16.),
                 vframe: ATLAS_CURSOR,
                 depth: 0.1,
                 ..Default::default()
@@ -111,7 +111,7 @@ impl Default for Cursor {
 
 impl Cursor {
     pub fn reset(&mut self) {
-        self.position = I2::new(2, 7);
+        self.position = i2(2, 7);
     }
 
     pub fn new(ai: bool) -> Self {
@@ -144,9 +144,10 @@ impl Cursor {
             self.last_position = self.position;
         }
 
-        match self.ai {
-            true => self.update_ai(components),
-            false => self.update_player(input, components),
+        if self.ai {
+            self.update_ai(components);
+        } else {
+            self.update_player(input, components);
         }
     }
 
@@ -246,23 +247,26 @@ impl Cursor {
                     reached,
                     start,
                     goal,
-					swap_end
+                    swap_end,
                 } => {
-					// restarts state to idle if any clear occurs
-					// TODO(Skytrias): make standalone
-					for i in 0..GRID_TOTAL {
-						if let Component::Block { state: block_state, .. } = &components[i] {
-							if let BlockState::Clear { counter, .. } = block_state {
-								if *counter == 0 {
-									self.states.clear();
-									self.end_delay = END_DELAY_TIME;
-									return;
-								}
-							}
-						}
-					}
-					
-					let (x_start, y_start) = (start.x, start.y);
+                    // restarts state to idle if any clear occurs
+                    // TODO(Skytrias): make standalone
+                    for c in components.iter().take(GRID_TOTAL) {
+                        if let Component::Block {
+                            state: block_state, ..
+                        } = c
+                        {
+                            if let BlockState::Clear { counter, .. } = block_state {
+                                if *counter == 0 {
+                                    self.states.clear();
+                                    self.end_delay = END_DELAY_TIME;
+                                    return;
+                                }
+                            }
+                        }
+                    }
+
+                    let (x_start, y_start) = (start.x, start.y);
 
                     if !*reached {
                         if self.position == *goal {
@@ -272,47 +276,45 @@ impl Cursor {
                         } else {
                             move_to(counter, &mut self.position, *goal);
                         }
+                    } else if *counter < FRAME_LIMIT {
+                        *counter += 1;
                     } else {
-                        if *counter < FRAME_LIMIT {
-                            *counter += 1;
-                        } else {
-                            if self.position == *start {
-                                let should_swap = *swap_end;
-								*state = CursorState::Idle;
-                                
-								// only swap at end if wanted
-								if should_swap {
-								self.swap_blocks(components);
-								}
-								
-									return;
-                            }
+                        if self.position == *start {
+                            let should_swap = *swap_end;
+                            *state = CursorState::Idle;
 
-                            *counter = 0;
-
-                            if self.position.y != y_start {
+                            // only swap at end if wanted
+                            if should_swap {
                                 self.swap_blocks(components);
-
-                                if self.position.y < y_start {
-                                    self.position.y += 1;
-                                } else {
-                                    self.position.y -= 1;
-                                }
-
-                                return;
                             }
 
-                            if self.position.x != x_start {
-                                self.swap_blocks(components);
+                            return;
+                        }
 
-                                if self.position.x < x_start {
-                                    self.position.x += 1;
-                                } else {
-                                    self.position.x -= 1;
-                                }
+                        *counter = 0;
 
-                                return;
+                        if self.position.y != y_start {
+                            self.swap_blocks(components);
+
+                            if self.position.y < y_start {
+                                self.position.y += 1;
+                            } else {
+                                self.position.y -= 1;
                             }
+
+                            return;
+                        }
+
+                        if self.position.x != x_start {
+                            self.swap_blocks(components);
+
+                            if self.position.x < x_start {
+                                self.position.x += 1;
+                            } else {
+                                self.position.x -= 1;
+                            }
+
+                            return;
                         }
                     }
                 }
@@ -327,97 +329,90 @@ impl Cursor {
             self.goal_counter as f32 / LERP_TIME as f32,
         );
         self.sprite.hframe = (self.counter as f32 / 32.).floor() as u32 * 3;
-        self.sprite.offset = offset + V2::new(-16., self.y_offset - ATLAS_TILE / 2.);
+        self.sprite.offset = offset + v2(-16., self.y_offset - ATLAS_TILE / 2.);
         sprites.push(self.sprite);
 
         if self.ai {
             if let Some(state) = self.states.get_mut(0) {
                 match state {
-                    CursorState::MoveSwap { goal, .. } => {
-                        let goal = V2::new(goal.x as f32, goal.y as f32);
-						
-						/*
-							 sprites.push(Line {
-								start: self.sprite.position + offset,
-								end: goal * ATLAS_SPACING + offset + ATLAS_SPACING / 2.,
-								thickness: 15.,
-								hframe: 8,
-								..Default::default()
-							 });
-						  */
-		   }
-		   
-						  _ => {}
-					   }
-		   
-					   let text = match state {
-						  CursorState::Idle => "I",
-						  CursorState::MoveSwap { .. } => "M",
-						  CursorState::MoveTransport { .. } => "T",
-					   };
-					
-					/*
-					  app.push_section(Section {
-						text,
-						screen_position: (
-						   offset.x + self.sprite.position.x - ATLAS_TILE,
-						   offset.y + self.sprite.position.y - ATLAS_TILE,
-						),
-						scale: wgpu_glyph::Scale { x: 40., y: 40. },
-						color: [0.1, 0.1, 0.1, 1.0],
-						..Default::default()
-					  });
-					*/
-	}
-			}
-		}
-	
-		pub fn swap_blocks(&self, components: &mut Vec<Component>) {
-			let i = self.position.to_index();
-	
-			let right = can_swap(components, i + 1);
-			let left = can_swap(components, i);
-	
-			if right {
-				if let Component::Block { state, .. } = &mut components[i] {
-					if let BlockState::Idle = state {
-						*state = BlockState::Swap {
-							counter: 0,
-							direction: 1,
-						};
-					}
-				}
-			}
-	
-			if left {
-				if let Component::Block { state, .. } = &mut components[i + 1] {
-					if let BlockState::Idle = state {
-						*state = BlockState::Swap {
-							counter: 0,
-							direction: -1,
-						};
-					}
-				}
-			}
-		}
-	}
-	
-	/// helper to detect if a block is currently swappable - in idle state or empty
-	fn can_swap(components: &Vec<Component>, index: usize) -> bool {
-		match &components[index] {
-			Component::Block { state, .. } => {
-				if let BlockState::Idle = state {
-					return true;
-				}
-			}
-	
-			Component::Empty { .. } => {
-				return true;
-			}
-	
-			_ => return false,
-		}
-	
-		false
-	}
-	
+                    CursorState::MoveSwap { .. } => {
+                        //let goal = v2(goal.x as f32, goal.y as f32);
+
+                        /*
+                           sprites.push(Line {
+                              start: self.sprite.position + offset,
+                              end: goal * ATLAS_SPACING + offset + ATLAS_SPACING / 2.,
+                              thickness: 15.,
+                              hframe: 8,
+                              ..Default::default()
+                           });
+                        */
+                    }
+
+                    _ => {}
+                }
+
+                let text = match state {
+                    CursorState::Idle => "I",
+                    CursorState::MoveSwap { .. } => "M",
+                    CursorState::MoveTransport { .. } => "T",
+                };
+
+                sprites.text(Text {
+                    content: text,
+                    position: offset + self.sprite.position - ATLAS_SPACING,
+                    //scale: wgpu_glyph::Scale { x: 40., y: 40. },
+                    ..Default::default()
+                });
+            }
+        }
+    }
+
+    pub fn swap_blocks(&self, components: &mut Vec<Component>) {
+        let i = self.position.to_index();
+
+        let right = can_swap(components, i + 1);
+        let left = can_swap(components, i);
+
+        if right {
+            if let Component::Block { state, .. } = &mut components[i] {
+                if let BlockState::Idle = state {
+                    *state = BlockState::Swap {
+                        counter: 0,
+                        direction: 1,
+                    };
+                }
+            }
+        }
+
+        if left {
+            if let Component::Block { state, .. } = &mut components[i + 1] {
+                if let BlockState::Idle = state {
+                    *state = BlockState::Swap {
+                        counter: 0,
+                        direction: -1,
+                    };
+                }
+            }
+        }
+    }
+}
+
+/// helper to detect if a block is currently swappable - in idle state or empty
+fn can_swap(components: &[Component], index: usize) -> bool {
+    match &components[index] {
+        Component::Block { state, .. } => {
+            if let BlockState::Idle = state {
+                return true;
+            }
+        }
+
+        Component::Empty { .. } => {
+            return true;
+        }
+
+        _ => return false,
+    }
+
+    false
+}

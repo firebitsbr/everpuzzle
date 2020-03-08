@@ -1,4 +1,3 @@
-use crate::engine::App;
 use crate::helpers::*;
 use BlockState::*;
 
@@ -22,7 +21,7 @@ pub enum BlockState {
         end_time: u32,
     },
     Spawned,
-	}
+}
 
 /// block data used for unique block rendering and unique state
 pub struct Block {
@@ -55,14 +54,6 @@ impl Default for Block {
 }
 
 impl Block {
-    /// creates a block with a "randomized" vframe
-    pub fn random(gen: &mut oorandom::Rand32) -> Self {
-        Self {
-            vframe: gen.rand_range(3..8),
-            ..Default::default()
-        }
-    }
-
     /// simply creates a vframe designed for the block
     pub fn random_vframe(gen: &mut oorandom::Rand32) -> u32 {
         gen.rand_range(3..8)
@@ -82,7 +73,7 @@ impl Block {
             Clear {
                 counter,
                 start_time,
-                end_time,
+                ..
             } => {
                 if *counter > *start_time {
                     if (*counter - *start_time) < CLEAR_TIME - 1 {
