@@ -1,342 +1,178 @@
+use std::collections::HashMap;
+use miniquad::*;
+use gilrs::Button;
 use crate::engine::*;
 use crate::helpers::*;
 use crate::scripts::*;
-use gilrs::{
-    ev::EventType::{ButtonPressed, ButtonReleased},
-    Button,
-};
-use std::collections::HashMap;
-use miniquad::*;
-
-// TODO(Skytrias): set to monitor framerate
-const FRAME_AMOUNT: f64 = 120.;
-const FPS: u64 = (1. / FRAME_AMOUNT * 1000.) as u64;
-
-/// data that will be sent to the gpu
-#[derive(Debug, Clone, Copy)]
-#[repr(C)]
-pub struct Quad {
-    /// model matrix that stores position, offset, scale, dimensions, etc
-    pub model: M4,
-	
-    /// how many tiles the quad texture should use
-    pub tiles: V2,
-	
-    /// hframe of the tile in the texture atlas
-    pub hframe: f32,
-	
-    /// vframe of the tile in the texture atlas
-    pub vframe: f32,
-	
-    /// vframe of the tile in the texture atlas
-    pub depth: f32,
-}
-
-impl Quad {
-    /// max number of quads that can be rendered
-    pub const MAX: usize = 1000;
-	
-    /// byte size of the quad struct
-    const SIZE: usize = std::mem::size_of::<Quad>();
-}
-
-/// converts a sprite into a valid quad
-impl From<Sprite> for Quad {
-    fn from(sprite: Sprite) -> Self {
-		let dimensions = sprite.tiles * ATLAS_SPACING;
-		
-		let mut model = M4::from_translation(v3(
-												sprite.position.x + sprite.offset.x,
-												sprite.position.y + sprite.offset.y,
-												0.,
-												));
-		
-		model = model * M4::from_nonuniform_scale(v4(sprite.scale.x, sprite.scale.y, 1., 1.));
-		model = model * M4::from_nonuniform_scale(v4(dimensions.x, dimensions.y, 1., 1.));
-		
-		if sprite.centered {
-			model = model * M4::from_translation(v3(
-													-0.5,
-													-0.5,
-													0.,
-													));
-		}
-		
-        Quad {
-            model,
-			tiles: sprite.tiles,
-            hframe: sprite.hframe as f32,
-            vframe: sprite.vframe as f32,
-            depth: sprite.depth,
-        }
-    }
-}
 
 /// state of the Application, includes drawing, input, generators
 pub struct App {
-    /// data storage for each key that was pressed with the frame time
-    key_downs: HashMap<KeyCode, u32>,
-
-    /// data storage for each button that was pressed with the frame time
-    button_downs: HashMap<Button, u32>,
-
-    /// data storage for all quads in the frame that you want to draw
-    quads: Vec<Quad>,
-
-    // mouse handle that which holds left / right button and position info
-    //pub mouse: Mouse,
+    // engine
+	input: Input,
+	sprites: Sprites,
 	
-	pipeline: Pipeline,
-	bindings: Bindings,
+	// scripts
+	grids: Vec<Grid>,
+	garbage_system: GarbageSystem,
+	
+	debug: bool,
 }
 
 impl App {
     pub fn new(ctx: &mut Context) -> Self {
-        #[rustfmt::skip]
-		let vertices = &[
-							0., 0.,
-							1., 0.,
-							1., 1.,
-							0., 1.,
-							];
-		let vertex_buffer = Buffer::immutable(ctx, BufferType::VertexBuffer, vertices);
-		
-		#[rustfmt::skip]
-		let indices = &[
-							0, 1, 3,
-							1, 2, 3,
-							];
-		let index_buffer = Buffer::immutable(ctx, BufferType::IndexBuffer, indices);
-		
-		let instance_buffer = Buffer::stream(
-													 ctx,
-													 BufferType::VertexBuffer,
-												 Quad::MAX * Quad::SIZE,
-													 );
-		  
-        let bindings = Bindings {
-            vertex_buffers: vec![vertex_buffer, instance_buffer],
-            index_buffer: index_buffer,
-            images: vec![],
-        };
-		  
-		let shader = Shader::new(ctx, shader::VERTEX, shader::FRAGMENT, shader::META);
-		
-        let pipeline = Pipeline::new(
-									 ctx,
-									 &[
-									   BufferLayout::default(),
-									   BufferLayout {
-										   step_func: VertexStep::PerInstance,
-										   ..Default::default()
-									   },
-									   ],
-									 &[
-									   VertexAttribute::with_buffer("v_pos", VertexFormat::Float2, 0),
-									   VertexAttribute::with_buffer("i_model", VertexFormat::Mat4, 1),
-									   VertexAttribute::with_buffer("i_tiles", VertexFormat::Float2, 1),
-									   VertexAttribute::with_buffer("i_hframe", VertexFormat::Float1, 1),
-									   VertexAttribute::with_buffer("i_vframe", VertexFormat::Float1, 1),
-									   VertexAttribute::with_buffer("i_depth", VertexFormat::Float1, 1),
-									   ],
-									 shader,
-										 );
+		let vframes = {
+			let mut temp_random = oorandom::Rand32::new(5);
+			Grid::gen_field(&mut temp_random, 5)
+		};
 		
 		Self {
-			key_downs: HashMap::new(),
-			button_downs: HashMap::new(),
-			quads: Vec::new(),
+			input: Input::default(),
+			sprites: Sprites::new(ctx),
 			
-			pipeline,
-			bindings,
+			grids: vec![
+					 Grid::new(0, 1, &vframes),
+					 Grid::new(1, 2, &vframes),
+					 ],
+			garbage_system: GarbageSystem::default(),
+			
+			debug: false,
 		}
-	}
-	
-	/// returns true if a key is held down
-    pub fn key_down(&self, code: KeyCode) -> bool {
-        self.key_downs.get(&code).filter(|&&v| v != 0).is_some()
-    }
-
-    /// returns true the amount of frames a key has been down for
-    pub fn key_down_frames(&self, code: KeyCode) -> Option<u32> {
-        self.key_downs.get(&code).filter(|&&v| v != 0).copied()
-    }
-
-    /// returns true if a key is pressed for a single frame
-    pub fn key_pressed(&self, code: KeyCode) -> bool {
-        self.key_downs.get(&code).filter(|&&v| v == 1).is_some()
-    }
-
-    /// returns true if a button is held down
-    pub fn button_down(&self, button: Button) -> bool {
-        self.button_downs
-            .get(&button)
-            .filter(|&&v| v != 0)
-            .is_some()
-    }
-
-    /// returns true the amount of frames a button has been down for
-    pub fn button_down_frames(&self, button: Button) -> Option<u32> {
-        self.button_downs.get(&button).filter(|&&v| v != 0).copied()
-    }
-
-    /// returns true if a button is pressed for a single frame
-    pub fn button_pressed(&self, button: Button) -> bool {
-        self.button_downs
-            .get(&button)
-            .filter(|&&v| v == 1)
-            .is_some()
-    }
-
-    /// returns true if a button or a key is held down
-    pub fn kb_down(&self, code: KeyCode, button: Button) -> bool {
-        self.key_down(code) || self.button_down(button)
-    }
-
-    /// returns true the amount of frames a button or a key has been down for
-    pub fn kb_down_frames(&self, code: KeyCode, button: Button) -> Option<u32> {
-        let mut result = None;
-
-        if let Some(frames) = self.key_down_frames(code) {
-            result = Some(frames);
-        }
-
-        if let Some(frames) = self.button_down_frames(button) {
-            if let Some(old_frames) = result {
-                result = Some(old_frames.max(frames));
-            } else {
-                result = Some(frames);
-            }
-        }
-
-        result
-    }
-
-    /// returns true if a button or a key is pressed for a single frame
-    pub fn kb_pressed(&self, code: KeyCode, button: Button) -> bool {
-        self.key_pressed(code) || self.button_pressed(button)
-    }
-
-    /// pushes a quad to the list of quads to draw
-    pub fn push_quad(&mut self, quad: Quad) {
-        if self.quads.len() < Quad::MAX {
-            self.quads.push(quad);
-        }
-    }
-
-    /// pushes a line transformed into a quad
-    pub fn push_line(&mut self, line: Line) {
-        if self.quads.len() < Quad::MAX {
-            //self.quads.push(line.into());
-        }
-    }
-
-    /// pushes a sprite to the anonymous sprites
-    pub fn push_sprite(&mut self, sprite: Sprite) {
-        if self.quads.len() < Quad::MAX {
-            self.quads.push(sprite.into());
-        }
-    }
-	}
-
-impl EventHandler for App {
-	fn update(&mut self, ctx: &mut Context) {
-		if self.key_pressed(KeyCode::Escape) {
+		}
+	  }
+	  
+	  impl EventHandler for App {
+		fn update(&mut self, ctx: &mut Context) {
+		self.input.update_gamepad();
+		  
+		if self.input.key_pressed(KeyCode::Escape) {
 			ctx.quit();
+		  }
+		
+		// show debug info
+		if self.input.kb_pressed(KeyCode::Tab, Button::Select) {
+			self.debug = !self.debug;
 		}
 		
-		self.push_sprite(Sprite {
-							 position: v2(100., 100.),
-							 ..Default::default()
-						 });
+		if self.input.mouse.left_pressed {
+			let pos = I2::new(
+							  ((self.input.mouse.position.x - 400.) / ATLAS_TILE).floor() as i32,
+								  ((self.input.mouse.position.y + self.grids[1].push_amount) / ATLAS_TILE).floor() as i32,
+							  );
+			
+			let cursor_pos = self.grids[1].cursor.position;
+			self.grids[1]
+				.cursor
+				.states
+				.push_back(CursorState::MoveSwap {
+							   counter: 0,
+							   goal: pos,
+						   });
+		}
 		
-		self.push_sprite(Sprite {
-							 position: v2(0., 0.),
-							 ..Default::default()
-						 });
+		if self.input.kb_pressed(KeyCode::A, Button::North) {
+			self.grids[1].gen_1d_garbage(&mut self.garbage_system, 6);
+		}
 		
-		self.push_sprite(Sprite {
-							 position: v2(10., 10.),
-							 ..Default::default()
-						 });
+		if self.input.kb_pressed(KeyCode::Enter, Button::West) {
+			self.grids[1].gen_2d_garbage(&mut self.garbage_system, 2);
+		}
 		
-		self.bindings.vertex_buffers[1].update(ctx, &self.quads[..]);
-		self.quads.clear();
-	}
-	
-	fn draw(&mut self, ctx: &mut Context) {
-		let (width, height) = ctx.screen_size();
-		let projection = ortho(0., width, 0., height, -1., 1.);
+		if self.input.kb_pressed(KeyCode::Space, Button::Start) {
+			for grid in self.grids.iter_mut() {
+				grid.reset();
+			}
+		}
 		
-		  ctx.begin_default_pass(Default::default());
+		if self.input.key_down(KeyCode::LeftShift)
+			|| self.input.button_down(Button::LeftTrigger)
+			|| self.input.button_down(Button::RightTrigger)
+		{
+			self.grids[0].push_raise = true;
+		}
 		
-        ctx.apply_pipeline(&self.pipeline);
-        ctx.apply_bindings(&self.bindings);
-        ctx.apply_uniforms(&shader::Uniforms { projection });
-        ctx.draw(0, 6, Quad::MAX as i32);
-        ctx.end_render_pass();
-		
-        ctx.commit_frame();
-	}
-	
-	fn key_down_event(&mut self, _: &mut Context, keycode: KeyCode, _: KeyMods, _: bool) {
-		if let Some(value) = self.key_downs.get_mut(&keycode) {
-				if *value == 0 {
-				*value = 1;
+		  // update all grids
+		  let len = self.grids.len();
+		 for i in 0..len {
+			   self.grids[i].update(&self.input, &mut self.garbage_system);
+			   
+			// spawns garbage on other self.grids if a new combo arrives
+			for combo_index in 0..self.grids[i].combo_highlight.list.len() {
+				// TODO(Skytrias): creates copies, might be bad cuz of performance
+				if !self.grids[i].combo_highlight.list[combo_index].sent {
+					let combo_data = self.grids[i].combo_highlight.list[combo_index];
+					
+					for j in 0..len {
+						// skip on the same grid as the goal
+						if i == j {
+							continue;
+						}
+						
+						match combo_data.variant {
+							ComboVariant::Combo => self.grids[j].gen_1d_garbage(&mut self.garbage_system, combo_data.size as usize),
+							ComboVariant::Chain => self.grids[j].gen_2d_garbage(&mut self.garbage_system, combo_data.size as usize),
+						}
+					}
+					
+					self.grids[i].combo_highlight.list[combo_index].sent = true;
 				}
-		} else {
-				self.key_downs.insert(keycode, 1);
+				}
+				
+				self.garbage_system.update(&mut self.grids[i]);
+			self.grids[i].push_update(&mut self.garbage_system);
+		  }
+		
+		self.input.update_end();
+	  }
+	
+	  fn draw(&mut self, ctx: &mut Context) {
+		 self.grids[0].draw(&mut self.sprites, V2::new(0., 0.), self.debug);
+		self.grids[1].draw(&mut self.sprites, V2::new(400., 0.), self.debug);
+		
+		self.sprites.render(ctx);
+		ctx.commit_frame();
+	  }
+	  
+	  fn key_down_event(&mut self, _: &mut Context, keycode: KeyCode, _: KeyMods, _: bool) {
+		self.input.down_event(keycode);
+	}
+	  
+	  fn key_up_event(&mut self, _: &mut Context, keycode: KeyCode, _: KeyMods) {
+		self.input.up_event(keycode);
+	}
+	
+	fn mouse_motion_event(&mut self, _ctx: &mut Context, x: f32, y: f32) {
+		self.input.mouse.position = v2(x, y);
+	}
+	
+	fn mouse_button_down_event(&mut self, _ctx: &mut Context, button: MouseButton, _x: f32, _y: f32) {
+		match button {
+			MouseButton::Left => {
+				self.input.mouse.left_down = true;
+				self.input.mouse.left_released = false;
+				}
+			
+			MouseButton::Right => {
+				self.input.mouse.right_down = true;
+				self.input.mouse.left_released = false;
+				}
+			
+			_ => {}
 		}
 	}
 	
-	fn key_up_event(&mut self, _: &mut Context, keycode: KeyCode, _: KeyMods) {
-		if let Some(value) = self.key_downs.get_mut(&keycode) {
-				*value = 0;
+	fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, _x: f32, _y: f32) {
+		match button {
+			MouseButton::Left => {
+				self.input.mouse.left_down = false;
+				self.input.mouse.left_released = true;
+				}
+			
+			MouseButton::Right => {
+				self.input.mouse.right_down = false;
+				self.input.mouse.left_released = true;
+				}
+			
+			_ => {}
 		}
 	}
-}
-
-mod shader {
-    use miniquad::*;
-	use crate::helpers::M4;
-	
-    pub const VERTEX: &str = r#"#version 100
-		attribute vec2 v_pos;
-	
-	// wgpu doesnt support VertexFormat Mat4, so i piece them together
-	attribute mat4 i_model;
-	attribute vec2 i_tiles;
-	attribute float i_hframe;
-	attribute float i_vframe;
-	attribute float i_depth;
-	
-    uniform mat4 projection;
-    
-	void main() {
-		vec2 test = i_tiles;
-		 float test2 = i_hframe;
-		 float test4 = i_vframe;
-		 float test3 = i_depth;
-		
-         gl_Position = projection * i_model * vec4(v_pos, 0.5, 1.);
-    }
-    "#;
-		
-		pub const FRAGMENT: &str = r#"#version 100
-		void main() {
-        gl_FragColor = vec4(1., 0., 0., 1.);
-    }
-    "#;
-		
-		pub const META: ShaderMeta = ShaderMeta {
-        images: &[],
-        uniforms: UniformBlockLayout {
-            uniforms: &[("projection", UniformType::Mat4)],
-        },
-    };
-	
-    #[repr(C)]
-		pub struct Uniforms {
-        pub projection: M4,
-    }
 }

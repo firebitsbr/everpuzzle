@@ -25,6 +25,8 @@ pub const ATLAS_CURSOR: u32 = 1;
 pub const ATLAS_GARBAGE_1D: u32 = 9;
 /// vframe position of the garbage texture
 pub const ATLAS_GARBAGE_2D: u32 = 10;
+pub const ATLAS_NUMBERS: u32 = 11;
+pub const ATLAS_ALPHABET: u32 = 12;
 
 /// block width size of the grid
 pub const GRID_WIDTH: usize = 6;
@@ -85,4 +87,82 @@ impl Default for Line {
             vframe: ATLAS_FILL,
         }
     }
+}
+
+/// data that will be sent to the gpu
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct Quad {
+    /// model matrix that stores position, offset, scale, dimensions, etc
+    pub model: M4,
+	
+    /// how many tiles the quad texture should use
+    pub tiles: V2,
+	
+    /// hframe of the tile in the texture atlas
+    pub hframe: f32,
+	
+    /// vframe of the tile in the texture atlas
+    pub vframe: f32,
+	
+    /// vframe of the tile in the texture atlas
+    pub depth: f32,
+}
+
+impl Quad {
+    /// max number of quads that can be rendered
+    pub const MAX: usize = 1000;
+	
+    /// byte size of the quad struct
+    pub const SIZE: usize = std::mem::size_of::<Quad>();
+}
+
+/// converts a sprite into a valid quad
+impl From<Sprite> for Quad {
+    fn from(sprite: Sprite) -> Self {
+		let dimensions = sprite.tiles * ATLAS_SPACING;
+		
+		let mut model = M4::from_translation(v3(
+												sprite.position.x + sprite.offset.x,
+												sprite.position.y + sprite.offset.y,
+												0.,
+												));
+		
+		model = model * M4::from_nonuniform_scale(v4(sprite.scale.x, sprite.scale.y, 1., 1.));
+		model = model * M4::from_nonuniform_scale(v4(dimensions.x, dimensions.y, 1., 1.));
+		
+		if sprite.centered {
+			model = model * M4::from_translation(v3(
+													-0.5,
+													-0.5,
+													0.,
+													));
+		}
+		
+        Quad {
+            model,
+			tiles: sprite.tiles,
+            hframe: sprite.hframe as f32,
+            vframe: sprite.vframe as f32,
+            depth: sprite.depth,
+        }
+    }
+}
+
+pub struct Text<'a> {
+	pub content: &'a str,
+	pub position: V2,
+	pub scale: V2,
+	pub step: f32,
+}
+
+impl<'a> Default for Text<'a> {
+	fn default() -> Self {
+		Self {
+			position: V2::zero(),
+			scale: V2::one(),
+			content: "",
+			step: 32.,
+		}
+	}
 }

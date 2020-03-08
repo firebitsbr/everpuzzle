@@ -1,6 +1,6 @@
 [package]
 name = "everpuzzle"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["skytrias <skytrias@protonmail.com>"]
 edition = "2018"
 keywords = ["game", "puzzle"]
@@ -12,13 +12,11 @@ readme = "../README.md"
 
 [dependencies]
 ultraviolet = "0.4.5" # math & utility 
+miniquad = "0.2.39" # window & rendering
 png_pong = "0.1" # png loading
 pix = "0.7.0"  
-fixedstep = "0.3" # main loop at specified fps
 oorandom = "11.1" # random number generator
-bitflags = "1.2.1" # flags 
 gilrs = "0.7.4" # gamepad input
-miniquad = "0.2.36"
 
 [profile.dev] 
 debug = 1 

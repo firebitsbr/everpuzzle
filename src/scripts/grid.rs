@@ -1,4 +1,4 @@
-use crate::engine::App;
+use crate::engine::*;
 use crate::helpers::*;
 use crate::scripts::*;
 use std::collections::HashMap;
@@ -118,7 +118,7 @@ impl Grid {
     }
 
     /// inits the grid with randomized blocks (seeded)
-    pub fn new(app: &mut App, id: usize, seed: u64, vframes: &[Option<u32>; GRID_TOTAL]) -> Self {
+    pub fn new(id: usize, seed: u64, vframes: &[Option<u32>; GRID_TOTAL]) -> Self {
         let components: Vec<Component> = (0..GRID_TOTAL)
             .map(|i| Component::spawn(vframes[i]))
             .collect();
@@ -153,7 +153,7 @@ impl Grid {
     }
 
     /// sets all blocks and childs y_offset to 0, swaps them with below and sets bottom row to randoimized blocks
-    pub fn push_upwards(&mut self, app: &mut App, garbage_system: &mut GarbageSystem, reset: bool) {
+    pub fn push_upwards(&mut self, garbage_system: &mut GarbageSystem, reset: bool) {
         let vframes = self.gen_line();
 
         for x in 0..GRID_WIDTH {
@@ -1075,7 +1075,7 @@ impl Grid {
 	}
 	
     /// updates all components in the grid and the garbage system
-    pub fn update(&mut self, app: &mut App, garbage_system: &mut GarbageSystem) {
+    pub fn update(&mut self, input: &Input, garbage_system: &mut GarbageSystem) {
         debug_assert!(!self.components.is_empty());
 
         if false {
@@ -1116,7 +1116,7 @@ impl Grid {
             */
         }
 		
-        self.cursor.update(app, &mut self.components);
+        self.cursor.update(input, &mut self.components);
 		
 		// ai update, priority dependant
         if self.id == 1 && !(self.cursor.states.get(0).is_some() || self.cursor.end_delay != 0) {
@@ -1220,7 +1220,7 @@ impl Grid {
 		 }
 	 
 		 /// updates the push / raise data which offsets the grid components
-		 pub fn push_update(&mut self, app: &mut App, garbage_system: &mut GarbageSystem) {
+		 pub fn push_update(&mut self, garbage_system: &mut GarbageSystem) {
 			 // stop pushing if any block is
 			 for i in 0..GRID_TOTAL {
 				 if let Component::Block { state, .. } = &self[i] {
@@ -1249,7 +1249,7 @@ impl Grid {
 	 
 					 self.cursor.y_offset = -amt;
 				 } else {
-					 self.push_upwards(app, garbage_system, false);
+					 self.push_upwards(garbage_system, false);
 					 self.push_raise = false;
 					 self.push_amount = 0.;
 				 }
@@ -1267,91 +1267,89 @@ impl Grid {
 		 }
 	 
 		 /// draws all the grid components as sprite / quads
-		 pub fn draw(&mut self, app: &mut App, offset: V2, debug: bool) {
-			 self.combo_highlight.draw(app, offset);
-			 self.cursor.draw(app, offset);
+		 pub fn draw(&mut self, sprites: &mut Sprites, offset: V2, debug: bool) {
+			 self.combo_highlight.draw(sprites, offset);
+			 self.cursor.draw(sprites, offset);
 	 
 			 // ai debug draw
 		if self.id == 0 {
 			let pos = V2::new(self.cursor.position.x as f32, self.cursor.position.y as f32);
 			
+			/*
 			app.push_line(Line {
-								  start: pos * ATLAS_SPACING + offset,
-								  end: V2::new(6., 4.) * ATLAS_SPACING + offset,
-								  ..Default::default()
-							  });
-		}
-	 
+							 start: pos * ATLAS_SPACING + offset,
+							 end: V2::new(6., 4.) * ATLAS_SPACING + offset,
+							 ..Default::default()
+						  });
+		  */
+   }
+	   
 			 // draw all grid components
 			 for y in 0..GRID_HEIGHT {
-				 for x in 0..GRID_WIDTH {
-					 let i = y * GRID_WIDTH + x;
-	 
-					 // set bottom row to darkened
-					 if y == GRID_HEIGHT - 1 {
-						 if let Component::Block { block, .. } = &mut self[i] {
-							 block.hframe = 2;
-						 }
-					 }
-	 
-					 let position = V2::new(x as f32, y as f32) * ATLAS_SPACING + offset;
-					 if let Some(sprite) = self[i].to_sprite(position) {
-						 app.push_sprite(sprite.into());
-					 }
-				 }
+				for x in 0..GRID_WIDTH {
+				   let i = y * GRID_WIDTH + x;
+	   
+				   // set bottom row to darkened
+				   if y == GRID_HEIGHT - 1 {
+					  if let Component::Block { block, .. } = &mut self[i] {
+						 block.hframe = 2;
+					  }
+				   }
+	   
+				   let position = V2::new(x as f32, y as f32) * ATLAS_SPACING + offset;
+				   if let Some(sprite) = self[i].to_sprite(position) {
+					  sprites.push(sprite.into());
+				   }
+				}
 			 }
-	 
+	   
 			 // draw some debug info text
-			 if !debug {
-				 // draw visual count information
-				 {
-					 let mut sum = 0;
-				 let mut y_offset = 0;
-					 for &vframe in [3, 4, 5, 6, 7].iter() {
-						 let mut amt = 0;
-						 for i in 0..GRID_TOTAL {
-							 if let Component::Block { block, state } = &self[i] {
-								 if block.vframe == vframe {
-									 amt += 1;
-							 sum += 1;
-						  }
-							 }
+			 if debug {
+				// draw visual count information
+				{
+				   let mut sum = 0;
+				let mut y_offset = 0;
+				   for &vframe in [3, 4, 5, 6, 7].iter() {
+					  let mut amt = 0;
+					  for i in 0..GRID_TOTAL {
+						 if let Component::Block { block, state } = &self[i] {
+							if block.vframe == vframe {
+							   amt += 1;
+						 sum += 1;
+					   }
 						 }
-	 
-						 let pos = (
-							 8. * ATLAS_TILE + offset.x,
-							 y_offset as f32 * ATLAS_TILE + offset.y,
-						 );
-	 
-						 app.push_sprite(Sprite {
-							 position: V2::new(pos.0 - ATLAS_TILE, pos.1),
-							 vframe,
-							 ..Default::default()
-						 });
-					
-					/*
-						 app.push_section(Section {
-							 text: &format!("{}", amt),
-							 screen_position: pos,
-							 ..Default::default()
-						 });
-		 */
+					  }
+	   
+					  let position = v2(
+						 8. * ATLAS_TILE + offset.x,
+						 y_offset as f32 * ATLAS_TILE + offset.y,
+					  );
+	   
+					  sprites.push(Sprite {
+						 position: v2(position.x - ATLAS_TILE, position.y),
+						 vframe,
+						 ..Default::default()
+					  });
+				  
+					  sprites.text(Text {
+						 content: &format!("{}", amt),
+						 position,
+						 ..Default::default()
+					  });
 					
 						 y_offset += 1;
 					 }
 				 
-									let pos = (
+									let position = v2(
 											8. * ATLAS_TILE + offset.x,
 											y_offset as f32 * ATLAS_TILE + offset.y,
 											);
 				
-				/*
-							   app.push_section(Section {
-										   text: &format!("{}", sum),
-										   screen_position: pos,
+							   sprites.text(Text {
+										   content: &format!("{}", sum),
+										   position,
 										   ..Default::default()
 										 });
-				 */
 	}
 		
 				 // debug info numbers
@@ -1360,32 +1358,22 @@ impl Grid {
 					   let i = y * GRID_WIDTH + x;
 		
 					   if let Component::Block { block, .. } = &self[i] {
-						  let pos = (
-							 x as f32 * ATLAS_TILE + offset.x,
-							 y as f32 * ATLAS_TILE + block.offset.y + offset.y,
+						  let position = v2(
+							 x as f32 * ATLAS_TILE + offset.x + 4.,
+							 y as f32 * ATLAS_TILE + block.offset.y + offset.y + 8.,
 						  );
 		
 						  let text = &format!("{}", i);
 						  //let text = "0";
 						
-						/*
-						  app.push_section(Section {
-						   text,
-						   scale: wgpu_glyph::Scale { x: 20., y: 16. },
-						   color: [0., 0., 0., 1.],
-						   screen_position: pos,
+						  sprites.text(Text {
+											 content: text,
+											 scale: v2(0.3, 0.3),
+											 //scale: wgpu_glyph::Scale { x: 20., y: 16. },
+						   position,
 						   ..Default::default()
 						  });
-			   
-						  app.push_section(Section {
-						   text,
-						   scale: wgpu_glyph::Scale { x: 20., y: 16. },
-						   color: [1., 1., 1., 1.],
-						   screen_position: (pos.0 + 1., pos.1 + 1.),
-						   ..Default::default()
-						  });
-						*/
-	  }
+					}
 					  }
 					 }
 				   }

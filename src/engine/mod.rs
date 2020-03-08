@@ -1,10 +1,8 @@
 pub mod app;
 pub use self::app::*;
 
-/*
-mod mouse;
-pub use self::mouse::Mouse;
+mod sprites;
+pub use self::sprites::*;
 
-mod quad;
-pub use self::quad::*;
-*/
+mod input;
+pub use self::input::*;

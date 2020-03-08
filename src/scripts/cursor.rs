@@ -1,4 +1,4 @@
-use crate::engine::App;
+use crate::engine::*;
 use crate::helpers::*;
 use crate::scripts::{BlockState, Component, Grid};
 use gilrs::Button;
@@ -122,7 +122,7 @@ impl Cursor {
     }
 
     /// input update which controls the movement of the cursor and also swapping of blocks in the grid
-    pub fn update(&mut self, app: &App, components: &mut Vec<Component>) {
+    pub fn update(&mut self, input: &Input, components: &mut Vec<Component>) {
         if self.counter < ANIMATION_TIME - 1 {
             self.counter += 1;
         } else {
@@ -145,16 +145,16 @@ impl Cursor {
         }
 
         match self.ai {
-            true => self.update_ai(app, components),
-            false => self.update_player(app, components),
+            true => self.update_ai(components),
+            false => self.update_player(input, components),
         }
     }
 
-    fn update_player(&mut self, app: &App, components: &mut Vec<Component>) {
-        let left = app.kb_down_frames(KeyCode::Left, Button::DPadLeft);
-        let right = app.kb_down_frames(KeyCode::Right, Button::DPadRight);
-        let up = app.kb_down_frames(KeyCode::Up, Button::DPadUp);
-        let down = app.kb_down_frames(KeyCode::Down, Button::DPadDown);
+    fn update_player(&mut self, input: &Input, components: &mut Vec<Component>) {
+        let left = input.kb_down_frames(KeyCode::Left, Button::DPadLeft);
+        let right = input.kb_down_frames(KeyCode::Right, Button::DPadRight);
+        let up = input.kb_down_frames(KeyCode::Up, Button::DPadUp);
+        let down = input.kb_down_frames(KeyCode::Down, Button::DPadDown);
 
         // movement dependant on how long a key down has been held for in frames
 
@@ -190,21 +190,21 @@ impl Cursor {
             }
         }
 
-        if app.key_pressed(KeyCode::S)
-            || app.button_pressed(Button::South)
-            || app.button_pressed(Button::East)
+        if input.key_pressed(KeyCode::S)
+            || input.button_pressed(Button::South)
+            || input.button_pressed(Button::East)
         {
             self.swap_blocks(components);
         }
 
         // TODO(Skytrias): REMOVE ON RELEASE, only used for debugging faster
-        if app.key_pressed(KeyCode::A) {
+        if input.key_pressed(KeyCode::A) {
             let index = self.position.to_index();
             components.swap(index, index - GRID_WIDTH);
         }
     }
 
-    pub fn update_ai(&mut self, app: &App, components: &mut Vec<Component>) {
+    pub fn update_ai(&mut self, components: &mut Vec<Component>) {
         if self.end_delay > 0 {
             self.end_delay -= 1;
             return;
@@ -321,51 +321,53 @@ impl Cursor {
     }
 
     // draws the cursor sprite into the app
-    pub fn draw(&mut self, app: &mut App, offset: V2) {
+    pub fn draw(&mut self, sprites: &mut Sprites, offset: V2) {
         self.sprite.position = self.goal_position.lerp(
             self.sprite.position,
             self.goal_counter as f32 / LERP_TIME as f32,
         );
         self.sprite.hframe = (self.counter as f32 / 32.).floor() as u32 * 3;
         self.sprite.offset = offset + V2::new(-16., self.y_offset - ATLAS_TILE / 2.);
-        app.push_sprite(self.sprite);
+        sprites.push(self.sprite);
 
         if self.ai {
             if let Some(state) = self.states.get_mut(0) {
                 match state {
                     CursorState::MoveSwap { goal, .. } => {
                         let goal = V2::new(goal.x as f32, goal.y as f32);
-
-                        app.push_line(Line {
-                            start: self.sprite.position + offset,
-                            end: goal * ATLAS_SPACING + offset + ATLAS_SPACING / 2.,
-                            thickness: 15.,
-                            hframe: 8,
-                            ..Default::default()
-                        });
-                    }
-
-                    _ => {}
-                }
-
-                let text = match state {
-                    CursorState::Idle => "I",
-                    CursorState::MoveSwap { .. } => "M",
-                    CursorState::MoveTransport { .. } => "T",
-                };
-				
-				/*
-					app.push_section(Section {
+						
+						/*
+							 sprites.push(Line {
+								start: self.sprite.position + offset,
+								end: goal * ATLAS_SPACING + offset + ATLAS_SPACING / 2.,
+								thickness: 15.,
+								hframe: 8,
+								..Default::default()
+							 });
+						  */
+		   }
+		   
+						  _ => {}
+					   }
+		   
+					   let text = match state {
+						  CursorState::Idle => "I",
+						  CursorState::MoveSwap { .. } => "M",
+						  CursorState::MoveTransport { .. } => "T",
+					   };
+					
+					/*
+					  app.push_section(Section {
 						text,
 						screen_position: (
-							offset.x + self.sprite.position.x - ATLAS_TILE,
-							offset.y + self.sprite.position.y - ATLAS_TILE,
+						   offset.x + self.sprite.position.x - ATLAS_TILE,
+						   offset.y + self.sprite.position.y - ATLAS_TILE,
 						),
 						scale: wgpu_glyph::Scale { x: 40., y: 40. },
 						color: [0.1, 0.1, 0.1, 1.0],
 						..Default::default()
-					});
-				*/
+					  });
+					*/
 	}
 			}
 		}

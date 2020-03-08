@@ -138,10 +138,10 @@ impl Default for GarbageSystem {
 
 impl GarbageSystem {
     /// calls the update event on each garbage
-    pub fn update(&mut self, app: &mut App, grid: &mut Grid) {
+    pub fn update(&mut self, grid: &mut Grid) {
 		for garbage in self.list.iter_mut() {
 			if grid.id == garbage.parent_id {
-				garbage.update(app, grid);
+				garbage.update(grid);
 			}
         }
     }
@@ -291,7 +291,7 @@ impl Garbage {
 	}
 	
     /// updates the garbage variables based on each state, mostly animation based
-    pub fn update(&mut self, app: &mut App, grid: &mut Grid) {
+    pub fn update(&mut self, grid: &mut Grid) {
         match &mut self.state {
             Hang { counter } => *counter += 1,
 			

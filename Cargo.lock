@@ -56,22 +56,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "everpuzzle"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
- "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "fixedstep 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "gilrs 0.7.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "miniquad 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
+ "miniquad 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "oorandom 11.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pix 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "png_pong 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ultraviolet 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "fixedstep"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "fnv"
@@ -160,7 +153,7 @@ dependencies = [
 
 [[package]]
 name = "miniquad"
-version = "0.2.36"
+version = "0.2.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "sapp-android 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -517,7 +510,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum core-foundation 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)" = "25b9e03f145fd4f2bf705e07b900cd41fc636598fe5dc452fd0db1441c3f496d"
 "checksum core-foundation-sys 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e7ca8a5221364ef15ce201e8ed2f609fc312682a8f4e0e3d4aa5879764e0fa3b"
 "checksum discard 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
-"checksum fixedstep 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c06d15ac1cdd579228d72c6e86df2a63270ac93fbc26534a8a6996a4499560e8"
 "checksum fnv 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "2fad85553e09a6f881f739c29f0b00b0f01357c743266d478b68951ce23285f3"
 "checksum gilrs 0.7.4 (registry+https://github.com/rust-lang/crates.io-index)" = "122bb249f904e5f4ac73fc514b9b2ce6cce3af511f5df00ffc8000e47de6b290"
 "checksum gilrs-core 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "6bdd4ea2d919ecb594362fa26b0f172729b9ee9b95e407fbad95e0a49cadc143"
@@ -528,7 +520,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum libudev-sys 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "3c8469b4a23b962c1396b9b451dda50ef5b283e8dd309d69033475fa9b334324"
 "checksum log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
 "checksum mach 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "86dd2487cdfea56def77b88438a2c915fb45113c5319bfe7e14306ca4cd0b0e1"
-"checksum miniquad 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)" = "5705c463e2203c35ac1f1966ad2f9949f981ae9710927f4a42212e27677a5cf8"
+"checksum miniquad 0.2.39 (registry+https://github.com/rust-lang/crates.io-index)" = "bc0e14b9d738091a969366cd7257ccc020847d1d182447df1bfca7fea3aa4c33"
 "checksum miniz_oxide 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "6f3f74f726ae935c3f514300cc6773a0c9492abc5e972d42ba0c0ebb88757625"
 "checksum nix 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3b2e0b4f3320ed72aaedb9a5ac838690a8047c7b275da22711fddff4f8a14229"
 "checksum oorandom 11.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ebcec7c9c2a95cacc7cd0ecb89d8a8454eca13906f6deb55258ffff0adeb9405"

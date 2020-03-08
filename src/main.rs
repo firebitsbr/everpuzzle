@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-/*
 /// loads a file at runtime in debug mode, includes the file into the binary in release mode
 macro_rules! load_file {
     ($path:expr) => {
@@ -13,7 +12,6 @@ macro_rules! load_file {
         }
     };
 }
-*/
 
 mod engine;
 mod helpers;

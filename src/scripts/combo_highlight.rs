@@ -1,6 +1,6 @@
-use crate::engine::App;
-use crate::helpers::{Sprite, ATLAS_SPACING, GRID_HEIGHT, GRID_WIDTH, V2};
 use std::collections::VecDeque;
+use crate::engine::Sprites;
+use crate::helpers::*;
 
 const COMBO_APPEAR_TIME: u32 = 5;
 const COMBO_DISAPPEAR_START: u32 = 10;
@@ -71,7 +71,7 @@ impl ComboHighlight {
     }
 
     /// draws all current combos
-    pub fn draw(&mut self, app: &mut App, position: V2) {
+    pub fn draw(&mut self, sprites: &mut Sprites, position: V2) {
         let mut offset =
             position + V2::new(GRID_WIDTH as f32 + 1., GRID_HEIGHT as f32 - 1.) * ATLAS_SPACING;
 
@@ -90,8 +90,8 @@ impl ComboHighlight {
                 ComboVariant::Combo => 5,
                 ComboVariant::Chain => 6,
             };
-
-            app.push_sprite(Sprite {
+			
+            sprites.push(Sprite {
                 position: offset_position,
                 offset: self.dimensions / 2.,
                 hframe,
@@ -105,21 +105,14 @@ impl ComboHighlight {
                 ComboVariant::Chain => format!("x{}", combo.size),
             };
 			
-			/*
             // TODO(Skytrias): implement from(f32, f32) for V2
-            app.push_section(Section {
-                text: &text,
-                screen_position: (
-                    offset_position.x + self.dimensions.x / 2.,
-                    offset_position.y + self.dimensions.y / 2.,
-                ),
-                layout: Layout::default()
-                    .h_align(HorizontalAlign::Center)
-                    .v_align(VerticalAlign::Center),
-                scale: Scale::uniform(16. * stupid_scale),
+            sprites.text(Text {
+								 content: &text,
+								 position: offset_position + self.dimensions / 2.,
+								 // TODO(Skytrias): align
+								 scale: V2::broadcast(stupid_scale),
                 ..Default::default()
             });
-   */
 			
             offset.y -= self.dimensions.y;
 
